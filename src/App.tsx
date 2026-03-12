@@ -9,9 +9,14 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import ApplicationsPage from "./pages/ApplicationsPage";
 import FacilitiesPage from "./pages/FacilitiesPage";
+import AreasPage from "./pages/AreasPage";
+import RequirementsPage from "./pages/RequirementsPage";
 import UsersPage from "./pages/UsersPage";
+import TeamPage from "./pages/TeamPage";
+import MyAccessPage from "./pages/MyAccessPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import LogsPage from "./pages/LogsPage";
-import PlaceholderPage from "./pages/PlaceholderPage";
+import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,14 +34,14 @@ const App = () => (
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/applications" element={<ApplicationsPage />} />
                 <Route path="/facilities" element={<FacilitiesPage />} />
-                <Route path="/areas" element={<PlaceholderPage title="Områden" description="Hantera områden inom anläggningar" />} />
-                <Route path="/requirements" element={<PlaceholderPage title="Krav" description="Hantera certifieringar, utbildningar och säkerhetsprövningar" />} />
+                <Route path="/areas" element={<AreasPage />} />
+                <Route path="/requirements" element={<RequirementsPage />} />
                 <Route path="/users" element={<UsersPage />} />
-                <Route path="/team" element={<PlaceholderPage title="Mitt team" description="Översikt av ditt teams tillträdesrättigheter" />} />
-                <Route path="/my-access" element={<PlaceholderPage title="Min åtkomst" description="Visa dina aktiva tillträden och kravuppfyllnad" />} />
-                <Route path="/notifications" element={<PlaceholderPage title="Aviseringar" description="Dina aviseringar och påminnelser" />} />
+                <Route path="/team" element={<TeamPage />} />
+                <Route path="/my-access" element={<MyAccessPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/logs" element={<LogsPage />} />
-                <Route path="/settings" element={<PlaceholderPage title="Inställningar" description="Systemkonfiguration, branding och formuläranpassning" />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppLayout>

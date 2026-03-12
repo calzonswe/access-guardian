@@ -17,9 +17,10 @@ const STATUS_MAP: Record<ApplicationStatus, { label: string; className: string }
 interface Props {
   applications: Application[];
   title?: string;
+  onRowClick?: (app: Application) => void;
 }
 
-export function ApplicationTable({ applications, title = 'Ansökningar' }: Props) {
+export function ApplicationTable({ applications, title = 'Ansökningar', onRowClick }: Props) {
   return (
     <Card>
       <CardHeader>
@@ -45,7 +46,7 @@ export function ApplicationTable({ applications, title = 'Ansökningar' }: Props
                 const facility = MOCK_FACILITIES.find(f => f.id === app.facility_id);
                 const status = STATUS_MAP[app.status];
                 return (
-                  <TableRow key={app.id} className="cursor-pointer hover:bg-muted/50">
+                  <TableRow key={app.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onRowClick?.(app)}>
                     <TableCell className="font-medium">{user?.full_name ?? '–'}</TableCell>
                     <TableCell>{facility?.name ?? '–'}</TableCell>
                     <TableCell>
