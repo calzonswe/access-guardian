@@ -20,7 +20,7 @@ interface Props {
   onRowClick?: (app: Application) => void;
 }
 
-export function ApplicationTable({ applications, title = 'Ansökningar' }: Props) {
+export function ApplicationTable({ applications, title = 'Ansökningar', onRowClick }: Props) {
   return (
     <Card>
       <CardHeader>
