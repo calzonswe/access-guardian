@@ -12,6 +12,7 @@ import FacilitiesPage from "./pages/FacilitiesPage";
 import AreasPage from "./pages/AreasPage";
 import RequirementsPage from "./pages/RequirementsPage";
 import UsersPage from "./pages/UsersPage";
+import OrganizationPage from "./pages/OrganizationPage";
 import TeamPage from "./pages/TeamPage";
 import MyAccessPage from "./pages/MyAccessPage";
 import NotificationsPage from "./pages/NotificationsPage";
