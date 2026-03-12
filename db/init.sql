@@ -85,6 +85,18 @@ CREATE TABLE user_roles (
   UNIQUE (user_id, role)
 );
 
+-- Organization positions (company hierarchy tree)
+CREATE TABLE organization_positions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title VARCHAR(255) NOT NULL,
+  department VARCHAR(100),
+  parent_id UUID REFERENCES organization_positions(id) ON DELETE SET NULL,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Facilities
 CREATE TABLE facilities (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -228,6 +240,8 @@ CREATE TABLE system_settings (
 
 CREATE INDEX idx_user_roles_user ON user_roles(user_id);
 CREATE INDEX idx_user_roles_role ON user_roles(role);
+CREATE INDEX idx_org_positions_parent ON organization_positions(parent_id);
+CREATE INDEX idx_org_positions_user ON organization_positions(user_id);
 CREATE INDEX idx_areas_facility ON areas(facility_id);
 CREATE INDEX idx_area_requirements_area ON area_requirements(area_id);
 CREATE INDEX idx_facility_requirements_facility ON facility_requirements(facility_id);
@@ -276,3 +290,21 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER trg_facilities_updated_at BEFORE UPDATE ON facilities FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER trg_applications_updated_at BEFORE UPDATE ON applications FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER trg_org_positions_updated_at BEFORE UPDATE ON organization_positions FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ============================================
+-- SEED DATA
+-- ============================================
+
+-- Default admin user (password: admin123 — CHANGE IN PRODUCTION)
+INSERT INTO users (id, email, full_name, password_hash, department, is_active)
+VALUES ('00000000-0000-0000-0000-000000000001', 'admin@foretag.se', 'Systemadministratör', '$2b$10$placeholder_hash_change_me', 'IT', true);
+
+INSERT INTO user_roles (user_id, role)
+VALUES ('00000000-0000-0000-0000-000000000001', 'administrator');
+
+-- Default system settings
+INSERT INTO system_settings (key, value) VALUES
+  ('branding', '{"appName": "RBAC Access", "subtitle": "Tillträdeshantering"}'),
+  ('notifications', '{"expiryWarningDays": [30, 7, 1]}'),
+  ('security', '{"sessionTimeoutMinutes": 30, "maxLoginAttempts": 5}');
