@@ -1,11 +1,17 @@
+import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { MOCK_APPLICATIONS, MOCK_FACILITIES, MOCK_USERS } from '@/data/mock-data';
 import { ApplicationTable } from '@/components/dashboard/ApplicationTable';
+import { ApplicationFormDialog } from '@/components/applications/ApplicationFormDialog';
+import { ApplicationDetailDialog } from '@/components/applications/ApplicationDetailDialog';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
+import type { Application } from '@/types/rbac';
 
 export default function ApplicationsPage() {
   const { currentUser, activeRole } = useAuth();
+  const [formOpen, setFormOpen] = useState(false);
+  const [selectedApp, setSelectedApp] = useState<Application | null>(null);
 
   let applications = MOCK_APPLICATIONS;
 
@@ -27,13 +33,15 @@ export default function ApplicationsPage() {
           <p className="text-sm text-muted-foreground mt-1">Hantera tillträdesansökningar</p>
         </div>
         {(activeRole === 'employee' || activeRole === 'contractor') && (
-          <Button>
+          <Button onClick={() => setFormOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Ny ansökan
           </Button>
         )}
       </div>
-      <ApplicationTable applications={applications} />
+      <ApplicationTable applications={applications} onRowClick={setSelectedApp} />
+      <ApplicationFormDialog open={formOpen} onOpenChange={setFormOpen} />
+      <ApplicationDetailDialog application={selectedApp} open={!!selectedApp} onOpenChange={(open) => !open && setSelectedApp(null)} />
     </div>
   );
 }
