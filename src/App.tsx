@@ -12,6 +12,7 @@ import FacilitiesPage from "./pages/FacilitiesPage";
 import AreasPage from "./pages/AreasPage";
 import RequirementsPage from "./pages/RequirementsPage";
 import UsersPage from "./pages/UsersPage";
+import OrganizationPage from "./pages/OrganizationPage";
 import TeamPage from "./pages/TeamPage";
 import MyAccessPage from "./pages/MyAccessPage";
 import NotificationsPage from "./pages/NotificationsPage";
@@ -37,6 +38,7 @@ const App = () => (
                 <Route path="/areas" element={<AreasPage />} />
                 <Route path="/requirements" element={<RequirementsPage />} />
                 <Route path="/users" element={<UsersPage />} />
+                <Route path="/organization" element={<OrganizationPage />} />
                 <Route path="/team" element={<TeamPage />} />
                 <Route path="/my-access" element={<MyAccessPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />

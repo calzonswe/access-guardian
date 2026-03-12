@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Building2, MapPin, Shield, FileText,
-  Users, ScrollText, Settings, Bell, LogOut
+  Users, ScrollText, Settings, Bell, LogOut, Network
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
@@ -26,6 +26,7 @@ const navItems: NavItem[] = [
   { title: 'Områden', url: '/areas', icon: MapPin, roles: ['administrator', 'facility_owner', 'facility_admin'] },
   { title: 'Krav', url: '/requirements', icon: Shield, roles: ['administrator', 'facility_owner', 'facility_admin', 'line_manager'] },
   { title: 'Användare', url: '/users', icon: Users, roles: ['administrator'] },
+  { title: 'Organisation', url: '/organization', icon: Network, roles: ['administrator'] },
   { title: 'Mitt team', url: '/team', icon: Users, roles: ['line_manager'] },
   { title: 'Min åtkomst', url: '/my-access', icon: Shield, roles: ['employee', 'contractor'] },
   { title: 'Aviseringar', url: '/notifications', icon: Bell, roles: 'all' },
