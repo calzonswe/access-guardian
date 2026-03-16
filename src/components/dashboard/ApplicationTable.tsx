@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Application, ApplicationStatus } from '@/types/rbac';
-import { MOCK_USERS, MOCK_FACILITIES } from '@/data/mock-data';
+import * as store from '@/services/dataStore';
 
 const STATUS_MAP: Record<ApplicationStatus, { label: string; className: string }> = {
   draft: { label: 'Utkast', className: 'bg-muted text-muted-foreground' },
@@ -42,8 +42,8 @@ export function ApplicationTable({ applications, title = 'Ansökningar', onRowCl
             </TableHeader>
             <TableBody>
               {applications.map(app => {
-                const user = MOCK_USERS.find(u => u.id === app.applicant_id);
-                const facility = MOCK_FACILITIES.find(f => f.id === app.facility_id);
+                const user = store.getUser(app.applicant_id);
+                const facility = store.getFacility(app.facility_id);
                 const status = STATUS_MAP[app.status];
                 return (
                   <TableRow key={app.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onRowClick?.(app)}>

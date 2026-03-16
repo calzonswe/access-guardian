@@ -1,144 +1,119 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertTriangle } from 'lucide-react';
-import { MOCK_FACILITIES, MOCK_AREAS, MOCK_REQUIREMENTS, MOCK_USER_REQUIREMENTS } from '@/data/mock-data';
 import { useAuth } from '@/context/AuthContext';
-import { toast } from 'sonner';
+import * as store from '@/services/dataStore';
+import type { Application } from '@/types/rbac';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editApplication?: Application | null;
+  onSaved?: () => void;
 }
 
-export function ApplicationFormDialog({ open, onOpenChange }: Props) {
+const SECURITY_LABELS: Record<string, string> = { low: 'Låg', medium: 'Medel', high: 'Hög', critical: 'Kritisk' };
+
+export function ApplicationFormDialog({ open, onOpenChange, editApplication, onSaved }: Props) {
   const { currentUser } = useAuth();
-  const [facilityId, setFacilityId] = useState('');
-  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [justification, setJustification] = useState('');
+  const [facilityId, setFacilityId] = useState(editApplication?.facility_id || '');
+  const [selectedAreas, setSelectedAreas] = useState<string[]>(editApplication?.area_ids || []);
+  const [startDate, setStartDate] = useState(editApplication?.start_date || '');
+  const [endDate, setEndDate] = useState(editApplication?.end_date || '');
+  const [justification, setJustification] = useState(editApplication?.exception_justification || '');
 
-  const facility = MOCK_FACILITIES.find(f => f.id === facilityId);
-  const areas = facilityId ? MOCK_AREAS.filter(a => a.facility_id === facilityId) : [];
+  if (!currentUser) return null;
 
-  // Check which requirements user is missing
-  const userReqs = MOCK_USER_REQUIREMENTS.filter(ur => ur.user_id === currentUser.id && ur.status === 'fulfilled');
-  const userReqIds = userReqs.map(ur => ur.requirement_id);
-  const missingReqs = MOCK_REQUIREMENTS.filter(r => !userReqIds.includes(r.id));
-  const hasException = missingReqs.length > 0;
+  const facilities = store.getFacilities();
+  const areas = facilityId ? store.getAreas(facilityId) : [];
+  const requirements = store.getRequirements();
+  const userReqs = store.getUserRequirements(currentUser.id);
 
   const toggleArea = (areaId: string) => {
-    setSelectedAreas(prev =>
-      prev.includes(areaId) ? prev.filter(id => id !== areaId) : [...prev, areaId]
-    );
+    setSelectedAreas(prev => prev.includes(areaId) ? prev.filter(id => id !== areaId) : [...prev, areaId]);
   };
+
+  const fulfilledReqIds = userReqs.filter(ur => ur.status === 'fulfilled').map(ur => ur.requirement_id);
+  const hasMissingReqs = requirements.length > 0 && requirements.some(r => !fulfilledReqIds.includes(r.id));
 
   const handleSubmit = () => {
-    if (!facilityId || selectedAreas.length === 0 || !startDate) {
-      toast.error('Fyll i alla obligatoriska fält');
-      return;
+    if (!facilityId) { toast.error('Välj en anläggning'); return; }
+    if (selectedAreas.length === 0) { toast.error('Välj minst ett område'); return; }
+    if (!startDate) { toast.error('Ange startdatum'); return; }
+    if (hasMissingReqs && !justification.trim()) { toast.error('Motivering krävs vid saknade krav'); return; }
+
+    if (editApplication) {
+      store.updateApplication(editApplication.id, {
+        facility_id: facilityId, area_ids: selectedAreas, start_date: startDate,
+        end_date: endDate || undefined, has_exception: hasMissingReqs,
+        exception_justification: hasMissingReqs ? justification : undefined,
+      });
+      toast.success('Ansökan uppdaterad');
+    } else {
+      store.createApplication({
+        applicant_id: currentUser.id, facility_id: facilityId, area_ids: selectedAreas,
+        status: 'pending_manager', start_date: startDate, end_date: endDate || undefined,
+        has_exception: hasMissingReqs, exception_justification: hasMissingReqs ? justification : undefined,
+        attachments: [],
+      });
+      store.addLog({ action: 'application_created', actor_id: currentUser.id, details: `Ny ansökan skapad för ${store.getFacility(facilityId)?.name}` });
+      toast.success('Ansökan skapad');
     }
-    if (hasException && !justification.trim()) {
-      toast.error('Motivering krävs vid avsteg från krav');
-      return;
-    }
-    toast.success('Ansökan skickad!');
+    onSaved?.();
     onOpenChange(false);
-    setFacilityId('');
-    setSelectedAreas([]);
-    setStartDate('');
-    setEndDate('');
-    setJustification('');
+    resetForm();
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Ny tillträdesansökan</DialogTitle>
-        </DialogHeader>
+  const resetForm = () => { setFacilityId(''); setSelectedAreas([]); setStartDate(''); setEndDate(''); setJustification(''); };
 
-        <div className="space-y-4 py-2">
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) resetForm(); onOpenChange(o); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>{editApplication ? 'Redigera ansökan' : 'Ny tillträdesansökan'}</DialogTitle></DialogHeader>
+        <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Anläggning *</Label>
-            <Select value={facilityId} onValueChange={(v) => { setFacilityId(v); setSelectedAreas([]); }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Välj anläggning" />
-              </SelectTrigger>
-              <SelectContent>
-                {MOCK_FACILITIES.map(f => (
-                  <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-                ))}
-              </SelectContent>
+            <Label>Anläggning</Label>
+            <Select value={facilityId} onValueChange={v => { setFacilityId(v); setSelectedAreas([]); }}>
+              <SelectTrigger><SelectValue placeholder="Välj anläggning" /></SelectTrigger>
+              <SelectContent>{facilities.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-
-          {facilityId && (
+          {facilityId && areas.length > 0 && (
             <div className="space-y-2">
-              <Label>Områden *</Label>
-              <div className="grid gap-2 rounded-lg border border-border p-3">
+              <Label>Områden</Label>
+              <div className="space-y-2 rounded-lg border border-border p-3">
                 {areas.map(area => (
                   <div key={area.id} className="flex items-center gap-2">
-                    <Checkbox
-                      id={area.id}
-                      checked={selectedAreas.includes(area.id)}
-                      onCheckedChange={() => toggleArea(area.id)}
-                    />
-                    <label htmlFor={area.id} className="text-sm cursor-pointer flex-1">
-                      {area.name}
-                      <span className="text-muted-foreground ml-2 text-xs">({area.description})</span>
-                    </label>
-                    <Badge variant="outline" className="text-[10px]">{area.security_level}</Badge>
+                    <Checkbox checked={selectedAreas.includes(area.id)} onCheckedChange={() => toggleArea(area.id)} />
+                    <span className="text-sm">{area.name}</span>
+                    <Badge variant="outline" className="text-xs ml-auto">{SECURITY_LABELS[area.security_level]}</Badge>
                   </div>
                 ))}
               </div>
             </div>
           )}
-
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Startdatum *</Label>
-              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Slutdatum</Label>
-              <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-              <p className="text-xs text-muted-foreground">Lämna tomt för tillsvidare</p>
-            </div>
+            <div className="space-y-2"><Label>Startdatum</Label><Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Slutdatum (valfritt)</Label><Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
           </div>
-
-          {hasException && (
+          {hasMissingReqs && (
             <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 space-y-2">
-              <div className="flex items-center gap-2 text-warning">
-                <AlertTriangle className="h-4 w-4" />
-                <p className="text-sm font-medium">Avsteg från krav</p>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Du saknar följande krav: {missingReqs.map(r => r.name).join(', ')}
-              </p>
-              <div className="space-y-1">
-                <Label>Motivering för avsteg *</Label>
-                <Textarea
-                  value={justification}
-                  onChange={e => setJustification(e.target.value)}
-                  placeholder="Beskriv varför du ska beviljas tillträde trots att krav saknas..."
-                  rows={3}
-                />
-              </div>
+              <div className="flex items-center gap-2 text-warning"><AlertTriangle className="h-4 w-4" /><span className="text-sm font-medium">Du saknar krav – motivering behövs</span></div>
+              <Textarea placeholder="Motivera varför undantag ska beviljas..." value={justification} onChange={e => setJustification(e.target.value)} />
             </div>
           )}
         </div>
-
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
-          <Button onClick={handleSubmit}>Skicka ansökan</Button>
+          <Button variant="outline" onClick={() => { resetForm(); onOpenChange(false); }}>Avbryt</Button>
+          <Button onClick={handleSubmit}>{editApplication ? 'Spara' : 'Skicka ansökan'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

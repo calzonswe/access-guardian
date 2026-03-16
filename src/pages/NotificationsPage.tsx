@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { Bell, AlertTriangle, Info, CheckCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MOCK_NOTIFICATIONS } from '@/data/mock-data';
+import * as store from '@/services/dataStore';
 import { useAuth } from '@/context/AuthContext';
 
 const TYPE_CONFIG: Record<string, { icon: typeof Bell; className: string; label: string }> = {
@@ -13,8 +14,16 @@ const TYPE_CONFIG: Record<string, { icon: typeof Bell; className: string; label:
 
 export default function NotificationsPage() {
   const { currentUser } = useAuth();
-  const notifications = MOCK_NOTIFICATIONS.filter(n => n.user_id === currentUser.id);
+  const [, setRefresh] = useState(0);
+  if (!currentUser) return null;
+
+  const notifications = store.getNotifications(currentUser.id);
   const unread = notifications.filter(n => !n.read);
+
+  const markAllRead = () => {
+    store.markAllNotificationsRead(currentUser.id);
+    setRefresh(n => n + 1);
+  };
 
   return (
     <div className="space-y-6">
@@ -25,18 +34,14 @@ export default function NotificationsPage() {
             {unread.length > 0 ? `${unread.length} olästa aviseringar` : 'Inga olästa aviseringar'}
           </p>
         </div>
-        {unread.length > 0 && (
-          <Button variant="outline" size="sm">Markera alla som lästa</Button>
-        )}
+        {unread.length > 0 && <Button variant="outline" size="sm" onClick={markAllRead}>Markera alla som lästa</Button>}
       </div>
-
       <div className="space-y-3">
         {notifications.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <CheckCircle className="h-12 w-12 text-muted-foreground/40 mb-4" />
               <p className="text-lg font-medium text-muted-foreground">Inga aviseringar</p>
-              <p className="text-sm text-muted-foreground/70 mt-1">Du har inga aviseringar just nu</p>
             </CardContent>
           </Card>
         ) : (
@@ -46,20 +51,14 @@ export default function NotificationsPage() {
             return (
               <Card key={notif.id} className={`transition-colors ${!notif.read ? 'border-primary/30 bg-primary/5' : ''}`}>
                 <CardContent className="flex items-start gap-4 p-4">
-                  <div className={`mt-0.5 ${config.className}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
+                  <div className={`mt-0.5 ${config.className}`}><Icon className="h-5 w-5" /></div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-foreground">{notif.title}</p>
-                      {!notif.read && (
-                        <Badge className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0">Ny</Badge>
-                      )}
+                      {!notif.read && <Badge className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0">Ny</Badge>}
                     </div>
                     <p className="text-sm text-muted-foreground mt-0.5">{notif.message}</p>
-                    <p className="text-xs text-muted-foreground/60 mt-1">
-                      {new Date(notif.created_at).toLocaleString('sv-SE')}
-                    </p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">{new Date(notif.created_at).toLocaleString('sv-SE')}</p>
                   </div>
                   <Badge variant="outline" className="text-xs shrink-0">{config.label}</Badge>
                 </CardContent>

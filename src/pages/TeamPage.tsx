@@ -3,18 +3,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { MOCK_USERS, MOCK_APPLICATIONS, MOCK_USER_REQUIREMENTS, MOCK_REQUIREMENTS } from '@/data/mock-data';
+import * as store from '@/services/dataStore';
 import { useAuth } from '@/context/AuthContext';
 import { ROLE_LABELS } from '@/types/rbac';
 
 export default function TeamPage() {
   const { currentUser } = useAuth();
+  if (!currentUser) return null;
 
-  const teamMembers = MOCK_USERS.filter(
-    u => u.manager_id === currentUser.id || u.contact_person_id === currentUser.id
-  );
+  const users = store.getUsers();
+  const applications = store.getApplications();
+  const requirements = store.getRequirements();
+  const userRequirements = store.getUserRequirements();
+
+  const teamMembers = users.filter(u => u.manager_id === currentUser.id || u.contact_person_id === currentUser.id);
   const teamIds = teamMembers.map(u => u.id);
-  const teamApps = MOCK_APPLICATIONS.filter(a => teamIds.includes(a.applicant_id));
+  const teamApps = applications.filter(a => teamIds.includes(a.applicant_id));
   const pendingApps = teamApps.filter(a => a.status === 'pending_manager');
 
   return (
@@ -23,17 +27,13 @@ export default function TeamPage() {
         <h1 className="text-2xl font-semibold text-foreground">Mitt team</h1>
         <p className="text-sm text-muted-foreground mt-1">Översikt av ditt teams tillträdesrättigheter</p>
       </div>
-
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard title="Teammedlemmar" value={teamMembers.length} icon={Users} variant="primary" />
         <StatCard title="Väntar på godkännande" value={pendingApps.length} icon={AlertTriangle} variant="warning" />
         <StatCard title="Aktiva tillträden" value={teamApps.filter(a => a.status === 'approved').length} icon={CheckCircle} variant="success" />
       </div>
-
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Teammedlemmar</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-lg">Teammedlemmar</CardTitle></CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -47,46 +47,18 @@ export default function TeamPage() {
             </TableHeader>
             <TableBody>
               {teamMembers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    Inga teammedlemmar
-                  </TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Inga teammedlemmar</TableCell></TableRow>
               ) : (
                 teamMembers.map(member => {
-                  const userReqs = MOCK_USER_REQUIREMENTS.filter(ur => ur.user_id === member.id && ur.status === 'fulfilled');
-                  const memberApps = MOCK_APPLICATIONS.filter(a => a.applicant_id === member.id);
-                  const activeAccess = memberApps.filter(a => a.status === 'approved').length;
-                  const pending = memberApps.filter(a => a.status === 'pending_manager' || a.status === 'pending_facility').length;
-
+                  const memberReqs = userRequirements.filter(ur => ur.user_id === member.id && ur.status === 'fulfilled');
+                  const memberApps = applications.filter(a => a.applicant_id === member.id);
                   return (
                     <TableRow key={member.id}>
                       <TableCell className="font-medium">{member.full_name}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {member.roles.map(r => (
-                            <Badge key={r} variant="secondary" className="text-xs">{ROLE_LABELS[r]}</Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          <Shield className="h-3 w-3 mr-1" />
-                          {userReqs.length} / {MOCK_REQUIREMENTS.length}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={activeAccess > 0 ? 'status-badge-approved' : ''}>
-                          {activeAccess}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {pending > 0 ? (
-                          <Badge variant="outline" className="status-badge-pending">{pending}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">0</span>
-                        )}
-                      </TableCell>
+                      <TableCell><div className="flex flex-wrap gap-1">{member.roles.map(r => <Badge key={r} variant="secondary" className="text-xs">{ROLE_LABELS[r]}</Badge>)}</div></TableCell>
+                      <TableCell><Badge variant="outline" className="text-xs"><Shield className="h-3 w-3 mr-1" />{memberReqs.length} / {requirements.length}</Badge></TableCell>
+                      <TableCell><Badge variant="outline" className={memberApps.filter(a => a.status === 'approved').length > 0 ? 'status-badge-approved' : ''}>{memberApps.filter(a => a.status === 'approved').length}</Badge></TableCell>
+                      <TableCell>{memberApps.filter(a => a.status.startsWith('pending')).length > 0 ? <Badge variant="outline" className="status-badge-pending">{memberApps.filter(a => a.status.startsWith('pending')).length}</Badge> : <span className="text-muted-foreground text-sm">0</span>}</TableCell>
                     </TableRow>
                   );
                 })
