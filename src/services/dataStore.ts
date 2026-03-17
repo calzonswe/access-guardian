@@ -1,4 +1,4 @@
-import type { User, Facility, Area, Requirement, Application, SystemLog, Notification, UserRequirement } from '@/types/rbac';
+import type { User, Facility, Area, Requirement, Application, SystemLog, Notification, UserRequirement, FacilityRequirement } from '@/types/rbac';
 import type { OrgNode } from '@/types/organization';
 
 export interface StoredUser extends User {

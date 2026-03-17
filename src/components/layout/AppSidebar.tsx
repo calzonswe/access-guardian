@@ -84,14 +84,44 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {filteredItems.map(item => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end={item.url === '/'} className="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
-                      <item.icon className="mr-2 h-4 w-4 shrink-0" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                item.children && item.children.length > 0 ? (
+                  <Collapsible key={item.url} defaultOpen={location.pathname === item.url || item.children.some(c => location.pathname === c.url)}>
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton asChild>
+                          <NavLink to={item.url} end className="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
+                            <item.icon className="mr-2 h-4 w-4 shrink-0" />
+                            {!collapsed && <span className="flex-1">{item.title}</span>}
+                            {!collapsed && <ChevronDown className="h-3.5 w-3.5 shrink-0 text-sidebar-foreground/50 transition-transform duration-200 group-data-[state=open]:rotate-180" />}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenu className="ml-6 border-l border-sidebar-border pl-2 mt-1">
+                          {item.children.filter(c => c.roles === 'all' || c.roles.some(r => currentUser.roles.includes(r))).map(child => (
+                            <SidebarMenuItem key={child.url}>
+                              <SidebarMenuButton asChild>
+                                <NavLink to={child.url} className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors text-sm" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
+                                  <child.icon className="mr-2 h-3.5 w-3.5 shrink-0" />
+                                  {!collapsed && <span>{child.title}</span>}
+                                </NavLink>
+                              </SidebarMenuButton>
+                            </SidebarMenuItem>
+                          ))}
+                        </SidebarMenu>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                ) : (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild>
+                      <NavLink to={item.url} end={item.url === '/'} className="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
+                        <item.icon className="mr-2 h-4 w-4 shrink-0" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
