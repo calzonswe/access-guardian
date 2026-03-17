@@ -265,6 +265,28 @@ export function deleteRequirement(id: string): void {
   set(KEYS.REQUIREMENTS, get<Requirement>(KEYS.REQUIREMENTS).filter(r => r.id !== id));
 }
 
+// ============= FACILITY REQUIREMENTS =============
+
+export function getFacilityRequirements(facilityId?: string): FacilityRequirement[] {
+  const items = get<FacilityRequirement>('rbac_facility_requirements');
+  return facilityId ? items.filter(fr => fr.facility_id === facilityId) : items;
+}
+
+export function addFacilityRequirement(facilityId: string, requirementId: string): FacilityRequirement {
+  const items = get<FacilityRequirement>('rbac_facility_requirements');
+  const existing = items.find(fr => fr.facility_id === facilityId && fr.requirement_id === requirementId);
+  if (existing) return existing;
+  const item: FacilityRequirement = { id: uid(), facility_id: facilityId, requirement_id: requirementId };
+  items.push(item);
+  set('rbac_facility_requirements', items);
+  return item;
+}
+
+export function removeFacilityRequirement(facilityId: string, requirementId: string): void {
+  const items = get<FacilityRequirement>('rbac_facility_requirements');
+  set('rbac_facility_requirements', items.filter(fr => !(fr.facility_id === facilityId && fr.requirement_id === requirementId)));
+}
+
 // ============= APPLICATIONS =============
 
 export function getApplications(): Application[] {

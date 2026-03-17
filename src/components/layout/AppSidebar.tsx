@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Building2, MapPin, Shield, FileText,
-  Users, ScrollText, Settings, Bell, Network
+  Users, ScrollText, Settings, Bell, Network, ChevronDown
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
@@ -11,19 +11,28 @@ import {
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   SidebarFooter, SidebarHeader, useSidebar,
 } from '@/components/ui/sidebar';
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 interface NavItem {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
   roles: AppRole[] | 'all';
+  children?: NavItem[];
 }
 
 const navItems: NavItem[] = [
   { title: 'Översikt', url: '/', icon: LayoutDashboard, roles: 'all' },
   { title: 'Ansökningar', url: '/applications', icon: FileText, roles: 'all' },
-  { title: 'Anläggningar', url: '/facilities', icon: Building2, roles: ['administrator', 'facility_owner', 'facility_admin'] },
-  { title: 'Områden', url: '/areas', icon: MapPin, roles: ['administrator', 'facility_owner', 'facility_admin'] },
+  {
+    title: 'Anläggningar', url: '/facilities', icon: Building2,
+    roles: ['administrator', 'facility_owner', 'facility_admin'],
+    children: [
+      { title: 'Områden', url: '/areas', icon: MapPin, roles: ['administrator', 'facility_owner', 'facility_admin'] },
+    ],
+  },
   { title: 'Krav', url: '/requirements', icon: Shield, roles: ['administrator', 'facility_owner', 'facility_admin', 'line_manager'] },
   { title: 'Användare', url: '/users', icon: Users, roles: ['administrator'] },
   { title: 'Organisation', url: '/organization', icon: Network, roles: ['administrator'] },
