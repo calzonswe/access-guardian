@@ -48,6 +48,8 @@ function initIfNeeded(): void {
     id: uid(),
     email: 'admin@company.local',
     full_name: 'Systemadministratör',
+    first_name: 'System',
+    last_name: 'Administratör',
     roles: ['administrator'],
     department: 'IT',
     is_active: true,

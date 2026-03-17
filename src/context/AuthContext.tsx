@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [currentUser]);
 
   const publicUser: User | null = currentUser
-    ? { id: currentUser.id, email: currentUser.email, full_name: currentUser.full_name, roles: currentUser.roles, department: currentUser.department, manager_id: currentUser.manager_id, contact_person_id: currentUser.contact_person_id, company: currentUser.company, is_active: currentUser.is_active, created_at: currentUser.created_at }
+    ? (() => { const { password, must_change_password, ...pub } = currentUser; return pub; })()
     : null;
 
   if (!initialized) return null;

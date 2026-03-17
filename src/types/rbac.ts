@@ -21,11 +21,15 @@ export interface User {
   id: string;
   email: string;
   full_name: string;
+  first_name: string;
+  last_name: string;
   roles: AppRole[];
-  department?: string;
-  manager_id?: string;       // Linjechef ID (for employees)
+  department?: string;        // Organisation/enhet
+  title?: string;             // Befattning
+  phone?: string;             // Telefonnummer
+  manager_id?: string;        // Närmaste chef ID
   contact_person_id?: string; // For contractors
-  company?: string;           // For contractors
+  company?: string;           // Företag
   is_active: boolean;
   created_at: string;
 }
