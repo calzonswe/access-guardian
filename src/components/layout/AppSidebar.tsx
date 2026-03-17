@@ -47,6 +47,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const { currentUser, activeRole } = useAuth();
+  const location = useLocation();
 
   if (!currentUser) return null;
 
