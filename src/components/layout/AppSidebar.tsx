@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Building2, MapPin, Shield, FileText,
-  Users, ScrollText, Settings, Bell, Network
+  Users, ScrollText, Settings, Bell, Network, ChevronDown
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
@@ -11,19 +11,28 @@ import {
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   SidebarFooter, SidebarHeader, useSidebar,
 } from '@/components/ui/sidebar';
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 interface NavItem {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
   roles: AppRole[] | 'all';
+  children?: NavItem[];
 }
 
 const navItems: NavItem[] = [
   { title: 'Översikt', url: '/', icon: LayoutDashboard, roles: 'all' },
   { title: 'Ansökningar', url: '/applications', icon: FileText, roles: 'all' },
-  { title: 'Anläggningar', url: '/facilities', icon: Building2, roles: ['administrator', 'facility_owner', 'facility_admin'] },
-  { title: 'Områden', url: '/areas', icon: MapPin, roles: ['administrator', 'facility_owner', 'facility_admin'] },
+  {
+    title: 'Anläggningar', url: '/facilities', icon: Building2,
+    roles: ['administrator', 'facility_owner', 'facility_admin'],
+    children: [
+      { title: 'Områden', url: '/areas', icon: MapPin, roles: ['administrator', 'facility_owner', 'facility_admin'] },
+    ],
+  },
   { title: 'Krav', url: '/requirements', icon: Shield, roles: ['administrator', 'facility_owner', 'facility_admin', 'line_manager'] },
   { title: 'Användare', url: '/users', icon: Users, roles: ['administrator'] },
   { title: 'Organisation', url: '/organization', icon: Network, roles: ['administrator'] },
@@ -38,6 +47,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const { currentUser, activeRole } = useAuth();
+  const location = useLocation();
 
   if (!currentUser) return null;
 
@@ -75,14 +85,44 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {filteredItems.map(item => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end={item.url === '/'} className="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
-                      <item.icon className="mr-2 h-4 w-4 shrink-0" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                item.children && item.children.length > 0 ? (
+                  <Collapsible key={item.url} defaultOpen={location.pathname === item.url || item.children.some(c => location.pathname === c.url)}>
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton asChild>
+                          <NavLink to={item.url} end className="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
+                            <item.icon className="mr-2 h-4 w-4 shrink-0" />
+                            {!collapsed && <span className="flex-1">{item.title}</span>}
+                            {!collapsed && <ChevronDown className="h-3.5 w-3.5 shrink-0 text-sidebar-foreground/50 transition-transform duration-200 group-data-[state=open]:rotate-180" />}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenu className="ml-6 border-l border-sidebar-border pl-2 mt-1">
+                          {item.children.filter(c => c.roles === 'all' || c.roles.some(r => currentUser.roles.includes(r))).map(child => (
+                            <SidebarMenuItem key={child.url}>
+                              <SidebarMenuButton asChild>
+                                <NavLink to={child.url} className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors text-sm" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
+                                  <child.icon className="mr-2 h-3.5 w-3.5 shrink-0" />
+                                  {!collapsed && <span>{child.title}</span>}
+                                </NavLink>
+                              </SidebarMenuButton>
+                            </SidebarMenuItem>
+                          ))}
+                        </SidebarMenu>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                ) : (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild>
+                      <NavLink to={item.url} end={item.url === '/'} className="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
+                        <item.icon className="mr-2 h-4 w-4 shrink-0" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
               ))}
             </SidebarMenu>
           </SidebarGroupContent>

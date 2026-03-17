@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, MapPin, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Building2, MapPin, Plus, Pencil, Trash2, Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import * as store from '@/services/dataStore';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
@@ -17,6 +18,9 @@ export default function FacilitiesPage() {
   const { activeRole, currentUser } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editFacility, setEditFacility] = useState<Facility | null>(null);
+  const [reqDialogOpen, setReqDialogOpen] = useState(false);
+  const [reqFacilityId, setReqFacilityId] = useState<string | null>(null);
+  const [expandedReqs, setExpandedReqs] = useState<Set<string>>(new Set());
   const [, setRefresh] = useState(0);
   const reload = () => setRefresh(n => n + 1);
 
@@ -31,6 +35,7 @@ export default function FacilitiesPage() {
   const facilities = store.getFacilities();
   const users = store.getUsers();
   const areas = store.getAreas();
+  const allRequirements = store.getRequirements();
 
   const openCreate = () => {
     setEditFacility(null);
@@ -68,12 +73,35 @@ export default function FacilitiesPage() {
     }
   };
 
+  const openReqDialog = (facilityId: string) => {
+    setReqFacilityId(facilityId);
+    setReqDialogOpen(true);
+  };
+
+  const toggleFacilityReq = (facilityId: string, requirementId: string, checked: boolean) => {
+    if (checked) {
+      store.addFacilityRequirement(facilityId, requirementId);
+    } else {
+      store.removeFacilityRequirement(facilityId, requirementId);
+    }
+    reload();
+  };
+
+  const toggleExpandReqs = (facilityId: string) => {
+    setExpandedReqs(prev => {
+      const next = new Set(prev);
+      if (next.has(facilityId)) next.delete(facilityId);
+      else next.add(facilityId);
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Anläggningar</h1>
-          <p className="text-sm text-muted-foreground mt-1">Hantera anläggningar och områden</p>
+          <p className="text-sm text-muted-foreground mt-1">Hantera anläggningar, områden och krav</p>
         </div>
         {(activeRole === 'administrator' || activeRole === 'facility_owner') && (
           <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Ny anläggning</Button>
@@ -93,6 +121,11 @@ export default function FacilitiesPage() {
           {facilities.map(facility => {
             const facilityAreas = areas.filter(a => a.facility_id === facility.id);
             const owner = users.find(u => u.id === facility.owner_id);
+            const facilityReqs = store.getFacilityRequirements(facility.id);
+            const reqNames = facilityReqs
+              .map(fr => allRequirements.find(r => r.id === fr.requirement_id))
+              .filter(Boolean);
+            const showReqs = expandedReqs.has(facility.id);
             return (
               <Card key={facility.id} className="hover:shadow-md transition-shadow">
                 <CardHeader className="pb-3">
@@ -131,6 +164,36 @@ export default function FacilitiesPage() {
                     ))}
                     {facilityAreas.length === 0 && <span className="text-xs text-muted-foreground">Inga områden</span>}
                   </div>
+
+                  {/* Facility requirements section */}
+                  <div className="border-t border-border pt-3 mt-3">
+                    <button
+                      onClick={() => toggleExpandReqs(facility.id)}
+                      className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
+                    >
+                      <Shield className="h-3 w-3" />
+                      <span>Krav ({reqNames.length})</span>
+                      {showReqs ? <ChevronUp className="h-3 w-3 ml-auto" /> : <ChevronDown className="h-3 w-3 ml-auto" />}
+                    </button>
+                    {showReqs && (
+                      <div className="mt-2 space-y-1">
+                        {reqNames.length === 0 ? (
+                          <p className="text-xs text-muted-foreground/70">Inga krav kopplade</p>
+                        ) : (
+                          reqNames.map(r => r && (
+                            <Badge key={r.id} variant="secondary" className="text-xs mr-1">
+                              {r.name}
+                            </Badge>
+                          ))
+                        )}
+                        {(activeRole === 'administrator' || activeRole === 'facility_owner' || activeRole === 'facility_admin') && (
+                          <Button variant="ghost" size="sm" className="text-xs h-7 mt-1" onClick={() => openReqDialog(facility.id)}>
+                            <Pencil className="h-3 w-3 mr-1" />Hantera krav
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -138,6 +201,7 @@ export default function FacilitiesPage() {
         </div>
       )}
 
+      {/* Create/Edit Facility Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -169,6 +233,44 @@ export default function FacilitiesPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Avbryt</Button>
             <Button onClick={handleSave}>{editFacility ? 'Spara' : 'Skapa'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Facility Requirements Dialog */}
+      <Dialog open={reqDialogOpen} onOpenChange={setReqDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hantera krav för anläggning</DialogTitle>
+          </DialogHeader>
+          {reqFacilityId && (
+            <div className="space-y-3">
+              {allRequirements.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Inga krav har skapats ännu. Gå till Krav-sidan för att skapa krav.</p>
+              ) : (
+                allRequirements.map(req => {
+                  const isLinked = store.getFacilityRequirements(reqFacilityId).some(fr => fr.requirement_id === req.id);
+                  return (
+                    <div key={req.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50">
+                      <Checkbox
+                        checked={isLinked}
+                        onCheckedChange={(checked) => toggleFacilityReq(reqFacilityId, req.id, !!checked)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{req.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{req.description}</p>
+                      </div>
+                      <Badge variant="secondary" className="text-xs shrink-0">
+                        {req.type === 'training' ? 'Utbildning' : req.type === 'certification' ? 'Certifiering' : 'Säkerhetsprövning'}
+                      </Badge>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setReqDialogOpen(false)}>Stäng</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
