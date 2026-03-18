@@ -57,7 +57,7 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
     setRoles(prev => prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!firstName.trim() || !lastName.trim()) { toast.error('Förnamn och efternamn krävs'); return; }
     if (!email.trim()) { toast.error('E-post krävs'); return; }
     if (!editUser && !password.trim()) { toast.error('Lösenord krävs för nya användare'); return; }
@@ -82,11 +82,11 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
         manager_id: managerId || undefined,
       };
       if (password.trim()) { updateData.password = password; updateData.must_change_password = true; }
-      store.updateUser(editUser.id, updateData);
+      await store.updateUser(editUser.id, updateData);
       store.addLog({ action: 'user_updated', actor_id: currentUserId, target_id: editUser.id, target_type: 'user', details: `Användare uppdaterad: ${fullName}` });
       toast.success('Användare uppdaterad');
     } else {
-      const u = store.createUser({
+      const u = await store.createUser({
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         full_name: fullName,
@@ -101,7 +101,7 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
         password,
       });
       store.addLog({ action: 'user_created', actor_id: currentUserId, target_id: u.id, target_type: 'user', details: `Ny användare skapad: ${fullName}` });
-      toast.success(`Användare skapad. Inloggning: ${email} / ${password}`);
+      toast.success(`Användare skapad.`);
     }
     onOpenChange(false);
     onSaved();

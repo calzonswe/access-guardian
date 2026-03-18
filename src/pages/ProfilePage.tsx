@@ -26,10 +26,10 @@ export default function ProfilePage() {
 
   const manager = currentUser.manager_id ? store.getUser(currentUser.manager_id) : null;
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     setPwError('');
     if (newPassword !== confirmPassword) { setPwError('Lösenorden matchar inte'); return; }
-    const result = changePassword(newPassword);
+    const result = await changePassword(newPassword);
     if (result.success) {
       toast.success('Lösenordet har ändrats');
       setNewPassword('');

@@ -1,5 +1,6 @@
 import type { User, Facility, Area, Requirement, Application, SystemLog, Notification, UserRequirement, FacilityRequirement } from '@/types/rbac';
 import type { OrgNode } from '@/types/organization';
+import { hashPassword, verifyPassword } from '@/services/crypto';
 
 export interface StoredUser extends User {
   password: string;
@@ -40,10 +41,11 @@ function set<T>(key: string, data: T[]): void {
   localStorage.setItem(key, JSON.stringify(data));
 }
 
-function initIfNeeded(): void {
+async function initIfNeeded(): Promise<void> {
   const users = get<StoredUser>(KEYS.USERS);
   if (users.length > 0) return;
 
+  const hashedPw = await hashPassword('Admin123!');
   const adminUser: StoredUser = {
     id: uid(),
     email: 'admin@company.local',
@@ -54,7 +56,7 @@ function initIfNeeded(): void {
     department: 'IT',
     is_active: true,
     created_at: now(),
-    password: 'Admin123!',
+    password: hashedPw,
     must_change_password: true,
   };
 
@@ -78,21 +80,26 @@ function initIfNeeded(): void {
 }
 
 // Initialize on module load
-initIfNeeded();
+export const initPromise = initIfNeeded();
 
 // ============= AUTH =============
 
-export function authenticate(email: string, password: string): StoredUser | null {
+export async function authenticate(email: string, password: string): Promise<StoredUser | null> {
   const users = get<StoredUser>(KEYS.USERS);
-  const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password && u.is_active);
-  return user || null;
+  for (const u of users) {
+    if (u.email.toLowerCase() === email.toLowerCase() && u.is_active) {
+      const match = await verifyPassword(password, u.password);
+      if (match) return u;
+    }
+  }
+  return null;
 }
 
-export function changePassword(userId: string, newPassword: string): void {
+export async function changePassword(userId: string, newPassword: string): Promise<void> {
   const users = get<StoredUser>(KEYS.USERS);
   const idx = users.findIndex(u => u.id === userId);
   if (idx === -1) return;
-  users[idx].password = newPassword;
+  users[idx].password = await hashPassword(newPassword);
   users[idx].must_change_password = false;
   set(KEYS.USERS, users);
 }
@@ -137,10 +144,12 @@ export function getStoredUser(id: string): StoredUser | undefined {
   return get<StoredUser>(KEYS.USERS).find(u => u.id === id);
 }
 
-export function createUser(data: Omit<User, 'id' | 'created_at'> & { password: string }): User {
+export async function createUser(data: Omit<User, 'id' | 'created_at'> & { password: string }): Promise<User> {
   const users = get<StoredUser>(KEYS.USERS);
+  const hashedPw = await hashPassword(data.password);
   const newUser: StoredUser = {
     ...data,
+    password: hashedPw,
     id: uid(),
     created_at: now(),
     must_change_password: true,
@@ -150,11 +159,15 @@ export function createUser(data: Omit<User, 'id' | 'created_at'> & { password: s
   return toPublicUser(newUser);
 }
 
-export function updateUser(id: string, data: Partial<Omit<StoredUser, 'id' | 'created_at'>>): User | undefined {
+export async function updateUser(id: string, data: Partial<Omit<StoredUser, 'id' | 'created_at'>>): Promise<User | undefined> {
   const users = get<StoredUser>(KEYS.USERS);
   const idx = users.findIndex(u => u.id === id);
   if (idx === -1) return undefined;
-  users[idx] = { ...users[idx], ...data };
+  const update = { ...data };
+  if (update.password) {
+    update.password = await hashPassword(update.password);
+  }
+  users[idx] = { ...users[idx], ...update };
   set(KEYS.USERS, users);
   return toPublicUser(users[idx]);
 }

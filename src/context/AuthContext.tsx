@@ -8,9 +8,9 @@ interface AuthContextType {
   isAuthenticated: boolean;
   mustChangePassword: boolean;
   hasRole: (role: AppRole) => boolean;
-  login: (email: string, password: string) => { success: boolean; error?: string };
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  changePassword: (newPassword: string) => { success: boolean; error?: string };
+  changePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   refreshUser: () => void;
 }
 
@@ -21,18 +21,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    const session = store.getSession();
-    if (session) {
-      const stored = store.getStoredUser(session.id);
-      if (stored) {
-        setCurrentUser(stored);
+    const init = async () => {
+      await store.initPromise;
+      const session = store.getSession();
+      if (session) {
+        const stored = store.getStoredUser(session.id);
+        if (stored) {
+          setCurrentUser(stored);
+        }
       }
-    }
-    setInitialized(true);
+      setInitialized(true);
+    };
+    init();
   }, []);
 
-  const login = useCallback((email: string, password: string) => {
-    const user = store.authenticate(email, password);
+  const login = useCallback(async (email: string, password: string) => {
+    const user = await store.authenticate(email, password);
     if (!user) return { success: false, error: 'Felaktig e-post eller lösenord' };
     if (!user.is_active) return { success: false, error: 'Kontot är inaktiverat' };
     store.setSession(user);
@@ -45,10 +49,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(null);
   }, []);
 
-  const changePassword = useCallback((newPassword: string) => {
+  const changePassword = useCallback(async (newPassword: string) => {
     if (!currentUser) return { success: false, error: 'Ej inloggad' };
     if (newPassword.length < 8) return { success: false, error: 'Lösenordet måste vara minst 8 tecken' };
-    store.changePassword(currentUser.id, newPassword);
+    await store.changePassword(currentUser.id, newPassword);
     const updated = store.getStoredUser(currentUser.id);
     if (updated) {
       setCurrentUser(updated);
