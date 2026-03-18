@@ -42,10 +42,11 @@ function set<T>(key: string, data: T[]): void {
   localStorage.setItem(key, JSON.stringify(data));
 }
 
-function initIfNeeded(): void {
+async function initIfNeeded(): Promise<void> {
   const users = get<StoredUser>(KEYS.USERS);
   if (users.length > 0) return;
 
+  const hashedPw = await hashPassword('Admin123!');
   const adminUser: StoredUser = {
     id: uid(),
     email: 'admin@company.local',
@@ -56,7 +57,7 @@ function initIfNeeded(): void {
     department: 'IT',
     is_active: true,
     created_at: now(),
-    password: 'Admin123!',
+    password: hashedPw,
     must_change_password: true,
   };
 
