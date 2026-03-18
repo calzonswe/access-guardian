@@ -22,15 +22,16 @@ function hexToBuf(hex: string): Uint8Array {
 
 async function deriveKey(password: string, salt: Uint8Array): Promise<ArrayBuffer> {
   const enc = new TextEncoder();
+  const rawKey = enc.encode(password);
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
-    enc.encode(password),
+    rawKey.buffer as ArrayBuffer,
     'PBKDF2',
     false,
     ['deriveBits']
   );
   return crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations: ITERATIONS, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: salt.buffer as ArrayBuffer, iterations: ITERATIONS, hash: 'SHA-256' },
     keyMaterial,
     256
   );
