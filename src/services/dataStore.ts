@@ -159,11 +159,15 @@ export async function createUser(data: Omit<User, 'id' | 'created_at'> & { passw
   return toPublicUser(newUser);
 }
 
-export function updateUser(id: string, data: Partial<Omit<StoredUser, 'id' | 'created_at'>>): User | undefined {
+export async function updateUser(id: string, data: Partial<Omit<StoredUser, 'id' | 'created_at'>>): Promise<User | undefined> {
   const users = get<StoredUser>(KEYS.USERS);
   const idx = users.findIndex(u => u.id === id);
   if (idx === -1) return undefined;
-  users[idx] = { ...users[idx], ...data };
+  const update = { ...data };
+  if (update.password) {
+    update.password = await hashPassword(update.password);
+  }
+  users[idx] = { ...users[idx], ...update };
   set(KEYS.USERS, users);
   return toPublicUser(users[idx]);
 }
