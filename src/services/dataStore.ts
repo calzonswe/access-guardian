@@ -85,10 +85,15 @@ export const initPromise = initIfNeeded();
 
 // ============= AUTH =============
 
-export function authenticate(email: string, password: string): StoredUser | null {
+export async function authenticate(email: string, password: string): Promise<StoredUser | null> {
   const users = get<StoredUser>(KEYS.USERS);
-  const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password && u.is_active);
-  return user || null;
+  for (const u of users) {
+    if (u.email.toLowerCase() === email.toLowerCase() && u.is_active) {
+      const match = await verifyPassword(password, u.password);
+      if (match) return u;
+    }
+  }
+  return null;
 }
 
 export function changePassword(userId: string, newPassword: string): void {
