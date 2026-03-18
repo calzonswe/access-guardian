@@ -139,7 +139,7 @@ export default function FacilitiesPage() {
                         <p className="text-xs text-muted-foreground">{facility.description}</p>
                       </div>
                     </div>
-                    {(activeRole === 'administrator' || facility.owner_id === currentUser.id) && (
+                    {(currentUser.roles.includes('administrator') || facility.owner_id === currentUser.id) && (
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(facility)}>
                           <Pencil className="h-3.5 w-3.5" />
