@@ -46,7 +46,7 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
 
   const handleSubmit = () => {
     if (!facilityId) { toast.error('Välj en anläggning'); return; }
-    if (selectedAreas.length === 0) { toast.error('Välj minst ett område'); return; }
+    
     if (!startDate) { toast.error('Ange startdatum'); return; }
     if (hasMissingReqs && !justification.trim()) { toast.error('Motivering krävs vid saknade krav'); return; }
 

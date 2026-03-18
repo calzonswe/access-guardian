@@ -7,8 +7,6 @@ interface AuthContextType {
   currentUser: User | null;
   isAuthenticated: boolean;
   mustChangePassword: boolean;
-  activeRole: AppRole;
-  setActiveRole: (role: AppRole) => void;
   hasRole: (role: AppRole) => boolean;
   login: (email: string, password: string) => { success: boolean; error?: string };
   logout: () => void;
@@ -20,7 +18,6 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
-  const [activeRole, setActiveRole] = useState<AppRole>('employee');
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
@@ -29,7 +26,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const stored = store.getStoredUser(session.id);
       if (stored) {
         setCurrentUser(stored);
-        setActiveRole(stored.roles[0]);
       }
     }
     setInitialized(true);
@@ -41,7 +37,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user.is_active) return { success: false, error: 'Kontot är inaktiverat' };
     store.setSession(user);
     setCurrentUser(user);
-    setActiveRole(user.roles[0]);
     return { success: true };
   }, []);
 
@@ -83,8 +78,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       currentUser: publicUser,
       isAuthenticated: !!currentUser,
       mustChangePassword: currentUser?.must_change_password ?? false,
-      activeRole,
-      setActiveRole,
       hasRole,
       login,
       logout,

@@ -55,6 +55,7 @@ const App = () => (
                   <Route path="/notifications" element={<NotificationsPage />} />
                   <Route path="/logs" element={<LogsPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </AppLayout>

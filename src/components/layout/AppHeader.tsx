@@ -1,18 +1,14 @@
-import { Bell, Moon, Sun, ChevronDown, LogOut } from 'lucide-react';
+import { Bell, Moon, Sun, LogOut } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { ROLE_LABELS } from '@/types/rbac';
 import * as store from '@/services/dataStore';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 
 export function AppHeader() {
-  const { currentUser, activeRole, setActiveRole, logout } = useAuth();
+  const { currentUser, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   if (!currentUser) return null;
@@ -23,27 +19,6 @@ export function AppHeader() {
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border bg-card px-4">
       <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
       <div className="flex-1" />
-
-      {/* Role selector if user has multiple */}
-      {currentUser.roles.length > 1 && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-1 text-xs">
-              {ROLE_LABELS[activeRole]}
-              <ChevronDown className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Aktiv roll</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {currentUser.roles.map(role => (
-              <DropdownMenuItem key={role} onClick={() => setActiveRole(role)}>
-                {ROLE_LABELS[role]}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
 
       {/* Notifications */}
       <Button variant="ghost" size="icon" className="relative">

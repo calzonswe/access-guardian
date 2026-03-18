@@ -1,9 +1,9 @@
 import {
   LayoutDashboard, Building2, MapPin, Shield, FileText,
-  Users, ScrollText, Settings, Bell, Network, ChevronDown
+  Users, ScrollText, Settings, Bell, Network, ChevronDown, UserCircle
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { ROLE_LABELS, type AppRole } from '@/types/rbac';
 import {
@@ -46,14 +46,17 @@ const navItems: NavItem[] = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
-  const { currentUser, activeRole } = useAuth();
+  const { currentUser } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   if (!currentUser) return null;
 
   const filteredItems = navItems.filter(item =>
     item.roles === 'all' || item.roles.some(r => currentUser.roles.includes(r))
   );
+
+  const roleLabels = currentUser.roles.map(r => ROLE_LABELS[r]).join(', ');
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -131,17 +134,18 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t border-sidebar-border p-4">
         {!collapsed && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-accent text-xs font-medium text-sidebar-accent-foreground">
-                {currentUser.full_name.split(' ').map(n => n[0]).join('')}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-sidebar-foreground">{currentUser.full_name}</p>
-                <p className="truncate text-xs text-sidebar-foreground/60">{ROLE_LABELS[activeRole]}</p>
-              </div>
+          <button
+            onClick={() => navigate('/profile')}
+            className="flex w-full items-center gap-2 rounded-md p-1 text-left hover:bg-sidebar-accent transition-colors"
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-accent text-xs font-medium text-sidebar-accent-foreground">
+              {currentUser.full_name.split(' ').map(n => n[0]).join('')}
             </div>
-          </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-sidebar-foreground">{currentUser.full_name}</p>
+              <p className="truncate text-xs text-sidebar-foreground/60">{roleLabels}</p>
+            </div>
+          </button>
         )}
       </SidebarFooter>
     </Sidebar>
