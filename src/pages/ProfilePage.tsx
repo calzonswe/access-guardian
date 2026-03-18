@@ -121,7 +121,7 @@ export default function ProfilePage() {
                 return (
                   <div key={req.id} className="flex items-center justify-between rounded-lg border border-border p-3">
                     <div className="flex items-center gap-2">
-                      {fulfilled ? <CheckCircle className="h-4 w-4 text-emerald-500" /> : <XCircle className="h-4 w-4 text-muted-foreground" />}
+                      {fulfilled ? <CheckCircle className="h-4 w-4 text-primary" /> : <XCircle className="h-4 w-4 text-muted-foreground" />}
                       <div>
                         <p className="text-sm font-medium text-foreground">{req.name}</p>
                         <p className="text-xs text-muted-foreground">{req.description}</p>
