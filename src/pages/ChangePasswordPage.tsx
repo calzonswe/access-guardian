@@ -12,7 +12,7 @@ export default function ChangePasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -25,7 +25,7 @@ export default function ChangePasswordPage() {
       return;
     }
 
-    const result = changePassword(newPassword);
+    const result = await changePassword(newPassword);
     if (!result.success) {
       setError(result.error || 'Kunde inte ändra lösenord');
     }
