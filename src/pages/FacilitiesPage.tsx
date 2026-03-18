@@ -103,7 +103,7 @@ export default function FacilitiesPage() {
           <h1 className="text-2xl font-semibold text-foreground">Anläggningar</h1>
           <p className="text-sm text-muted-foreground mt-1">Hantera anläggningar, områden och krav</p>
         </div>
-        {(activeRole === 'administrator' || activeRole === 'facility_owner') && (
+        {(currentUser.roles.includes('administrator') || currentUser.roles.includes('facility_owner')) && (
           <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Ny anläggning</Button>
         )}
       </div>
