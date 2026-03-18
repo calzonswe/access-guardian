@@ -21,14 +21,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    const session = store.getSession();
-    if (session) {
-      const stored = store.getStoredUser(session.id);
-      if (stored) {
-        setCurrentUser(stored);
+    const init = async () => {
+      await store.initPromise;
+      const session = store.getSession();
+      if (session) {
+        const stored = store.getStoredUser(session.id);
+        if (stored) {
+          setCurrentUser(stored);
+        }
       }
-    }
-    setInitialized(true);
+      setInitialized(true);
+    };
+    init();
   }, []);
 
   const login = useCallback((email: string, password: string) => {
