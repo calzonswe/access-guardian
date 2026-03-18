@@ -19,7 +19,7 @@ const TYPE_LABELS: Record<string, string> = { certification: 'Certifiering', cle
 const TYPE_ICONS: Record<string, typeof Award> = { certification: Award, clearance: Lock, training: Shield };
 
 export default function RequirementsPage() {
-  const { activeRole, currentUser } = useAuth();
+  const { currentUser } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editReq, setEditReq] = useState<Requirement | null>(null);
   const [, setRefresh] = useState(0);
@@ -65,7 +65,7 @@ export default function RequirementsPage() {
     }
   };
 
-  const canEdit = activeRole === 'administrator' || activeRole === 'facility_owner' || activeRole === 'facility_admin';
+  const canEdit = currentUser.roles.includes('administrator') || currentUser.roles.includes('facility_owner') || currentUser.roles.includes('facility_admin');
 
   return (
     <div className="space-y-6">

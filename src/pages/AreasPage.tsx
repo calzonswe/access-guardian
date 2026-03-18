@@ -23,7 +23,7 @@ const SECURITY_COLORS: Record<string, string> = {
 const SECURITY_LABELS: Record<string, string> = { low: 'Låg', medium: 'Medel', high: 'Hög', critical: 'Kritisk' };
 
 export default function AreasPage() {
-  const { activeRole, currentUser } = useAuth();
+  const { currentUser } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editArea, setEditArea] = useState<Area | null>(null);
   const [, setRefresh] = useState(0);
@@ -78,7 +78,7 @@ export default function AreasPage() {
           <h1 className="text-2xl font-semibold text-foreground">Områden</h1>
           <p className="text-sm text-muted-foreground mt-1">Hantera områden inom anläggningar</p>
         </div>
-        {(activeRole === 'administrator' || activeRole === 'facility_owner' || activeRole === 'facility_admin') && (
+        {(currentUser.roles.includes('administrator') || currentUser.roles.includes('facility_owner') || currentUser.roles.includes('facility_admin')) && (
           <Button onClick={openCreate} disabled={facilities.length === 0}><Plus className="mr-2 h-4 w-4" />Nytt område</Button>
         )}
       </div>

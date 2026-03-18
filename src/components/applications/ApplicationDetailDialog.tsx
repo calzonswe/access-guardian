@@ -30,7 +30,7 @@ interface Props {
 }
 
 export function ApplicationDetailDialog({ application, open, onOpenChange, onUpdated, onEdit, onDelete }: Props) {
-  const { currentUser, activeRole } = useAuth();
+  const { currentUser } = useAuth();
   const [denyReason, setDenyReason] = useState('');
 
   if (!application || !currentUser) return null;
@@ -40,10 +40,11 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
   const areas = store.getAreas().filter(a => application.area_ids.includes(a.id));
   const status = STATUS_MAP[application.status];
 
+  const roles = currentUser.roles;
   const canApprove =
-    (activeRole === 'line_manager' && application.status === 'pending_manager') ||
-    ((activeRole === 'facility_owner' || activeRole === 'facility_admin') && (application.status === 'pending_facility' || application.status === 'pending_exception')) ||
-    (activeRole === 'administrator');
+    (roles.includes('line_manager') && application.status === 'pending_manager') ||
+    ((roles.includes('facility_owner') || roles.includes('facility_admin')) && (application.status === 'pending_facility' || application.status === 'pending_exception')) ||
+    (roles.includes('administrator'));
 
   const canEditDelete = application.applicant_id === currentUser.id && (application.status === 'draft' || application.status === 'pending_manager');
 
