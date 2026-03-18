@@ -96,11 +96,11 @@ export async function authenticate(email: string, password: string): Promise<Sto
   return null;
 }
 
-export function changePassword(userId: string, newPassword: string): void {
+export async function changePassword(userId: string, newPassword: string): Promise<void> {
   const users = get<StoredUser>(KEYS.USERS);
   const idx = users.findIndex(u => u.id === userId);
   if (idx === -1) return;
-  users[idx].password = newPassword;
+  users[idx].password = await hashPassword(newPassword);
   users[idx].must_change_password = false;
   set(KEYS.USERS, users);
 }
