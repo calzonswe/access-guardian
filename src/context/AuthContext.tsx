@@ -8,9 +8,9 @@ interface AuthContextType {
   isAuthenticated: boolean;
   mustChangePassword: boolean;
   hasRole: (role: AppRole) => boolean;
-  login: (email: string, password: string) => { success: boolean; error?: string };
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  changePassword: (newPassword: string) => { success: boolean; error?: string };
+  changePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   refreshUser: () => void;
 }
 
