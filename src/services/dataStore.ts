@@ -144,10 +144,12 @@ export function getStoredUser(id: string): StoredUser | undefined {
   return get<StoredUser>(KEYS.USERS).find(u => u.id === id);
 }
 
-export function createUser(data: Omit<User, 'id' | 'created_at'> & { password: string }): User {
+export async function createUser(data: Omit<User, 'id' | 'created_at'> & { password: string }): Promise<User> {
   const users = get<StoredUser>(KEYS.USERS);
+  const hashedPw = await hashPassword(data.password);
   const newUser: StoredUser = {
     ...data,
+    password: hashedPw,
     id: uid(),
     created_at: now(),
     must_change_password: true,
