@@ -49,10 +49,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(null);
   }, []);
 
-  const changePassword = useCallback((newPassword: string) => {
+  const changePassword = useCallback(async (newPassword: string) => {
     if (!currentUser) return { success: false, error: 'Ej inloggad' };
     if (newPassword.length < 8) return { success: false, error: 'Lösenordet måste vara minst 8 tecken' };
-    store.changePassword(currentUser.id, newPassword);
+    await store.changePassword(currentUser.id, newPassword);
     const updated = store.getStoredUser(currentUser.id);
     if (updated) {
       setCurrentUser(updated);
