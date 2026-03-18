@@ -35,8 +35,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     init();
   }, []);
 
-  const login = useCallback((email: string, password: string) => {
-    const user = store.authenticate(email, password);
+  const login = useCallback(async (email: string, password: string) => {
+    const user = await store.authenticate(email, password);
     if (!user) return { success: false, error: 'Felaktig e-post eller lösenord' };
     if (!user.is_active) return { success: false, error: 'Kontot är inaktiverat' };
     store.setSession(user);
