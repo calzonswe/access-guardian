@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import type { Facility } from '@/types/rbac';
 
 export default function FacilitiesPage() {
-  const { activeRole, currentUser } = useAuth();
+  const { currentUser } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editFacility, setEditFacility] = useState<Facility | null>(null);
   const [reqDialogOpen, setReqDialogOpen] = useState(false);
