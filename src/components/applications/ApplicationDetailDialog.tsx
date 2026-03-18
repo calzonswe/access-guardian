@@ -30,7 +30,7 @@ interface Props {
 }
 
 export function ApplicationDetailDialog({ application, open, onOpenChange, onUpdated, onEdit, onDelete }: Props) {
-  const { currentUser, activeRole } = useAuth();
+  const { currentUser } = useAuth();
   const [denyReason, setDenyReason] = useState('');
 
   if (!application || !currentUser) return null;
