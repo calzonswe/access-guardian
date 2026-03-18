@@ -23,7 +23,7 @@ const SECURITY_COLORS: Record<string, string> = {
 const SECURITY_LABELS: Record<string, string> = { low: 'Låg', medium: 'Medel', high: 'Hög', critical: 'Kritisk' };
 
 export default function AreasPage() {
-  const { activeRole, currentUser } = useAuth();
+  const { currentUser } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editArea, setEditArea] = useState<Area | null>(null);
   const [, setRefresh] = useState(0);
