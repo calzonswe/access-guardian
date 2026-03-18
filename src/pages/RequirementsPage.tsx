@@ -65,7 +65,7 @@ export default function RequirementsPage() {
     }
   };
 
-  const canEdit = activeRole === 'administrator' || activeRole === 'facility_owner' || activeRole === 'facility_admin';
+  const canEdit = currentUser.roles.includes('administrator') || currentUser.roles.includes('facility_owner') || currentUser.roles.includes('facility_admin');
 
   return (
     <div className="space-y-6">

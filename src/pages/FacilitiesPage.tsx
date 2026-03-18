@@ -186,7 +186,7 @@ export default function FacilitiesPage() {
                             </Badge>
                           ))
                         )}
-                        {(activeRole === 'administrator' || activeRole === 'facility_owner' || activeRole === 'facility_admin') && (
+                        {(currentUser.roles.includes('administrator') || currentUser.roles.includes('facility_owner') || currentUser.roles.includes('facility_admin')) && (
                           <Button variant="ghost" size="sm" className="text-xs h-7 mt-1" onClick={() => openReqDialog(facility.id)}>
                             <Pencil className="h-3 w-3 mr-1" />Hantera krav
                           </Button>
