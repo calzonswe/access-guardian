@@ -81,7 +81,7 @@ async function initIfNeeded(): Promise<void> {
 }
 
 // Initialize on module load
-initIfNeeded();
+export const initPromise = initIfNeeded();
 
 // ============= AUTH =============
 
