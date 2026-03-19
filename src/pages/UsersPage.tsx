@@ -38,8 +38,8 @@ export default function UsersPage() {
     }
   };
 
-  const handleToggleActive = (u: User) => {
-    store.updateUser(u.id, { is_active: !u.is_active });
+  const handleToggleActive = async (u: User) => {
+    await store.updateUser(u.id, { is_active: !u.is_active });
     toast.success(u.is_active ? 'Användare inaktiverad' : 'Användare aktiverad');
     reload();
   };

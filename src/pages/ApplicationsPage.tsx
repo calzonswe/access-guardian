@@ -67,7 +67,7 @@ export default function ApplicationsPage() {
   const handleDelete = (app: Application) => {
     if (confirm('Är du säker på att du vill ta bort denna ansökan?')) {
       store.deleteApplication(app.id);
-      store.addLog({ action: 'application_created', actor_id: currentUser.id, target_id: app.id, target_type: 'application', details: `Ansökan borttagen` });
+      store.addLog({ action: 'application_denied', actor_id: currentUser.id, target_id: app.id, target_type: 'application', details: `Ansökan borttagen` });
       setSelectedApp(null);
       reload();
     }

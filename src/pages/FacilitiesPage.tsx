@@ -67,7 +67,7 @@ export default function FacilitiesPage() {
   const handleDelete = (f: Facility) => {
     if (confirm(`Är du säker på att du vill ta bort "${f.name}" och alla dess områden?`)) {
       store.deleteFacility(f.id);
-      store.addLog({ action: 'facility_created', actor_id: currentUser.id, target_id: f.id, target_type: 'facility', details: `Anläggning borttagen: ${f.name}` });
+      store.addLog({ action: 'settings_changed', actor_id: currentUser.id, target_id: f.id, target_type: 'facility', details: `Anläggning borttagen: ${f.name}` });
       toast.success('Anläggning borttagen');
       reload();
     }
