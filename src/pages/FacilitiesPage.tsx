@@ -53,7 +53,7 @@ export default function FacilitiesPage() {
     if (!name.trim()) { toast.error('Ange namn'); return; }
     if (editFacility) {
       store.updateFacility(editFacility.id, { name, description, address, owner_id: ownerId });
-      store.addLog({ action: 'facility_created', actor_id: currentUser.id, target_id: editFacility.id, target_type: 'facility', details: `Anläggning uppdaterad: ${name}` });
+      store.addLog({ action: 'settings_changed', actor_id: currentUser.id, target_id: editFacility.id, target_type: 'facility', details: `Anläggning uppdaterad: ${name}` });
       toast.success('Anläggning uppdaterad');
     } else {
       const f = store.createFacility({ name, description, address, owner_id: ownerId, admin_ids: [] });
@@ -67,7 +67,7 @@ export default function FacilitiesPage() {
   const handleDelete = (f: Facility) => {
     if (confirm(`Är du säker på att du vill ta bort "${f.name}" och alla dess områden?`)) {
       store.deleteFacility(f.id);
-      store.addLog({ action: 'facility_created', actor_id: currentUser.id, target_id: f.id, target_type: 'facility', details: `Anläggning borttagen: ${f.name}` });
+      store.addLog({ action: 'settings_changed', actor_id: currentUser.id, target_id: f.id, target_type: 'facility', details: `Anläggning borttagen: ${f.name}` });
       toast.success('Anläggning borttagen');
       reload();
     }

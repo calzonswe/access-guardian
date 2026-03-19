@@ -41,9 +41,11 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
   const status = STATUS_MAP[application.status];
 
   const roles = currentUser.roles;
+  // facility_admin can approve pending_facility but NOT pending_exception (only facility_owner can)
   const canApprove =
     (roles.includes('line_manager') && application.status === 'pending_manager') ||
-    ((roles.includes('facility_owner') || roles.includes('facility_admin')) && (application.status === 'pending_facility' || application.status === 'pending_exception')) ||
+    ((roles.includes('facility_owner') || roles.includes('facility_admin')) && application.status === 'pending_facility') ||
+    (roles.includes('facility_owner') && application.status === 'pending_exception') ||
     (roles.includes('administrator'));
 
   const canEditDelete = application.applicant_id === currentUser.id && (application.status === 'draft' || application.status === 'pending_manager');

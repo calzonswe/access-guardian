@@ -34,15 +34,19 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
 
   const facilities = store.getFacilities();
   const areas = facilityId ? store.getAreas(facilityId) : [];
-  const requirements = store.getRequirements();
   const userReqs = store.getUserRequirements(currentUser.id);
+
+  // Only check requirements linked to the selected facility, not all system requirements
+  const facilityReqLinks = facilityId ? store.getFacilityRequirements(facilityId) : [];
+  const facilityReqIds = facilityReqLinks.map(fr => fr.requirement_id);
+  const facilityRequirements = store.getRequirements().filter(r => facilityReqIds.includes(r.id));
 
   const toggleArea = (areaId: string) => {
     setSelectedAreas(prev => prev.includes(areaId) ? prev.filter(id => id !== areaId) : [...prev, areaId]);
   };
 
   const fulfilledReqIds = userReqs.filter(ur => ur.status === 'fulfilled').map(ur => ur.requirement_id);
-  const hasMissingReqs = requirements.length > 0 && requirements.some(r => !fulfilledReqIds.includes(r.id));
+  const hasMissingReqs = facilityRequirements.length > 0 && facilityRequirements.some(r => !fulfilledReqIds.includes(r.id));
 
   const handleSubmit = () => {
     if (!facilityId) { toast.error('Välj en anläggning'); return; }
