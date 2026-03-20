@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, XCircle, FileText, Trash2, Pencil } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, Trash2, Pencil, Ban } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import * as store from '@/services/dataStore';
+import { notifyApplicationStatusChange } from '@/services/notifications';
 import type { Application, ApplicationStatus } from '@/types/rbac';
 
 const STATUS_MAP: Record<ApplicationStatus, { label: string; className: string }> = {
@@ -17,7 +18,7 @@ const STATUS_MAP: Record<ApplicationStatus, { label: string; className: string }
   pending_exception: { label: 'Avsteg – väntar', className: 'bg-warning/10 text-warning border border-warning/20' },
   approved: { label: 'Godkänd', className: 'status-badge-approved' },
   denied: { label: 'Nekad', className: 'status-badge-denied' },
-  expired: { label: 'Utgången', className: 'bg-muted text-muted-foreground' },
+  expired: { label: 'Utgången / Återkallad', className: 'bg-muted text-muted-foreground' },
 };
 
 interface Props {
@@ -41,7 +42,6 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
   const status = STATUS_MAP[application.status];
 
   const roles = currentUser.roles;
-  // facility_admin can approve pending_facility but NOT pending_exception (only facility_owner can)
   const canApprove =
     (roles.includes('line_manager') && application.status === 'pending_manager') ||
     ((roles.includes('facility_owner') || roles.includes('facility_admin')) && application.status === 'pending_facility') ||
@@ -49,6 +49,13 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
     (roles.includes('administrator'));
 
   const canEditDelete = application.applicant_id === currentUser.id && (application.status === 'draft' || application.status === 'pending_manager');
+
+  // Revocation: facility_owner, facility_admin, or administrator can revoke approved access
+  const canRevoke = application.status === 'approved' && (
+    roles.includes('administrator') ||
+    roles.includes('facility_owner') ||
+    roles.includes('facility_admin')
+  );
 
   const handleApprove = () => {
     let newStatus: ApplicationStatus = application.status;
@@ -66,6 +73,7 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
     updates.status = newStatus;
     store.updateApplication(application.id, updates);
     store.addLog({ action: newStatus === 'approved' ? 'application_approved_facility' : 'application_approved_manager', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: 'Ansökan godkänd' });
+    notifyApplicationStatusChange(application, newStatus, currentUser.id);
     toast.success('Ansökan godkänd');
     onUpdated?.(); onOpenChange(false);
   };
@@ -73,7 +81,17 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
   const handleDeny = () => {
     store.updateApplication(application.id, { status: 'denied', denied_reason: denyReason });
     store.addLog({ action: 'application_denied', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: `Ansökan nekad: ${denyReason}` });
+    notifyApplicationStatusChange(application, 'denied', currentUser.id);
     toast.success('Ansökan nekad'); setDenyReason(''); onUpdated?.(); onOpenChange(false);
+  };
+
+  const handleRevoke = () => {
+    if (!confirm('Är du säker på att du vill återkalla detta tillträde?')) return;
+    store.updateApplication(application.id, { status: 'expired' });
+    store.addLog({ action: 'access_revoked', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: `Tillträde återkallat för ${applicant?.full_name ?? 'okänd'} till ${facility?.name ?? 'okänd'}` });
+    notifyApplicationStatusChange({ ...application, status: 'approved' }, 'expired', currentUser.id);
+    toast.success('Tillträde återkallat');
+    onUpdated?.(); onOpenChange(false);
   };
 
   return (
@@ -85,12 +103,19 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Badge variant="outline" className={status.className}>{status.label}</Badge>
-            {canEditDelete && (
-              <div className="flex gap-1">
-                <Button variant="ghost" size="icon" onClick={() => onEdit?.(application)}><Pencil className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => onDelete?.(application)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-              </div>
-            )}
+            <div className="flex gap-1">
+              {canEditDelete && (
+                <>
+                  <Button variant="ghost" size="icon" onClick={() => onEdit?.(application)}><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => onDelete?.(application)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                </>
+              )}
+              {canRevoke && (
+                <Button variant="destructive" size="sm" onClick={handleRevoke}>
+                  <Ban className="mr-1 h-4 w-4" />Återkalla
+                </Button>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div><span className="text-muted-foreground">Sökande:</span> <span className="font-medium">{applicant?.full_name ?? '–'}</span></div>
@@ -113,7 +138,7 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
             {application.manager_approved_at && <p className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-success" />Chef godkänd: {new Date(application.manager_approved_at).toLocaleString('sv-SE')}</p>}
             {application.facility_approved_at && <p className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-success" />Anläggning godkänd: {new Date(application.facility_approved_at).toLocaleString('sv-SE')}</p>}
           </div>
-          {canApprove && (
+          {canApprove && application.status !== 'approved' && (
             <>
               <Separator />
               <div className="space-y-3">
