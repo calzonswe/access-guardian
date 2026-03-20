@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import * as store from '@/services/dataStore';
+import { notifyApplicationStatusChange } from '@/services/notifications';
 import type { Application } from '@/types/rbac';
 
 interface Props {
@@ -36,7 +37,6 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
   const areas = facilityId ? store.getAreas(facilityId) : [];
   const userReqs = store.getUserRequirements(currentUser.id);
 
-  // Only check requirements linked to the selected facility, not all system requirements
   const facilityReqLinks = facilityId ? store.getFacilityRequirements(facilityId) : [];
   const facilityReqIds = facilityReqLinks.map(fr => fr.requirement_id);
   const facilityRequirements = store.getRequirements().filter(r => facilityReqIds.includes(r.id));
@@ -50,7 +50,6 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
 
   const handleSubmit = () => {
     if (!facilityId) { toast.error('Välj en anläggning'); return; }
-    
     if (!startDate) { toast.error('Ange startdatum'); return; }
     if (hasMissingReqs && !justification.trim()) { toast.error('Motivering krävs vid saknade krav'); return; }
 
@@ -62,13 +61,14 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
       });
       toast.success('Ansökan uppdaterad');
     } else {
-      store.createApplication({
+      const app = store.createApplication({
         applicant_id: currentUser.id, facility_id: facilityId, area_ids: selectedAreas,
         status: 'pending_manager', start_date: startDate, end_date: endDate || undefined,
         has_exception: hasMissingReqs, exception_justification: hasMissingReqs ? justification : undefined,
         attachments: [],
       });
-      store.addLog({ action: 'application_created', actor_id: currentUser.id, details: `Ny ansökan skapad för ${store.getFacility(facilityId)?.name}` });
+      store.addLog({ action: 'application_created', actor_id: currentUser.id, target_id: app.id, target_type: 'application', details: `Ny ansökan skapad för ${store.getFacility(facilityId)?.name}` });
+      notifyApplicationStatusChange(app, 'pending_manager', currentUser.id);
       toast.success('Ansökan skapad');
     }
     onSaved?.();
@@ -92,7 +92,7 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
           </div>
           {facilityId && areas.length > 0 && (
             <div className="space-y-2">
-              <Label>Områden</Label>
+              <Label>Områden (valfritt)</Label>
               <div className="space-y-2 rounded-lg border border-border p-3">
                 {areas.map(area => (
                   <div key={area.id} className="flex items-center gap-2">

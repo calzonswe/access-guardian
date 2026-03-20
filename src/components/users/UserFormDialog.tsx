@@ -31,6 +31,7 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
   const [company, setCompany] = useState('');
   const [department, setDepartment] = useState('');
   const [managerId, setManagerId] = useState('');
+  const [contactPersonId, setContactPersonId] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -45,10 +46,11 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
         setCompany(editUser.company || '');
         setDepartment(editUser.department || '');
         setManagerId(editUser.manager_id || '');
+        setContactPersonId(editUser.contact_person_id || '');
       } else {
         setFirstName(''); setLastName(''); setEmail(''); setPhone('');
         setPassword(''); setRoles(['employee']); setTitle('');
-        setCompany(''); setDepartment(''); setManagerId('');
+        setCompany(''); setDepartment(''); setManagerId(''); setContactPersonId('');
       }
     }
   }, [open, editUser]);
@@ -57,11 +59,14 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
     setRoles(prev => prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]);
   };
 
+  const isContractor = roles.includes('contractor');
+
   const handleSave = async () => {
     if (!firstName.trim() || !lastName.trim()) { toast.error('Förnamn och efternamn krävs'); return; }
     if (!email.trim()) { toast.error('E-post krävs'); return; }
     if (!editUser && !password.trim()) { toast.error('Lösenord krävs för nya användare'); return; }
     if (roles.length === 0) { toast.error('Välj minst en roll'); return; }
+    if (isContractor && !contactPersonId) { toast.error('Kontaktperson krävs för entreprenörer'); return; }
 
     const existing = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.id !== editUser?.id);
     if (existing) { toast.error('E-postadressen används redan'); return; }
@@ -80,6 +85,7 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
         company: company || undefined,
         department: department || undefined,
         manager_id: managerId || undefined,
+        contact_person_id: isContractor ? contactPersonId || undefined : undefined,
       };
       if (password.trim()) { updateData.password = password; updateData.must_change_password = true; }
       await store.updateUser(editUser.id, updateData);
@@ -97,6 +103,7 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
         company: company || undefined,
         department: department || undefined,
         manager_id: managerId || undefined,
+        contact_person_id: isContractor ? contactPersonId || undefined : undefined,
         is_active: true,
         password,
       });
@@ -108,6 +115,7 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
   };
 
   const managers = users.filter(u => u.roles.includes('line_manager'));
+  const internalContacts = users.filter(u => !u.roles.includes('contractor') && u.id !== editUser?.id);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -168,6 +176,24 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
               </Select>
             </div>
           </div>
+
+          {/* Contact person for contractors */}
+          {isContractor && (
+            <div className="space-y-2 rounded-lg border border-border p-3 bg-muted/30">
+              <Label>Kontaktperson (intern sponsor) *</Label>
+              <p className="text-xs text-muted-foreground mb-1">
+                En intern anställd som ansvarar för entreprenören
+              </p>
+              <Select value={contactPersonId} onValueChange={setContactPersonId}>
+                <SelectTrigger><SelectValue placeholder="Välj kontaktperson" /></SelectTrigger>
+                <SelectContent>
+                  {internalContacts.map(u => (
+                    <SelectItem key={u.id} value={u.id}>{u.full_name} – {u.email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Roller</Label>
