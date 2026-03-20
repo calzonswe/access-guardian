@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, MapPin, Plus, Pencil, Trash2, Shield, ChevronDown, ChevronUp } from 'lucide-react';
+import { Building2, MapPin, Plus, Pencil, Trash2, Shield, ChevronDown, ChevronUp, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,8 @@ export default function FacilitiesPage() {
   const [editFacility, setEditFacility] = useState<Facility | null>(null);
   const [reqDialogOpen, setReqDialogOpen] = useState(false);
   const [reqFacilityId, setReqFacilityId] = useState<string | null>(null);
+  const [adminDialogOpen, setAdminDialogOpen] = useState(false);
+  const [adminFacilityId, setAdminFacilityId] = useState<string | null>(null);
   const [expandedReqs, setExpandedReqs] = useState<Set<string>>(new Set());
   const [, setRefresh] = useState(0);
   const reload = () => setRefresh(n => n + 1);
@@ -96,6 +98,28 @@ export default function FacilitiesPage() {
     });
   };
 
+  // Admin assignment
+  const openAdminDialog = (facilityId: string) => {
+    setAdminFacilityId(facilityId);
+    setAdminDialogOpen(true);
+  };
+
+  const toggleFacilityAdmin = (facilityId: string, userId: string, checked: boolean) => {
+    const facility = store.getFacility(facilityId);
+    if (!facility) return;
+    const currentAdmins = facility.admin_ids || [];
+    const newAdmins = checked
+      ? [...currentAdmins, userId]
+      : currentAdmins.filter(id => id !== userId);
+    store.updateFacility(facilityId, { admin_ids: newAdmins });
+    store.addLog({ action: 'settings_changed', actor_id: currentUser.id, target_id: facilityId, target_type: 'facility', details: `Administratörer uppdaterade för ${facility.name}` });
+    reload();
+  };
+
+  const facilityAdminCandidates = users.filter(u =>
+    u.roles.includes('facility_admin') || u.roles.includes('administrator')
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -126,6 +150,8 @@ export default function FacilitiesPage() {
               .map(fr => allRequirements.find(r => r.id === fr.requirement_id))
               .filter(Boolean);
             const showReqs = expandedReqs.has(facility.id);
+            const admins = (facility.admin_ids || []).map(id => users.find(u => u.id === id)).filter(Boolean);
+
             return (
               <Card key={facility.id} className="hover:shadow-md transition-shadow">
                 <CardHeader className="pb-3">
@@ -158,6 +184,22 @@ export default function FacilitiesPage() {
                   <div className="text-xs text-muted-foreground">
                     Ägare: <span className="font-medium text-foreground">{owner?.full_name ?? '–'}</span>
                   </div>
+
+                  {/* Admins */}
+                  <div className="text-xs text-muted-foreground">
+                    <span>Administratörer: </span>
+                    {admins.length > 0 ? (
+                      <span className="font-medium text-foreground">{admins.map(a => a!.full_name).join(', ')}</span>
+                    ) : (
+                      <span>Inga</span>
+                    )}
+                    {(currentUser.roles.includes('administrator') || facility.owner_id === currentUser.id) && (
+                      <Button variant="ghost" size="sm" className="text-xs h-5 ml-1 px-1" onClick={() => openAdminDialog(facility.id)}>
+                        <Users className="h-3 w-3 mr-0.5" />Hantera
+                      </Button>
+                    )}
+                  </div>
+
                   <div className="flex flex-wrap gap-1.5">
                     {facilityAreas.map(area => (
                       <Badge key={area.id} variant="outline" className="text-xs">{area.name}</Badge>
@@ -271,6 +313,52 @@ export default function FacilitiesPage() {
           )}
           <DialogFooter>
             <Button onClick={() => setReqDialogOpen(false)}>Stäng</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Facility Admin Assignment Dialog */}
+      <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tilldela administratörer</DialogTitle>
+          </DialogHeader>
+          {adminFacilityId && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Välj vilka användare med rollen Anläggningsadministratör som ska administrera denna anläggning.
+              </p>
+              {facilityAdminCandidates.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Inga användare med rollen Anläggningsadministratör finns. Tilldela rollen först under Användare.</p>
+              ) : (
+                facilityAdminCandidates.map(user => {
+                  const facility = store.getFacility(adminFacilityId);
+                  const isAssigned = (facility?.admin_ids || []).includes(user.id);
+                  return (
+                    <div key={user.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50">
+                      <Checkbox
+                        checked={isAssigned}
+                        onCheckedChange={(checked) => toggleFacilityAdmin(adminFacilityId, user.id, !!checked)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{user.full_name}</p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                      </div>
+                      <div className="flex gap-1">
+                        {user.roles.map(r => (
+                          <Badge key={r} variant="secondary" className="text-[10px]">
+                            {r === 'facility_admin' ? 'Admin' : r === 'administrator' ? 'Superadmin' : r}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setAdminDialogOpen(false)}>Stäng</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

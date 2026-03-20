@@ -1,26 +1,23 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Shield } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ROLE_LABELS, type AppRole } from '@/types/rbac';
 import * as store from '@/services/dataStore';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import type { User } from '@/types/rbac';
 import UserFormDialog from '@/components/users/UserFormDialog';
-
-const ALL_ROLES: AppRole[] = ['administrator', 'facility_owner', 'facility_admin', 'line_manager', 'employee', 'contractor'];
+import UserRequirementDialog from '@/components/users/UserRequirementDialog';
 
 export default function UsersPage() {
   const { currentUser } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
+  const [reqDialogOpen, setReqDialogOpen] = useState(false);
+  const [reqTargetUser, setReqTargetUser] = useState<User | null>(null);
   const [, setRefresh] = useState(0);
   const reload = () => setRefresh(n => n + 1);
 
@@ -29,6 +26,8 @@ export default function UsersPage() {
 
   const openCreate = () => { setEditUser(null); setDialogOpen(true); };
   const openEdit = (u: User) => { setEditUser(u); setDialogOpen(true); };
+
+  const openReqDialog = (u: User) => { setReqTargetUser(u); setReqDialogOpen(true); };
 
   const handleDelete = (u: User) => {
     if (u.id === currentUser.id) { toast.error('Du kan inte ta bort dig själv'); return; }
@@ -43,6 +42,10 @@ export default function UsersPage() {
     toast.success(u.is_active ? 'Användare inaktiverad' : 'Användare aktiverad');
     reload();
   };
+
+  const canManageRequirements = currentUser.roles.includes('administrator') ||
+    currentUser.roles.includes('line_manager') ||
+    currentUser.roles.includes('facility_admin');
 
   return (
     <div className="space-y-6">
@@ -68,7 +71,7 @@ export default function UsersPage() {
                   <TableHead>Företag / Enhet</TableHead>
                   <TableHead>Roller</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-28"></TableHead>
+                  <TableHead className="w-32"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -90,6 +93,11 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
+                        {canManageRequirements && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Kravuppfyllnad" onClick={() => openReqDialog(user)}>
+                            <Shield className="h-3 w-3 text-primary" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(user)}><Pencil className="h-3 w-3" /></Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(user)} disabled={user.id === currentUser.id}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                       </div>
@@ -109,6 +117,13 @@ export default function UsersPage() {
         users={users}
         currentUserId={currentUser.id}
         onSaved={reload}
+      />
+
+      <UserRequirementDialog
+        open={reqDialogOpen}
+        onOpenChange={setReqDialogOpen}
+        targetUser={reqTargetUser}
+        onUpdated={reload}
       />
     </div>
   );
