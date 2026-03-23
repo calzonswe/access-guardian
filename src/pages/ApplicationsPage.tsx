@@ -43,16 +43,14 @@ export default function ApplicationsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
 
-  if (!currentUser) return null;
-
   const reload = () => setRefresh(n => n + 1);
-  const roles = currentUser.roles;
-  const allUsers = store.getUsers();
-  const allFacilities = store.getFacilities();
+  const roles = currentUser?.roles ?? [];
+  const allUsers = currentUser ? store.getUsers() : [];
+  const allFacilities = currentUser ? store.getFacilities() : [];
 
-  let applications = store.getApplications();
+  let applications = currentUser ? store.getApplications() : [];
 
-  if (!roles.includes('administrator')) {
+  if (currentUser && !roles.includes('administrator')) {
     const visibleIds = new Set<string>();
     if (roles.includes('employee') || roles.includes('contractor')) {
       applications.filter(a => a.applicant_id === currentUser.id).forEach(a => visibleIds.add(a.id));
@@ -84,7 +82,7 @@ export default function ApplicationsPage() {
     return result;
   }, [applications, search, statusFilter, allUsers, allFacilities]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  if (!currentUser) return null;
   const safePage = Math.min(page, totalPages);
   const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 

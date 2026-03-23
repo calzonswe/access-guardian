@@ -30,8 +30,7 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
   const reload = () => setRefresh(n => n + 1);
 
-  if (!currentUser) return null;
-  const users = store.getUsers();
+  const users = currentUser ? store.getUsers() : [];
 
   const filtered = useMemo(() => {
     let result = users;
@@ -51,6 +50,8 @@ export default function UsersPage() {
     }
     return result;
   }, [users, search, roleFilter, statusFilter]);
+
+  if (!currentUser) return null;
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
