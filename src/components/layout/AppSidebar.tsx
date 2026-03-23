@@ -133,20 +133,21 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-4">
-        {!collapsed && (
-          <button
-            onClick={() => navigate('/profile')}
-            className="flex w-full items-center gap-2 rounded-md p-1 text-left hover:bg-sidebar-accent transition-colors"
-          >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-accent text-xs font-medium text-sidebar-accent-foreground">
-              {currentUser.full_name.split(' ').map(n => n[0]).join('')}
-            </div>
+        <button
+          onClick={() => navigate('/profile')}
+          className={`flex w-full items-center rounded-md text-left hover:bg-sidebar-accent transition-colors ${collapsed ? 'justify-center p-1' : 'gap-2 p-1'}`}
+          title={collapsed ? `${currentUser.full_name} – ${roleLabels}` : undefined}
+        >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-xs font-medium text-sidebar-accent-foreground">
+            {currentUser.full_name.split(' ').map(n => n[0]).join('')}
+          </div>
+          {!collapsed && (
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-sidebar-foreground">{currentUser.full_name}</p>
               <p className="truncate text-xs text-sidebar-foreground/60">{roleLabels}</p>
             </div>
-          </button>
-        )}
+          )}
+        </button>
       </SidebarFooter>
     </Sidebar>
   );
