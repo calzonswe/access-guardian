@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import type { User } from '@/types/rbac';
 import UserFormDialog from '@/components/users/UserFormDialog';
 import UserRequirementDialog from '@/components/users/UserRequirementDialog';
+import { exportUsers, exportRequirementsFulfillment } from '@/services/exportService';
 
 const PAGE_SIZE = 10;
 const ALL_ROLES_FILTER: AppRole[] = ['administrator', 'facility_owner', 'facility_admin', 'line_manager', 'employee', 'contractor'];
