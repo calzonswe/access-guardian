@@ -1,5 +1,11 @@
 import * as store from '@/services/dataStore';
 import type { Application, ApplicationStatus } from '@/types/rbac';
+import { toast } from 'sonner';
+
+function simulateEmail(to: string, subject: string) {
+  console.log(`[E-post] Till: ${to} | Ämne: ${subject}`);
+  toast.info(`📧 E-post skickad till ${to}`, { description: subject, duration: 4000 });
+}
 
 /**
  * Creates automatic notifications when application status changes.
