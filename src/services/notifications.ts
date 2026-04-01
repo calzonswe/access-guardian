@@ -32,6 +32,7 @@ export function notifyApplicationStatusChange(
         read: false,
         link: '/applications',
       });
+      if (applicant?.email) simulateEmail(applicant.email, `Ansökan godkänd – ${facilityName}`);
     } else if (newStatus === 'denied') {
       store.createNotification({
         user_id: application.applicant_id,
