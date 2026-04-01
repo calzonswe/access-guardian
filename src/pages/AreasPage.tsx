@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { MapPin, Plus, Pencil, Trash2 } from 'lucide-react';
+import { MapPin, Plus, Pencil, Trash2, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,8 @@ export default function AreasPage() {
   const { currentUser } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editArea, setEditArea] = useState<Area | null>(null);
+  const [reqDialogOpen, setReqDialogOpen] = useState(false);
+  const [reqAreaId, setReqAreaId] = useState('');
   const [, setRefresh] = useState(0);
   const reload = () => setRefresh(n => n + 1);
 
@@ -38,6 +41,8 @@ export default function AreasPage() {
 
   const facilities = store.getFacilities();
   const allAreas = store.getAreas();
+  const allRequirements = store.getRequirements();
+  const canEdit = currentUser.roles.includes('administrator') || currentUser.roles.includes('facility_owner') || currentUser.roles.includes('facility_admin');
 
   const openCreate = () => {
     setEditArea(null);
@@ -71,6 +76,22 @@ export default function AreasPage() {
     }
   };
 
+  const openReqDialog = (areaId: string) => {
+    setReqAreaId(areaId);
+    setReqDialogOpen(true);
+  };
+
+  const toggleAreaReq = (areaId: string, requirementId: string, checked: boolean) => {
+    if (checked) {
+      store.addAreaRequirement(areaId, requirementId);
+    } else {
+      store.removeAreaRequirement(areaId, requirementId);
+    }
+    reload();
+  };
+
+  const areaReqsForArea = (areaId: string) => store.getAreaRequirements(areaId);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -78,7 +99,7 @@ export default function AreasPage() {
           <h1 className="text-2xl font-semibold text-foreground">Områden</h1>
           <p className="text-sm text-muted-foreground mt-1">Hantera områden inom anläggningar</p>
         </div>
-        {(currentUser.roles.includes('administrator') || currentUser.roles.includes('facility_owner') || currentUser.roles.includes('facility_admin')) && (
+        {canEdit && (
           <Button onClick={openCreate} disabled={facilities.length === 0}><Plus className="mr-2 h-4 w-4" />Nytt område</Button>
         )}
       </div>
@@ -105,29 +126,41 @@ export default function AreasPage() {
                         <TableHead>Område</TableHead>
                         <TableHead>Beskrivning</TableHead>
                         <TableHead>Säkerhetsnivå</TableHead>
+                        <TableHead>Krav</TableHead>
                         <TableHead>Skapad</TableHead>
-                        <TableHead className="w-20"></TableHead>
+                        <TableHead className="w-28"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {areas.map(area => (
-                        <TableRow key={area.id}>
-                          <TableCell className="font-medium">{area.name}</TableCell>
-                          <TableCell className="text-muted-foreground">{area.description}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={SECURITY_COLORS[area.security_level]}>
-                              {SECURITY_LABELS[area.security_level]}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-sm">{new Date(area.created_at).toLocaleDateString('sv-SE')}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(area)}><Pencil className="h-3 w-3" /></Button>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(area)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {areas.map(area => {
+                        const areaReqs = areaReqsForArea(area.id);
+                        return (
+                          <TableRow key={area.id}>
+                            <TableCell className="font-medium">{area.name}</TableCell>
+                            <TableCell className="text-muted-foreground">{area.description}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={SECURITY_COLORS[area.security_level]}>
+                                {SECURITY_LABELS[area.security_level]}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="text-xs">{areaReqs.length} krav</Badge>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">{new Date(area.created_at).toLocaleDateString('sv-SE')}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                {canEdit && (
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Hantera krav" onClick={() => openReqDialog(area.id)}>
+                                    <Shield className="h-3 w-3 text-primary" />
+                                  </Button>
+                                )}
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(area)}><Pencil className="h-3 w-3" /></Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(area)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 )}
@@ -137,6 +170,7 @@ export default function AreasPage() {
         })
       )}
 
+      {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editArea ? 'Redigera område' : 'Nytt område'}</DialogTitle></DialogHeader>
@@ -166,6 +200,40 @@ export default function AreasPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Avbryt</Button>
             <Button onClick={handleSave}>{editArea ? 'Spara' : 'Skapa'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Area Requirements Dialog */}
+      <Dialog open={reqDialogOpen} onOpenChange={setReqDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Krav för {allAreas.find(a => a.id === reqAreaId)?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Välj vilka krav som gäller för detta område</Label>
+            {allRequirements.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">Inga krav definierade. Skapa krav under Inställningar först.</p>
+            ) : (
+              <div className="space-y-2 rounded-lg border border-border p-3 max-h-[300px] overflow-y-auto">
+                {allRequirements.map(req => {
+                  const linked = areaReqsForArea(reqAreaId).some(ar => ar.requirement_id === req.id);
+                  return (
+                    <div key={req.id} className="flex items-center gap-3">
+                      <Checkbox checked={linked} onCheckedChange={(checked) => toggleAreaReq(reqAreaId, req.id, !!checked)} />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-foreground">{req.name}</p>
+                        <p className="text-xs text-muted-foreground">{req.description}</p>
+                      </div>
+                      <Badge variant="secondary" className="text-[10px]">{req.type}</Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setReqDialogOpen(false)}>Stäng</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

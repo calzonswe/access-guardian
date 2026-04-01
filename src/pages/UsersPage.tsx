@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Pencil, Trash2, Shield, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Shield, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import type { User } from '@/types/rbac';
 import UserFormDialog from '@/components/users/UserFormDialog';
 import UserRequirementDialog from '@/components/users/UserRequirementDialog';
+import { exportUsers, exportRequirementsFulfillment } from '@/services/exportService';
 
 const PAGE_SIZE = 10;
 const ALL_ROLES_FILTER: AppRole[] = ['administrator', 'facility_owner', 'facility_admin', 'line_manager', 'employee', 'contractor'];
@@ -86,7 +87,15 @@ export default function UsersPage() {
           <h1 className="text-2xl font-semibold text-foreground">Användare</h1>
           <p className="text-sm text-muted-foreground mt-1">Hantera användare och roller ({filtered.length} st)</p>
         </div>
-        <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Ny användare</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => { exportUsers(); toast.success('Användare exporterade'); }}>
+            <Download className="mr-2 h-4 w-4" />Exportera
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => { exportRequirementsFulfillment(); toast.success('Kravuppfyllnad exporterad'); }}>
+            <Download className="mr-2 h-4 w-4" />Kravrapport
+          </Button>
+          <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Ny användare</Button>
+        </div>
       </div>
 
       {/* Filters */}

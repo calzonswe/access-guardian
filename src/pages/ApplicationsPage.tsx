@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 import * as store from '@/services/dataStore';
 import { ApplicationTable } from '@/components/dashboard/ApplicationTable';
 import { ApplicationFormDialog } from '@/components/applications/ApplicationFormDialog';
@@ -7,8 +8,9 @@ import { ApplicationDetailDialog } from '@/components/applications/ApplicationDe
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import type { Application, ApplicationStatus } from '@/types/rbac';
+import { exportApplications } from '@/services/exportService';
 
 const PAGE_SIZE = 10;
 
@@ -105,11 +107,16 @@ export default function ApplicationsPage() {
           <h1 className="text-2xl font-semibold text-foreground">Ansökningar</h1>
           <p className="text-sm text-muted-foreground mt-1">Hantera tillträdesansökningar ({filtered.length} st)</p>
         </div>
-        {canCreateApplication && (
-          <Button onClick={() => { setEditApp(null); setFormOpen(true); }}>
-            <Plus className="mr-2 h-4 w-4" />Ny ansökan
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => { exportApplications(); toast.success('Ansökningar exporterade'); }}>
+            <Download className="mr-2 h-4 w-4" />Exportera
           </Button>
-        )}
+          {canCreateApplication && (
+            <Button onClick={() => { setEditApp(null); setFormOpen(true); }}>
+              <Plus className="mr-2 h-4 w-4" />Ny ansökan
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}

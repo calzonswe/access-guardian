@@ -1,5 +1,11 @@
 import * as store from '@/services/dataStore';
 import type { Application, ApplicationStatus } from '@/types/rbac';
+import { toast } from 'sonner';
+
+function simulateEmail(to: string, subject: string) {
+  console.log(`[E-post] Till: ${to} | Ämne: ${subject}`);
+  toast.info(`📧 E-post skickad till ${to}`, { description: subject, duration: 4000 });
+}
 
 /**
  * Creates automatic notifications when application status changes.
@@ -26,6 +32,7 @@ export function notifyApplicationStatusChange(
         read: false,
         link: '/applications',
       });
+      if (applicant?.email) simulateEmail(applicant.email, `Ansökan godkänd – ${facilityName}`);
     } else if (newStatus === 'denied') {
       store.createNotification({
         user_id: application.applicant_id,
@@ -35,6 +42,7 @@ export function notifyApplicationStatusChange(
         read: false,
         link: '/applications',
       });
+      if (applicant?.email) simulateEmail(applicant.email, `Ansökan nekad – ${facilityName}`);
     } else if (newStatus === 'pending_facility' || newStatus === 'pending_exception') {
       store.createNotification({
         user_id: application.applicant_id,
