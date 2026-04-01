@@ -1,8 +1,11 @@
-import { ScrollText } from 'lucide-react';
+import { ScrollText, Download } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import * as store from '@/services/dataStore';
+import { exportLogs } from '@/services/exportService';
+import { toast } from 'sonner';
 
 export default function LogsPage() {
   const logs = store.getLogs();
@@ -10,9 +13,16 @@ export default function LogsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Systemlogg</h1>
-        <p className="text-sm text-muted-foreground mt-1">Spårning av alla händelser i systemet</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Systemlogg</h1>
+          <p className="text-sm text-muted-foreground mt-1">Spårning av alla händelser i systemet</p>
+        </div>
+        {logs.length > 0 && (
+          <Button variant="outline" size="sm" onClick={() => { exportLogs(); toast.success('Logg exporterad'); }}>
+            <Download className="mr-2 h-4 w-4" />Exportera
+          </Button>
+        )}
       </div>
       <Card>
         <CardContent className="p-0">
