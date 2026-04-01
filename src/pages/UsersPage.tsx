@@ -87,7 +87,15 @@ export default function UsersPage() {
           <h1 className="text-2xl font-semibold text-foreground">Användare</h1>
           <p className="text-sm text-muted-foreground mt-1">Hantera användare och roller ({filtered.length} st)</p>
         </div>
-        <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Ny användare</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => { exportUsers(); toast.success('Användare exporterade'); }}>
+            <Download className="mr-2 h-4 w-4" />Exportera
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => { exportRequirementsFulfillment(); toast.success('Kravuppfyllnad exporterad'); }}>
+            <Download className="mr-2 h-4 w-4" />Kravrapport
+          </Button>
+          <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Ny användare</Button>
+        </div>
       </div>
 
       {/* Filters */}

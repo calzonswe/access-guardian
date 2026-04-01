@@ -39,14 +39,20 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
 
   const facilityReqLinks = facilityId ? store.getFacilityRequirements(facilityId) : [];
   const facilityReqIds = facilityReqLinks.map(fr => fr.requirement_id);
-  const facilityRequirements = store.getRequirements().filter(r => facilityReqIds.includes(r.id));
 
-  const toggleArea = (areaId: string) => {
-    setSelectedAreas(prev => prev.includes(areaId) ? prev.filter(id => id !== areaId) : [...prev, areaId]);
-  };
+  // Also gather area-specific requirements for selected areas
+  const areaReqIds = new Set<string>();
+  for (const areaId of selectedAreas) {
+    for (const ar of store.getAreaRequirements(areaId)) {
+      areaReqIds.add(ar.requirement_id);
+    }
+  }
+
+  const allReqIds = new Set([...facilityReqIds, ...areaReqIds]);
+  const combinedRequirements = store.getRequirements().filter(r => allReqIds.has(r.id));
 
   const fulfilledReqIds = userReqs.filter(ur => ur.status === 'fulfilled').map(ur => ur.requirement_id);
-  const hasMissingReqs = facilityRequirements.length > 0 && facilityRequirements.some(r => !fulfilledReqIds.includes(r.id));
+  const hasMissingReqs = combinedRequirements.length > 0 && combinedRequirements.some(r => !fulfilledReqIds.includes(r.id));
 
   const handleSubmit = () => {
     if (!facilityId) { toast.error('Välj en anläggning'); return; }

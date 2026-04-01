@@ -106,11 +106,16 @@ export default function ApplicationsPage() {
           <h1 className="text-2xl font-semibold text-foreground">Ansökningar</h1>
           <p className="text-sm text-muted-foreground mt-1">Hantera tillträdesansökningar ({filtered.length} st)</p>
         </div>
-        {canCreateApplication && (
-          <Button onClick={() => { setEditApp(null); setFormOpen(true); }}>
-            <Plus className="mr-2 h-4 w-4" />Ny ansökan
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => { exportApplications(); toast.success('Ansökningar exporterade'); }}>
+            <Download className="mr-2 h-4 w-4" />Exportera
           </Button>
-        )}
+          {canCreateApplication && (
+            <Button onClick={() => { setEditApp(null); setFormOpen(true); }}>
+              <Plus className="mr-2 h-4 w-4" />Ny ansökan
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
