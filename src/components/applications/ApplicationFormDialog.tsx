@@ -51,6 +51,10 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
   const allReqIds = new Set([...facilityReqIds, ...areaReqIds]);
   const combinedRequirements = store.getRequirements().filter(r => allReqIds.has(r.id));
 
+  const toggleArea = (areaId: string) => {
+    setSelectedAreas(prev => prev.includes(areaId) ? prev.filter(id => id !== areaId) : [...prev, areaId]);
+  };
+
   const fulfilledReqIds = userReqs.filter(ur => ur.status === 'fulfilled').map(ur => ur.requirement_id);
   const hasMissingReqs = combinedRequirements.length > 0 && combinedRequirements.some(r => !fulfilledReqIds.includes(r.id));
 
