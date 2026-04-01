@@ -82,6 +82,8 @@ export interface UserRequirement {
   expires_at?: string;
   certified_by?: string;      // Linjechef who certified
   status: 'fulfilled' | 'expired' | 'pending';
+  attachment_name?: string;
+  attachment_data?: string;    // base64 data URL
 }
 
 export type ApplicationStatus = 
