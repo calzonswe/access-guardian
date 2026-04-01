@@ -278,6 +278,28 @@ export function deleteRequirement(id: string): void {
   set(KEYS.REQUIREMENTS, get<Requirement>(KEYS.REQUIREMENTS).filter(r => r.id !== id));
 }
 
+// ============= AREA REQUIREMENTS =============
+
+export function getAreaRequirements(areaId?: string): { id: string; area_id: string; requirement_id: string }[] {
+  const items = get<{ id: string; area_id: string; requirement_id: string }>('rbac_area_requirements');
+  return areaId ? items.filter(ar => ar.area_id === areaId) : items;
+}
+
+export function addAreaRequirement(areaId: string, requirementId: string): { id: string; area_id: string; requirement_id: string } {
+  const items = get<{ id: string; area_id: string; requirement_id: string }>('rbac_area_requirements');
+  const existing = items.find(ar => ar.area_id === areaId && ar.requirement_id === requirementId);
+  if (existing) return existing;
+  const item = { id: uid(), area_id: areaId, requirement_id: requirementId };
+  items.push(item);
+  set('rbac_area_requirements', items);
+  return item;
+}
+
+export function removeAreaRequirement(areaId: string, requirementId: string): void {
+  const items = get<{ id: string; area_id: string; requirement_id: string }>('rbac_area_requirements');
+  set('rbac_area_requirements', items.filter(ar => !(ar.area_id === areaId && ar.requirement_id === requirementId)));
+}
+
 // ============= FACILITY REQUIREMENTS =============
 
 export function getFacilityRequirements(facilityId?: string): FacilityRequirement[] {
