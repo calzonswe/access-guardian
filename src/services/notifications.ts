@@ -42,6 +42,7 @@ export function notifyApplicationStatusChange(
         read: false,
         link: '/applications',
       });
+      if (applicant?.email) simulateEmail(applicant.email, `Ansökan nekad – ${facilityName}`);
     } else if (newStatus === 'pending_facility' || newStatus === 'pending_exception') {
       store.createNotification({
         user_id: application.applicant_id,
