@@ -7,8 +7,9 @@ import { ApplicationDetailDialog } from '@/components/applications/ApplicationDe
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import type { Application, ApplicationStatus } from '@/types/rbac';
+import { exportApplications } from '@/services/exportService';
 
 const PAGE_SIZE = 10;
 
