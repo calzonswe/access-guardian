@@ -18,6 +18,26 @@ services:
     networks:
       - internal
 
+  # Backend API (Express.js)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: rbac_access
+      DB_USER: rbac_user
+      DB_PASSWORD: ${DB_PASSWORD:-changeme_in_production}
+      JWT_SECRET: ${JWT_SECRET:-changeme_jwt_secret}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+
   # Frontend (React app served by nginx)
   frontend:
     build:
@@ -27,8 +47,7 @@ services:
     ports:
       - "${APP_PORT:-8080}:80"
     depends_on:
-      db:
-        condition: service_healthy
+      - backend
     networks:
       - internal
 

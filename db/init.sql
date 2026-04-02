@@ -67,12 +67,17 @@ CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email VARCHAR(255) UNIQUE NOT NULL,
   full_name VARCHAR(255) NOT NULL,
+  first_name VARCHAR(128) DEFAULT '',
+  last_name VARCHAR(128) DEFAULT '',
   password_hash VARCHAR(255),
   department VARCHAR(100),
+  title VARCHAR(255),
+  phone VARCHAR(50),
   manager_id UUID REFERENCES users(id),
   contact_person_id UUID REFERENCES users(id),
   company VARCHAR(255),
   is_active BOOLEAN NOT NULL DEFAULT true,
+  must_change_password BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -162,6 +167,8 @@ CREATE TABLE user_requirements (
   expires_at TIMESTAMPTZ,
   certified_by UUID REFERENCES users(id),
   status fulfillment_status NOT NULL DEFAULT 'pending',
+  attachment_name VARCHAR(255),
+  attachment_data TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -295,13 +302,6 @@ CREATE TRIGGER trg_org_positions_updated_at BEFORE UPDATE ON organization_positi
 -- ============================================
 -- SEED DATA
 -- ============================================
-
--- Default admin user (password: admin123 — CHANGE IN PRODUCTION)
-INSERT INTO users (id, email, full_name, password_hash, department, is_active)
-VALUES ('00000000-0000-0000-0000-000000000001', 'admin@foretag.se', 'Systemadministratör', '$2b$10$placeholder_hash_change_me', 'IT', true);
-
-INSERT INTO user_roles (user_id, role)
-VALUES ('00000000-0000-0000-0000-000000000001', 'administrator');
 
 -- Default system settings
 INSERT INTO system_settings (key, value) VALUES
