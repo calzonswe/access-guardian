@@ -35,10 +35,14 @@ let _initialized = false;
 // ============= Initialization =============
 
 async function detectMode(): Promise<boolean> {
-  // Check if API is available
+  // Check if API is available by verifying we get a JSON response with { status: 'ok' }
   try {
     const res = await fetch('/api/health', { signal: AbortSignal.timeout(2000) });
-    return res.ok;
+    if (!res.ok) return false;
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) return false;
+    const body = await res.json();
+    return body?.status === 'ok';
   } catch {
     return false;
   }
