@@ -51,14 +51,14 @@ export default function FacilitiesPage() {
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) { toast.error('Ange namn'); return; }
     if (editFacility) {
       store.updateFacility(editFacility.id, { name, description, address, owner_id: ownerId });
       store.addLog({ action: 'settings_changed', actor_id: currentUser.id, target_id: editFacility.id, target_type: 'facility', details: `Anläggning uppdaterad: ${name}` });
       toast.success('Anläggning uppdaterad');
     } else {
-      const f = store.createFacility({ name, description, address, owner_id: ownerId, admin_ids: [] });
+      const f = await store.createFacility({ name, description, address, owner_id: ownerId, admin_ids: [] });
       store.addLog({ action: 'facility_created', actor_id: currentUser.id, target_id: f.id, target_type: 'facility', details: `Ny anläggning skapad: ${name}` });
       toast.success('Anläggning skapad');
     }

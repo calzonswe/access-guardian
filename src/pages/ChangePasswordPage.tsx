@@ -25,9 +25,10 @@ export default function ChangePasswordPage() {
       return;
     }
 
-    const result = await changePassword(newPassword);
-    if (!result.success) {
-      setError(result.error || 'Kunde inte ändra lösenord');
+    try {
+      await changePassword(newPassword);
+    } catch (err: any) {
+      setError(err?.message || 'Kunde inte ändra lösenord');
     }
   };
 

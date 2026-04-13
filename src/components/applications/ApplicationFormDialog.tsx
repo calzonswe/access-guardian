@@ -113,7 +113,7 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
       appId = editApplication.id;
       toast.success('Ansökan uppdaterad');
     } else {
-      const app = store.createApplication({
+      const app = await store.createApplication({
         applicant_id: currentUser.id, facility_id: facilityId, area_ids: selectedAreas,
         status: 'pending_manager', start_date: startDate, end_date: endDate || undefined,
         has_exception: hasMissingReqs, exception_justification: hasMissingReqs ? justification : undefined,

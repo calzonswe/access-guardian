@@ -10,6 +10,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import * as store from '@/services/dataStore';
+import * as api from '@/services/api';
 
 export function AppHeader() {
   const { currentUser, logout } = useAuth();
@@ -23,14 +24,21 @@ export function AppHeader() {
   const unread = notifications.filter(n => !n.read);
   const recent = notifications.slice(0, 5);
 
-  const markRead = (id: string) => {
-    const all = store.getNotifications(currentUser.id);
-    const n = all.find(x => x.id === id);
-    if (n && !n.read) {
-      n.read = true;
-      const allNotifs = JSON.parse(localStorage.getItem('rbac_notifications') || '[]');
-      const idx = allNotifs.findIndex((x: any) => x.id === id);
-      if (idx >= 0) { allNotifs[idx].read = true; localStorage.setItem('rbac_notifications', JSON.stringify(allNotifs)); }
+  const markRead = async (id: string) => {
+    if (store.isApiMode()) {
+      try {
+        await api.markNotificationRead(id);
+        await store.refreshAll();
+      } catch { /* ignore */ }
+    } else {
+      const all = store.getNotifications(currentUser.id);
+      const n = all.find(x => x.id === id);
+      if (n && !n.read) {
+        n.read = true;
+        const allNotifs = JSON.parse(localStorage.getItem('rbac_notifications') || '[]');
+        const idx = allNotifs.findIndex((x: any) => x.id === id);
+        if (idx >= 0) { allNotifs[idx].read = true; localStorage.setItem('rbac_notifications', JSON.stringify(allNotifs)); }
+      }
     }
     setRefresh(x => x + 1);
   };
