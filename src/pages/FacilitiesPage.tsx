@@ -51,7 +51,7 @@ export default function FacilitiesPage() {
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) { toast.error('Ange namn'); return; }
     if (editFacility) {
       store.updateFacility(editFacility.id, { name, description, address, owner_id: ownerId });
