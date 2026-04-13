@@ -61,12 +61,17 @@ router.post('/', async (req, res) => {
       return res.status(403).json({ error: 'Otillräckliga rättigheter' });
     }
     const { name, description, address, owner_id } = req.body;
+    if (!name) {
+      return res.status(400).json({ error: 'Namn krävs' });
+    }
+    const facilityOwnerId = owner_id || req.user.id;
     const { rows } = await pool.query(
       'INSERT INTO facilities (name, description, address, owner_id) VALUES ($1,$2,$3,$4) RETURNING *',
-      [name, description, address, owner_id]
+      [name, description, address, facilityOwnerId]
     );
     res.status(201).json({ ...rows[0], admin_ids: [] });
   } catch (err) {
+    console.error('Facility creation error:', err);
     res.status(500).json({ error: 'Internt serverfel' });
   }
 });
@@ -75,14 +80,17 @@ router.put('/:id', requireFacilityAccess('id'), async (req, res) => {
   try {
     const facilityId = req.params.id;
     const { name, description, address, owner_id } = req.body;
+    const { rows: current } = await pool.query('SELECT owner_id FROM facilities WHERE id = $1', [facilityId]);
+    if (current.length === 0) return res.status(404).json({ error: 'Ej hittad' });
+    const newOwnerId = owner_id || current[0].owner_id;
     const { rows } = await pool.query(
       `UPDATE facilities SET name=$1, description=$2, address=$3, owner_id=$4 WHERE id=$5 RETURNING *`,
-      [name, description, address, owner_id, facilityId]
+      [name, description, address, newOwnerId, facilityId]
     );
-    if (rows.length === 0) return res.status(404).json({ error: 'Ej hittad' });
     const admins = await pool.query('SELECT user_id FROM facility_admins WHERE facility_id = $1', [facilityId]);
     res.json({ ...rows[0], admin_ids: admins.rows.map(r => r.user_id) });
   } catch (err) {
+    console.error('Facility update error:', err);
     res.status(500).json({ error: 'Internt serverfel' });
   }
 });

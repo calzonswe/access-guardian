@@ -31,10 +31,16 @@ router.post('/login', async (req, res) => {
     if (rows.length === 0) return res.status(401).json({ error: 'Felaktig e-post eller lösenord' });
 
     const user = rows[0];
+    let roles = [];
+    if (Array.isArray(user.roles)) {
+      roles = user.roles;
+    } else if (typeof user.roles === 'string' && user.roles.startsWith('{')) {
+      roles = user.roles.slice(1, -1).split(',').map(r => r.trim()).filter(Boolean);
+    }
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) return res.status(401).json({ error: 'Felaktig e-post eller lösenord' });
 
-    const token = signToken({ id: user.id, email: user.email, roles: user.roles.filter(Boolean) });
+    const token = signToken({ id: user.id, email: user.email, roles: roles.filter(Boolean) });
     res.json({
       token,
       user: mapUser(user),
@@ -86,13 +92,19 @@ router.get('/me', authMiddleware, async (req, res) => {
 });
 
 function mapUser(row) {
+  let roles = [];
+  if (Array.isArray(row.roles)) {
+    roles = row.roles;
+  } else if (typeof row.roles === 'string' && row.roles.startsWith('{')) {
+    roles = row.roles.slice(1, -1).split(',').map(r => r.trim()).filter(Boolean);
+  }
   return {
     id: row.id,
     email: row.email,
     full_name: row.full_name,
     first_name: row.first_name || '',
     last_name: row.last_name || '',
-    roles: (row.roles || []).filter(Boolean),
+    roles: roles,
     department: row.department,
     title: row.title,
     phone: row.phone,

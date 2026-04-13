@@ -6,7 +6,7 @@ const router = Router();
 
 const STATUS_ORDER = ['draft', 'pending_manager', 'pending_facility', 'pending_exception', 'approved', 'denied', 'expired'];
 
-async function getApplicationScope(appId) {
+export async function getApplicationScope(appId) {
   const { rows } = await pool.query(
     `SELECT a.applicant_id, a.facility_id, a.status,
             COALESCE(array_agg(aa.area_id) FILTER (WHERE aa.area_id IS NOT NULL), '{}') AS area_ids
