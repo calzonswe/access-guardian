@@ -1,145 +1,48 @@
 
 
-# Plan: Systemtestplan + Användarhandledning
+# Utvärdering och topp-3 prioriterade åtgärder
 
-## Del 1: Skapa en komplett testplan (Markdown-fil)
+## Övergripande bedömning
 
-Fil: `/mnt/documents/testplan.md`
-
-Testplanen struktureras i testsviter som täcker alla systemfunktioner, grupperade per modul. Varje testfall har ID, beskrivning, förutsättningar, steg och förväntat resultat.
-
-### Testsviter
-
-**TS-01: Autentisering & sessionshantering**
-- Inloggning med giltiga/ogiltiga uppgifter
-- Tvingat lösenordsbyte (must_change_password)
-- Lösenordsbyte via profil (validering, matchning)
-- Utloggning och sessionsinvalidering
-- JWT-token expiry-hantering
-
-**TS-02: Rollbaserad åtkomstkontroll (RBAC)**
-- Route guards: varje skyddad sida testas med obehörig roll via URL
-- Sidebar: verifiera att menyval filtreras per roll
-- Funktionsåtkomst: skapa/redigera/ta bort knappar visas/döljs korrekt
-- Multi-roll: användare med flera roller ser kombinerade behörigheter
-
-**TS-03: Användarhantering (Admin)**
-- CRUD för användare (skapa, redigera, ta bort)
-- Rolltilldelning (enkel och multi-roll)
-- Entreprenör kräver kontaktperson
-- Aktivera/inaktivera användare
-- Sök, rollfilter, statusfilter, paginering
-- Export till CSV
-
-**TS-04: Anläggningshantering**
-- Skapa/redigera/ta bort anläggning
-- Tilldela ägare och administratörer
-- Koppla krav till anläggning
-- Rollbegränsning (bara admin/facility_owner/facility_admin)
-
-**TS-05: Områdeshantering**
-- Skapa/redigera/ta bort område kopplat till anläggning
-- Säkerhetsnivå (låg/medel/hög/kritisk)
-- Koppla områdesspecifika krav
-- Visning av kravantal per område
-
-**TS-06: Kravhantering**
-- Skapa krav (utbildning/certifiering/säkerhetsprövning)
-- Giltighetstid (permanent vs. tidsbegränsat)
-- Redigera och ta bort krav
-- Kravregistrering per användare med filbilaga (max 5 MB)
-- Nedladdning av bilaga
-- Utgångsstatus (fulfilled/expired/pending)
-
-**TS-07: Ansökningsflöde (end-to-end)**
-- Anställd skapar ansökan (väljer anläggning, områden, datum)
-- Kravkontroll: anläggnings- och områdeskrav kombineras
-- Saknade krav -> avsteg med motivering
-- Linjechef godkänner (pending_manager -> pending_facility)
-- Anläggningsägare/admin godkänner (pending_facility -> approved)
-- Avsteg: bara facility_owner kan godkänna pending_exception
-- Avslag med anledning
-- Återkallande av beviljat tillträde (approved -> expired)
-- Sök, statusfilter, paginering
-- Export till CSV
-
-**TS-08: Dashboard**
-- Admin ser globala siffror och alla ansökningar
-- Facility owner/admin ser egna anläggningars data
-- Linjechef ser teamets statistik
-- Anställd/Entreprenör ser egna ansökningar
-
-**TS-09: Mitt team (Linjechef)**
-- Lista underställda (rekursivt)
-- Statistik: teammedlemmar, väntande, aktiva
-- Skapa/redigera/ta bort teammedlem
-
-**TS-10: Min åtkomst (Anställd/Entreprenör)**
-- Kravuppfyllnad med progress
-- Lista aktiva tillträden
-
-**TS-11: Notifikationer**
-- Automatiska notifikationer vid statusändringar
-- Markera som läst (dropdown + helsidesvy)
-- "Markera alla som lästa"
-- E-postsimulering (toast)
-
-**TS-12: Systemlogg**
-- Alla CRUD-händelser loggas
-- Visar aktör, tid, händelse, detaljer
-- Export till CSV
-
-**TS-13: Organisation**
-- Trädstruktur (VD -> avdelningar -> medarbetare)
-- Skapa/redigera/ta bort noder
-- Koppla användare till nod
-
-**TS-14: Inställningar**
-- Allmänt, Krav (CRUD), Branding, Aviseringar, Autentisering
-- Flikar fungerar korrekt
-
-**TS-15: Profil**
-- Visa personuppgifter, roller, chef
-- Byt lösenord
-- Kravuppfyllnad med progress
-
-**TS-16: UI/UX**
-- Tema: dark/light-toggle
-- Sidebar: kollapsad vy visar avatar
-- Responsivitet
-- Toasts vid alla åtgärder
+Applikationen fungerar korrekt i **localStorage-läge** (Lovable preview). Backend-koden och Docker-uppsättningen ser i stort komplett ut med auth, RBAC, rate limiting, och alla CRUD-routes. Jag har dock identifierat tre problem sorterade efter allvarlighetsgrad.
 
 ---
 
-## Del 2: Skapa en komplett användarhandledning
+## Åtgärd 1 (Kritisk): Bugg i GET /api/applications för icke-admins
 
-Fil: `/mnt/documents/anvandarhandledning.md`
+**Fil:** `backend/src/routes/applications.js`, rad 53-88
 
-### Struktur
+`appIds` blandar **användar-ID:n** (rad 55: `appIds.add(userId)`) med **ansöknings-ID:n** (rad 71: `appRows.forEach(r => appIds.add(r.id))`). Sedan körs `WHERE a.id = ANY($1)` — dvs. alla användar-ID:n i setet matchar aldrig en ansöknings-rad. Konsekvens: anställda och linjechefer utan facility-roll ser **inga egna ansökningar** i Docker/API-läget.
 
-1. **Introduktion** - Systemöversikt, syfte, roller
-2. **Komma igång** - Inloggning, lösenordsbyte, profil
-3. **Roller och behörigheter** - Beskrivning av alla 6 roller och vad de kan göra
-4. **Dashboard** - Vad varje roll ser
-5. **Ansökningar** - Skapa, granska, godkänna, avslå, återkalla
-6. **Anläggningar och områden** - Skapa, hantera krav, tilldela admins
-7. **Krav och kvalifikationer** - Typer, giltighetstider, uppfyllnad, bilagor
-8. **Användarhantering** - CRUD, roller, aktivering
-9. **Mitt team** - Linjechefens vy
-10. **Min åtkomst** - Anställds/Entreprenörs vy
-11. **Organisation** - Trädstruktur
-12. **Notifikationer** - Systemaviseringar
-13. **Systemlogg** - Revisionslogg
-14. **Inställningar** - Systemkonfiguration
-15. **Export** - CSV-export av data
+**Fix:** Separera logiken — bygg en `applicantIds`-set för `WHERE a.applicant_id = ANY(...)` och ett `facilityAppIds`-set för `WHERE a.id = ANY(...)`, kombinera med `UNION` eller `OR`.
 
 ---
 
-## Teknisk implementation
+## Åtgärd 2 (Medel): AppHeader notifikationer använder localStorage direkt i API-läge
 
-Skript som genererar två Markdown-filer till `/mnt/documents/`:
-- `testplan.md` (~300 rader, strukturerade testfall med ID, steg, förväntat resultat)
-- `anvandarhandledning.md` (~400 rader, steg-för-steg-instruktioner med skärmbilder-platshållare)
+**Fil:** `src/components/layout/AppHeader.tsx`, rad 26-36
 
-Allt körs som ett Python-skript som skriver filerna direkt.
+`markRead()` skriver direkt till `localStorage['rbac_notifications']` oavsett om appen körs i API-läge. Detta innebär att markering av notifikationer som lästa inte persisteras till backend i Docker-miljön. Bör anropa `api.markNotificationRead(id)` i API-läge.
+
+**Fix:** Kontrollera `store.isApiMode()` i `markRead` och anropa rätt API-endpoint istället för localStorage-manipulation.
+
+---
+
+## Åtgärd 3 (Medel): Alla sidor använder synkrona `store.*`-anrop utan React Query
+
+Sidorna (Dashboard, ApplicationsPage, FacilitiesPage, etc.) anropar `store.getUsers()`, `store.getApplications()` etc. synkront vid render. I API-läge returnerar dessa cachead data som laddas vid `initPromise`, men uppdateras aldrig automatiskt efter mutation förrän `refreshAll()` körs manuellt. Det finns ingen loading/error-state och inget automatiskt refetch.
+
+**Fix (stegvis):** Kortsiktigt — se till att alla mutations-handlers (skapa/uppdatera/ta bort) anropar `await store.refreshAll()` konsekvent. Långsiktigt — migrera till React Query hooks som wrapprar API-anropen med automatisk cache-invalidering.
+
+---
+
+## Teknisk sammanfattning
+
+| # | Problem | Fil(er) | Svårighetsgrad |
+|---|---------|---------|----------------|
+| 1 | appIds blandar user-ID och app-ID | `backend/src/routes/applications.js` | Kritisk |
+| 2 | Notifikation-markering ignorerar API-läge | `src/components/layout/AppHeader.tsx` | Medel |
+| 3 | Synkron cache utan auto-refresh efter mutation | Alla sidkomponenter | Medel |
+
+Jag rekommenderar att alla tre åtgärdas i denna ordning. Åtgärd 1 är en databugg som gör att icke-admins inte ser sina ansökningar i produktionsmiljön.
 
