@@ -51,27 +51,34 @@ router.get('/', async (req, res) => {
       return res.json(rows);
     }
     const userId = req.user.id;
-    let appIds = new Set();
-    appIds.add(userId);
+    // Collect applicant user IDs (for WHERE a.applicant_id = ANY)
+    const applicantIds = new Set();
+    applicantIds.add(userId);
     if (req.user.roles.includes('line_manager')) {
       const managed = await getManagedUserIds(userId);
-      managed.forEach(id => appIds.add(id));
+      managed.forEach(id => applicantIds.add(id));
     }
+    // Collect facility IDs (for WHERE a.facility_id = ANY)
+    const facilityIds = [];
     if (req.user.roles.includes('facility_owner') || req.user.roles.includes('facility_admin')) {
       const { rows: userFacilities } = await pool.query(
         `SELECT id FROM facilities WHERE owner_id = $1 OR id IN (SELECT facility_id FROM facility_admins WHERE user_id = $1)`,
         [userId]
       );
-      const facilityIds = userFacilities.map(r => r.id);
-      if (facilityIds.length > 0) {
-        const { rows: appRows } = await pool.query(
-          'SELECT id FROM applications WHERE facility_id = ANY($1)',
-          [facilityIds]
-        );
-        appRows.forEach(r => appIds.add(r.id));
-      }
+      userFacilities.forEach(r => facilityIds.push(r.id));
     }
-    if (appIds.size === 0) return res.json([]);
+    // Build query with OR conditions
+    const conditions = [];
+    const params = [];
+    if (applicantIds.size > 0) {
+      params.push([...applicantIds]);
+      conditions.push(`a.applicant_id = ANY($${params.length})`);
+    }
+    if (facilityIds.length > 0) {
+      params.push(facilityIds);
+      conditions.push(`a.facility_id = ANY($${params.length})`);
+    }
+    if (conditions.length === 0) return res.json([]);
     const { rows } = await pool.query(
       `SELECT a.*,
               COALESCE(array_agg(aa.area_id) FILTER (WHERE aa.area_id IS NOT NULL), '{}') AS area_ids,
@@ -82,9 +89,9 @@ router.get('/', async (req, res) => {
        FROM applications a
        LEFT JOIN application_areas aa ON aa.application_id = a.id
        LEFT JOIN attachments att ON att.application_id = a.id
-       WHERE a.id = ANY($1)
+       WHERE ${conditions.join(' OR ')}
        GROUP BY a.id ORDER BY a.created_at DESC`,
-      [[...appIds]]
+      params
     );
     res.json(rows);
   } catch (err) {
