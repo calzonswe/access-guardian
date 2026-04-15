@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { BrandingProvider } from "@/context/BrandingContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import type { AppRole } from "@/types/rbac";
 import LoginPage from "./pages/LoginPage";
@@ -46,6 +47,7 @@ function RoleGuard({ roles, children }: { roles: AppRole[] | 'all'; children: Re
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
+      <BrandingProvider>
       <AuthProvider>
         <TooltipProvider>
           <Toaster />
@@ -74,6 +76,7 @@ const App = () => (
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
+      </BrandingProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );

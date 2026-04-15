@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/context/AuthContext';
+import { useBranding } from '@/context/BrandingContext';
 import { toast } from 'sonner';
 import type { Requirement } from '@/types/rbac';
 import * as store from '@/services/dataStore';
@@ -39,6 +40,7 @@ const DEFAULT_SETTINGS: SystemSettings = {
 
 export default function SettingsPage() {
   const { currentUser } = useAuth();
+  const { refresh: refreshBranding } = useBranding();
   const [settings, setSettings] = useState<SystemSettings>(DEFAULT_SETTINGS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -93,6 +95,7 @@ export default function SettingsPage() {
       if (settings.general) toSave.general = settings.general;
       if (settings.auth) toSave.auth = settings.auth;
       await store.saveSettings(toSave as store.SystemSettings);
+      await refreshBranding();
       toast.success('Inställningar sparade');
     } catch (err) {
       toast.error('Kunde inte spara inställningar');
@@ -237,6 +240,24 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
+                <Label>Logotyp (URL)</Label>
+                <div className="flex items-center gap-4">
+                  <Input
+                    placeholder="https://example.com/logo.png"
+                    value={settings.branding?.logoUrl || ''}
+                    onChange={e => updateSetting('branding', { logoUrl: e.target.value })}
+                  />
+                  {settings.branding?.logoUrl && (
+                    <img
+                      src={settings.branding.logoUrl}
+                      alt="Förhandsvisning"
+                      className="h-10 w-10 rounded-lg border object-contain bg-background"
+                    />
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Ange en URL till en bild. Visas i sidebar och på inloggningssidan.</p>
+              </div>
+              <div className="space-y-2">
                 <Label>Applikationsnamn</Label>
                 <Input
                   value={settings.branding?.appName || ''}
@@ -254,9 +275,11 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>Primärfärg</Label>
                   <div className="flex gap-2">
-                    <div
-                      className="h-9 w-9 rounded-md border"
-                      style={{ backgroundColor: settings.branding?.primaryColor || '#2563eb' }}
+                    <input
+                      type="color"
+                      className="h-9 w-9 rounded-md border cursor-pointer"
+                      value={settings.branding?.primaryColor || '#2563eb'}
+                      onChange={e => updateSetting('branding', { primaryColor: e.target.value })}
                     />
                     <Input
                       className="font-mono text-sm"

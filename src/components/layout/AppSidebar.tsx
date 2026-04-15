@@ -5,6 +5,7 @@ import {
 import { NavLink } from '@/components/NavLink';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useBranding } from '@/context/BrandingContext';
 import { ROLE_LABELS, type AppRole } from '@/types/rbac';
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
@@ -47,6 +48,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const { currentUser } = useAuth();
+  const { appName, subtitle, logoUrl } = useBranding();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -63,19 +65,27 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         {!collapsed ? (
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
-              <Shield className="h-4 w-4 text-sidebar-primary-foreground" />
-            </div>
+            {logoUrl ? (
+              <img src={logoUrl} alt={appName} className="h-8 w-8 rounded-lg object-contain" />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
+                <Shield className="h-4 w-4 text-sidebar-primary-foreground" />
+              </div>
+            )}
             <div>
-              <h2 className="text-sm font-semibold text-sidebar-foreground">RBAC Access</h2>
-              <p className="text-xs text-sidebar-foreground/60">Tillträdeshantering</p>
+              <h2 className="text-sm font-semibold text-sidebar-foreground">{appName}</h2>
+              <p className="text-xs text-sidebar-foreground/60">{subtitle}</p>
             </div>
           </div>
         ) : (
           <div className="flex justify-center">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
-              <Shield className="h-4 w-4 text-sidebar-primary-foreground" />
-            </div>
+            {logoUrl ? (
+              <img src={logoUrl} alt={appName} className="h-8 w-8 rounded-lg object-contain" />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
+                <Shield className="h-4 w-4 text-sidebar-primary-foreground" />
+              </div>
+            )}
           </div>
         )}
       </SidebarHeader>
