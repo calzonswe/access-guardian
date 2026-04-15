@@ -5,9 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
+import { useBranding } from '@/context/BrandingContext';
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { appName, logoUrl } = useBranding();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -30,12 +32,16 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary">
-              <Shield className="h-7 w-7 text-primary-foreground" />
-            </div>
+            {logoUrl ? (
+              <img src={logoUrl} alt={appName} className="h-14 w-14 rounded-xl object-contain" />
+            ) : (
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary">
+                <Shield className="h-7 w-7 text-primary-foreground" />
+              </div>
+            )}
           </div>
           <div>
-            <CardTitle className="text-2xl">RBAC Access</CardTitle>
+            <CardTitle className="text-2xl">{appName}</CardTitle>
             <CardDescription className="mt-1">Logga in för att fortsätta</CardDescription>
           </div>
         </CardHeader>
