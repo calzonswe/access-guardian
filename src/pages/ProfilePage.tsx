@@ -10,7 +10,6 @@ import { Shield, CheckCircle, XCircle, Clock, Lock, Pencil, Save, X } from 'luci
 import { useAuth } from '@/context/AuthContext';
 import { ROLE_LABELS } from '@/types/rbac';
 import * as store from '@/services/dataStore';
-import * as api from '@/services/api';
 import { toast } from 'sonner';
 
 export default function ProfilePage() {
@@ -49,7 +48,7 @@ export default function ProfilePage() {
       const parts = editFullName.trim().split(/\s+/);
       const first_name = parts[0] || '';
       const last_name = parts.slice(1).join(' ') || '';
-      await api.updateUser(currentUser.id, {
+      await store.updateUser(currentUser.id, {
         full_name: editFullName.trim(),
         first_name,
         last_name,
@@ -57,7 +56,7 @@ export default function ProfilePage() {
         title: editTitle.trim() || undefined,
         department: editDepartment.trim() || undefined,
       });
-      await refreshUser();
+      refreshUser();
       setEditing(false);
       toast.success('Profil uppdaterad');
     } catch (err) {

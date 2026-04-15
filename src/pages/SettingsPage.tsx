@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import type { Requirement } from '@/types/rbac';
+import * as store from '@/services/dataStore';
 import * as api from '@/services/api';
 
 const TYPE_LABELS: Record<string, string> = { certification: 'Certifiering', clearance: 'Säkerhetsprövning', training: 'Utbildning' };
@@ -53,7 +54,7 @@ export default function SettingsPage() {
   const [reqValidityDays, setReqValidityDays] = useState(365);
 
   useEffect(() => {
-    api.getSettings().then(s => {
+    store.getSettings().then(s => {
       const merged = { ...DEFAULT_SETTINGS };
       if (s.branding) merged.branding = { ...DEFAULT_SETTINGS.branding!, ...s.branding };
       if (s.notifications) {
@@ -91,7 +92,7 @@ export default function SettingsPage() {
       if (settings.security) toSave.security = settings.security;
       if (settings.general) toSave.general = settings.general;
       if (settings.auth) toSave.auth = settings.auth;
-      await api.saveSettings(toSave as api.SystemSettings);
+      await store.saveSettings(toSave as store.SystemSettings);
       toast.success('Inställningar sparade');
     } catch (err) {
       toast.error('Kunde inte spara inställningar');
@@ -113,12 +114,12 @@ export default function SettingsPage() {
   const handleSaveReq = async () => {
     if (!reqName.trim()) { toast.error('Ange namn på kravet'); return; }
     if (editReq) {
-      await api.updateRequirement(editReq.id, { name: reqName, description: reqDescription, type: reqType, has_expiry: reqHasExpiry, validity_days: reqHasExpiry ? reqValidityDays : undefined });
+      await store.updateRequirement(editReq.id, { name: reqName, description: reqDescription, type: reqType, has_expiry: reqHasExpiry, validity_days: reqHasExpiry ? reqValidityDays : undefined });
       toast.success('Krav uppdaterat');
     } else {
-      await api.createRequirement({ name: reqName, description: reqDescription, type: reqType, has_expiry: reqHasExpiry, validity_days: reqHasExpiry ? reqValidityDays : undefined });
+      await store.createRequirement({ name: reqName, description: reqDescription, type: reqType, has_expiry: reqHasExpiry, validity_days: reqHasExpiry ? reqValidityDays : undefined });
       if (currentUser) {
-        await api.addLog({ action: 'requirement_created', actor_id: currentUser.id, details: `Nytt krav skapat: ${reqName}` });
+        await store.addLog({ action: 'requirement_created', actor_id: currentUser.id, details: `Nytt krav skapat: ${reqName}` });
       }
       toast.success('Krav skapat');
     }
@@ -127,7 +128,7 @@ export default function SettingsPage() {
 
   const handleDeleteReq = async (r: Requirement) => {
     if (confirm(`Ta bort kravet "${r.name}"?`)) {
-      await api.deleteRequirement(r.id);
+      await store.deleteRequirement(r.id);
       toast.success('Krav borttaget'); reload();
     }
   };
@@ -440,18 +441,20 @@ function RequirementsTab({ reqDialogOpen, setReqDialogOpen, openCreateReq, openE
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getRequirements().then(r => { setRequirements(r); setLoading(false); });
+    const reqs = store.getRequirements();
+    setRequirements(reqs);
+    setLoading(false);
   }, []);
 
   const handleSave = async () => {
     if (!reqName.trim()) { toast.error('Ange namn på kravet'); return; }
     try {
       if (editReq) {
-        await api.updateRequirement(editReq.id, { name: reqName, description: reqDescription, type: reqType, has_expiry: reqHasExpiry, validity_days: reqHasExpiry ? reqValidityDays : undefined });
+        await store.updateRequirement(editReq.id, { name: reqName, description: reqDescription, type: reqType, has_expiry: reqHasExpiry, validity_days: reqHasExpiry ? reqValidityDays : undefined });
         setRequirements(prev => prev.map(r => r.id === editReq.id ? { ...r, name: reqName, description: reqDescription, type: reqType, has_expiry: reqHasExpiry, validity_days: reqHasExpiry ? reqValidityDays : undefined } : r));
         toast.success('Krav uppdaterat');
       } else {
-        const created = await api.createRequirement({ name: reqName, description: reqDescription, type: reqType, has_expiry: reqHasExpiry, validity_days: reqHasExpiry ? reqValidityDays : undefined });
+        const created = await store.createRequirement({ name: reqName, description: reqDescription, type: reqType, has_expiry: reqHasExpiry, validity_days: reqHasExpiry ? reqValidityDays : undefined });
         setRequirements(prev => [...prev, created]);
         toast.success('Krav skapat');
       }
@@ -464,7 +467,7 @@ function RequirementsTab({ reqDialogOpen, setReqDialogOpen, openCreateReq, openE
   const handleDelete = async (r: Requirement) => {
     if (!confirm(`Ta bort kravet "${r.name}"?`)) return;
     try {
-      await api.deleteRequirement(r.id);
+      await store.deleteRequirement(r.id);
       setRequirements(prev => prev.filter(x => x.id !== r.id));
       toast.success('Krav borttaget');
     } catch {

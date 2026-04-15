@@ -669,6 +669,36 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
   localSet(KEYS.NOTIFICATIONS, items);
 }
 
+// ============= SETTINGS =============
+
+export interface SystemSettings {
+  branding?: { appName?: string; subtitle?: string; primaryColor?: string; logoUrl?: string };
+  notifications?: { expiryWarningDays?: number[]; emailEnabled?: boolean; warning30?: boolean; warning7?: boolean; warning1?: boolean };
+  security?: { sessionTimeoutMinutes?: number; maxLoginAttempts?: number; twoFactorRequired?: boolean };
+  general?: { organizationName?: string; language?: string; selfRegistration?: boolean };
+  auth?: { localEnabled?: boolean; entraEnabled?: boolean; entraTenantId?: string; entraClientId?: string; samlEnabled?: boolean };
+}
+
+export async function getSettings(): Promise<SystemSettings> {
+  if (_apiMode) {
+    return api.getSettings();
+  }
+  try {
+    const data = localStorage.getItem('rbac_settings');
+    return data ? JSON.parse(data) : {};
+  } catch {
+    return {};
+  }
+}
+
+export async function saveSettings(settings: SystemSettings): Promise<SystemSettings> {
+  if (_apiMode) {
+    return api.saveSettings(settings as api.SystemSettings);
+  }
+  localStorage.setItem('rbac_settings', JSON.stringify(settings));
+  return settings;
+}
+
 // ============= ORG TREE =============
 
 export function getOrgTree(): OrgNode[] {
