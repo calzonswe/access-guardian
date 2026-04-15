@@ -441,18 +441,20 @@ function RequirementsTab({ reqDialogOpen, setReqDialogOpen, openCreateReq, openE
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getRequirements().then(r => { setRequirements(r); setLoading(false); });
+    const reqs = store.getRequirements();
+    setRequirements(reqs);
+    setLoading(false);
   }, []);
 
   const handleSave = async () => {
     if (!reqName.trim()) { toast.error('Ange namn på kravet'); return; }
     try {
       if (editReq) {
-        await api.updateRequirement(editReq.id, { name: reqName, description: reqDescription, type: reqType, has_expiry: reqHasExpiry, validity_days: reqHasExpiry ? reqValidityDays : undefined });
+        await store.updateRequirement(editReq.id, { name: reqName, description: reqDescription, type: reqType, has_expiry: reqHasExpiry, validity_days: reqHasExpiry ? reqValidityDays : undefined });
         setRequirements(prev => prev.map(r => r.id === editReq.id ? { ...r, name: reqName, description: reqDescription, type: reqType, has_expiry: reqHasExpiry, validity_days: reqHasExpiry ? reqValidityDays : undefined } : r));
         toast.success('Krav uppdaterat');
       } else {
-        const created = await api.createRequirement({ name: reqName, description: reqDescription, type: reqType, has_expiry: reqHasExpiry, validity_days: reqHasExpiry ? reqValidityDays : undefined });
+        const created = await store.createRequirement({ name: reqName, description: reqDescription, type: reqType, has_expiry: reqHasExpiry, validity_days: reqHasExpiry ? reqValidityDays : undefined });
         setRequirements(prev => [...prev, created]);
         toast.success('Krav skapat');
       }
@@ -465,7 +467,7 @@ function RequirementsTab({ reqDialogOpen, setReqDialogOpen, openCreateReq, openE
   const handleDelete = async (r: Requirement) => {
     if (!confirm(`Ta bort kravet "${r.name}"?`)) return;
     try {
-      await api.deleteRequirement(r.id);
+      await store.deleteRequirement(r.id);
       setRequirements(prev => prev.filter(x => x.id !== r.id));
       toast.success('Krav borttaget');
     } catch {
