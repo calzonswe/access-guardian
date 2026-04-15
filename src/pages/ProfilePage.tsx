@@ -10,7 +10,6 @@ import { Shield, CheckCircle, XCircle, Clock, Lock, Pencil, Save, X } from 'luci
 import { useAuth } from '@/context/AuthContext';
 import { ROLE_LABELS } from '@/types/rbac';
 import * as store from '@/services/dataStore';
-import * as api from '@/services/api';
 import { toast } from 'sonner';
 
 export default function ProfilePage() {
