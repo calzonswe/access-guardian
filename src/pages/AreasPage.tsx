@@ -56,22 +56,22 @@ export default function AreasPage() {
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim() || !facilityId) { toast.error('Fyll i alla fält'); return; }
     if (editArea) {
-      store.updateArea(editArea.id, { facility_id: facilityId, name, description, security_level: securityLevel });
+      await store.updateArea(editArea.id, { facility_id: facilityId, name, description, security_level: securityLevel });
       toast.success('Område uppdaterat');
     } else {
-      store.createArea({ facility_id: facilityId, name, description, security_level: securityLevel });
-      store.addLog({ action: 'area_created', actor_id: currentUser.id, details: `Nytt område skapat: ${name}` });
+      await store.createArea({ facility_id: facilityId, name, description, security_level: securityLevel });
+      await store.addLog({ action: 'area_created', actor_id: currentUser.id, details: `Nytt område skapat: ${name}` });
       toast.success('Område skapat');
     }
     setDialogOpen(false); reload();
   };
 
-  const handleDelete = (a: Area) => {
+  const handleDelete = async (a: Area) => {
     if (confirm(`Ta bort "${a.name}"?`)) {
-      store.deleteArea(a.id);
+      await store.deleteArea(a.id);
       toast.success('Område borttaget'); reload();
     }
   };
@@ -81,11 +81,11 @@ export default function AreasPage() {
     setReqDialogOpen(true);
   };
 
-  const toggleAreaReq = (areaId: string, requirementId: string, checked: boolean) => {
+  const toggleAreaReq = async (areaId: string, requirementId: string, checked: boolean) => {
     if (checked) {
-      store.addAreaRequirement(areaId, requirementId);
+      await store.addAreaRequirement(areaId, requirementId);
     } else {
-      store.removeAreaRequirement(areaId, requirementId);
+      await store.removeAreaRequirement(areaId, requirementId);
     }
     reload();
   };

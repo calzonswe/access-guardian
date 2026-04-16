@@ -167,10 +167,10 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
             </div>
             <div className="space-y-2">
               <Label>Närmaste chef</Label>
-              <Select value={managerId} onValueChange={setManagerId}>
+              <Select value={managerId || '__none__'} onValueChange={v => setManagerId(v === '__none__' ? '' : v)}>
                 <SelectTrigger><SelectValue placeholder="Välj chef" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Ingen</SelectItem>
+                  <SelectItem value="__none__">Ingen</SelectItem>
                   {managers.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
                 </SelectContent>
               </Select>

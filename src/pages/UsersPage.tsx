@@ -62,10 +62,10 @@ export default function UsersPage() {
   const openEdit = (u: User) => { setEditUser(u); setDialogOpen(true); };
   const openReqDialog = (u: User) => { setReqTargetUser(u); setReqDialogOpen(true); };
 
-  const handleDelete = (u: User) => {
+  const handleDelete = async (u: User) => {
     if (u.id === currentUser.id) { toast.error('Du kan inte ta bort dig själv'); return; }
     if (confirm(`Ta bort "${u.full_name}"?`)) {
-      store.deleteUser(u.id);
+      await store.deleteUser(u.id);
       toast.success('Användare borttagen'); reload();
     }
   };
