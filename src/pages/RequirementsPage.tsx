@@ -45,22 +45,22 @@ export default function RequirementsPage() {
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) { toast.error('Ange namn'); return; }
     if (editReq) {
-      store.updateRequirement(editReq.id, { name, description, type, has_expiry: hasExpiry, validity_days: hasExpiry ? validityDays : undefined });
+      await store.updateRequirement(editReq.id, { name, description, type, has_expiry: hasExpiry, validity_days: hasExpiry ? validityDays : undefined });
       toast.success('Krav uppdaterat');
     } else {
-      store.createRequirement({ name, description, type, has_expiry: hasExpiry, validity_days: hasExpiry ? validityDays : undefined });
-      store.addLog({ action: 'requirement_created', actor_id: currentUser.id, details: `Nytt krav skapat: ${name}` });
+      await store.createRequirement({ name, description, type, has_expiry: hasExpiry, validity_days: hasExpiry ? validityDays : undefined });
+      await store.addLog({ action: 'requirement_created', actor_id: currentUser.id, details: `Nytt krav skapat: ${name}` });
       toast.success('Krav skapat');
     }
     setDialogOpen(false); reload();
   };
 
-  const handleDelete = (r: Requirement) => {
+  const handleDelete = async (r: Requirement) => {
     if (confirm(`Ta bort "${r.name}"?`)) {
-      store.deleteRequirement(r.id);
+      await store.deleteRequirement(r.id);
       toast.success('Krav borttaget'); reload();
     }
   };

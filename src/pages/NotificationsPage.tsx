@@ -22,14 +22,14 @@ export default function NotificationsPage() {
 
   const unread = notifications.filter(n => !n.read);
 
-  const markAllRead = () => {
-    store.markAllNotificationsRead(currentUser.id);
+  const markAllRead = async () => {
+    await store.markAllNotificationsRead(currentUser.id);
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     toast.success('Alla aviseringar markerade som lästa');
   };
 
-  const markRead = (id: string) => {
-    store.markNotificationRead(id);
+  const markRead = async (id: string) => {
+    await store.markNotificationRead(id);
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
 

@@ -26,7 +26,6 @@ export default function FacilitiesPage() {
   const [, setRefresh] = useState(0);
   const reload = () => setRefresh(n => n + 1);
 
-  // Form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
@@ -54,22 +53,22 @@ export default function FacilitiesPage() {
   const handleSave = async () => {
     if (!name.trim()) { toast.error('Ange namn'); return; }
     if (editFacility) {
-      store.updateFacility(editFacility.id, { name, description, address, owner_id: ownerId });
-      store.addLog({ action: 'settings_changed', actor_id: currentUser.id, target_id: editFacility.id, target_type: 'facility', details: `Anläggning uppdaterad: ${name}` });
+      await store.updateFacility(editFacility.id, { name, description, address, owner_id: ownerId });
+      await store.addLog({ action: 'settings_changed', actor_id: currentUser.id, target_id: editFacility.id, target_type: 'facility', details: `Anläggning uppdaterad: ${name}` });
       toast.success('Anläggning uppdaterad');
     } else {
       const f = await store.createFacility({ name, description, address, owner_id: ownerId, admin_ids: [] });
-      store.addLog({ action: 'facility_created', actor_id: currentUser.id, target_id: f.id, target_type: 'facility', details: `Ny anläggning skapad: ${name}` });
+      await store.addLog({ action: 'facility_created', actor_id: currentUser.id, target_id: f.id, target_type: 'facility', details: `Ny anläggning skapad: ${name}` });
       toast.success('Anläggning skapad');
     }
     setDialogOpen(false);
     reload();
   };
 
-  const handleDelete = (f: Facility) => {
+  const handleDelete = async (f: Facility) => {
     if (confirm(`Är du säker på att du vill ta bort "${f.name}" och alla dess områden?`)) {
-      store.deleteFacility(f.id);
-      store.addLog({ action: 'settings_changed', actor_id: currentUser.id, target_id: f.id, target_type: 'facility', details: `Anläggning borttagen: ${f.name}` });
+      await store.deleteFacility(f.id);
+      await store.addLog({ action: 'settings_changed', actor_id: currentUser.id, target_id: f.id, target_type: 'facility', details: `Anläggning borttagen: ${f.name}` });
       toast.success('Anläggning borttagen');
       reload();
     }
@@ -80,11 +79,11 @@ export default function FacilitiesPage() {
     setReqDialogOpen(true);
   };
 
-  const toggleFacilityReq = (facilityId: string, requirementId: string, checked: boolean) => {
+  const toggleFacilityReq = async (facilityId: string, requirementId: string, checked: boolean) => {
     if (checked) {
-      store.addFacilityRequirement(facilityId, requirementId);
+      await store.addFacilityRequirement(facilityId, requirementId);
     } else {
-      store.removeFacilityRequirement(facilityId, requirementId);
+      await store.removeFacilityRequirement(facilityId, requirementId);
     }
     reload();
   };
@@ -98,21 +97,20 @@ export default function FacilitiesPage() {
     });
   };
 
-  // Admin assignment
   const openAdminDialog = (facilityId: string) => {
     setAdminFacilityId(facilityId);
     setAdminDialogOpen(true);
   };
 
-  const toggleFacilityAdmin = (facilityId: string, userId: string, checked: boolean) => {
+  const toggleFacilityAdmin = async (facilityId: string, userId: string, checked: boolean) => {
     const facility = store.getFacility(facilityId);
     if (!facility) return;
     const currentAdmins = facility.admin_ids || [];
     const newAdmins = checked
       ? [...currentAdmins, userId]
       : currentAdmins.filter(id => id !== userId);
-    store.updateFacility(facilityId, { admin_ids: newAdmins });
-    store.addLog({ action: 'settings_changed', actor_id: currentUser.id, target_id: facilityId, target_type: 'facility', details: `Administratörer uppdaterade för ${facility.name}` });
+    await store.updateFacility(facilityId, { admin_ids: newAdmins });
+    await store.addLog({ action: 'settings_changed', actor_id: currentUser.id, target_id: facilityId, target_type: 'facility', details: `Administratörer uppdaterade för ${facility.name}` });
     reload();
   };
 
@@ -185,7 +183,6 @@ export default function FacilitiesPage() {
                     Ägare: <span className="font-medium text-foreground">{owner?.full_name ?? '–'}</span>
                   </div>
 
-                  {/* Admins */}
                   <div className="text-xs text-muted-foreground">
                     <span>Administratörer: </span>
                     {admins.length > 0 ? (
@@ -207,7 +204,6 @@ export default function FacilitiesPage() {
                     {facilityAreas.length === 0 && <span className="text-xs text-muted-foreground">Inga områden</span>}
                   </div>
 
-                  {/* Facility requirements section */}
                   <div className="border-t border-border pt-3 mt-3">
                     <button
                       onClick={() => toggleExpandReqs(facility.id)}
@@ -243,7 +239,6 @@ export default function FacilitiesPage() {
         </div>
       )}
 
-      {/* Create/Edit Facility Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -279,7 +274,6 @@ export default function FacilitiesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Facility Requirements Dialog */}
       <Dialog open={reqDialogOpen} onOpenChange={setReqDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -317,7 +311,6 @@ export default function FacilitiesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Facility Admin Assignment Dialog */}
       <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
         <DialogContent>
           <DialogHeader>

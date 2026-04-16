@@ -95,7 +95,7 @@ export default function OrganizationPage() {
           <div className="space-y-4">
             <div className="space-y-2"><Label>Titel</Label><Input value={formTitle} onChange={e => setFormTitle(e.target.value)} /></div>
             <div className="space-y-2"><Label>Avdelning</Label><Input value={formDept} onChange={e => setFormDept(e.target.value)} /></div>
-            <div className="space-y-2"><Label>Person</Label><Select value={formUserId} onValueChange={setFormUserId}><SelectTrigger><SelectValue placeholder="Vakant" /></SelectTrigger><SelectContent><SelectItem value="">Vakant</SelectItem>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-2"><Label>Person</Label><Select value={formUserId || '__vacant__'} onValueChange={v => setFormUserId(v === '__vacant__' ? '' : v)}><SelectTrigger><SelectValue placeholder="Vakant" /></SelectTrigger><SelectContent><SelectItem value="__vacant__">Vakant</SelectItem>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}</SelectContent></Select></div>
           </div>
           <DialogFooter><Button variant="outline" onClick={() => setEditDialog(d => ({ ...d, open: false }))}>Avbryt</Button><Button onClick={handleSave}>{editDialog.mode === 'add' ? 'Lägg till' : 'Spara'}</Button></DialogFooter>
         </DialogContent>
