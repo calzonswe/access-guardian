@@ -1,73 +1,263 @@
-# Welcome to your Lovable project
+# Access Guardian — RBAC Tillträdessystem
 
-## Project info
+Ett rollbaserat åtkomstkontrollsystem (RBAC) för hantering av tillträdesansökningar till anläggningar och områden. Byggt med React, Express.js och PostgreSQL.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Innehåll
 
-## How can I edit this code?
+- [Snabbstart](#snabbstart)
+- [Systemkrav](#systemkrav)
+- [Installation](#installation)
+  - [Docker (produktion)](#docker-produktion)
+  - [Lokal utveckling](#lokal-utveckling)
+- [Första inloggning](#första-inloggning)
+- [Projektstruktur](#projektstruktur)
+- [Konfiguration](#konfiguration)
+- [Kommandon](#kommandon)
+- [Dokumentation](#dokumentation)
+- [Felsökning](#felsökning)
 
-There are several ways of editing your application.
+---
 
-**Use Lovable**
+## Snabbstart
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+```bash
+# 1. Klona repot
+git clone <REPO_URL> && cd access-guardian
 
-Changes made via Lovable will be committed automatically to this repo.
+# 2. Skapa .env-fil
+cp .env.example .env
+# Redigera .env — ändra DB_PASSWORD och JWT_SECRET
 
-**Use your preferred IDE**
+# 3. Starta med Docker Compose
+docker compose up -d
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+# 4. Öppna i webbläsaren
+open http://localhost:8080
+```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+Logga in med `admin@foretag.se` / `Admin123!` (lösenordsändring krävs vid första inloggning).
 
-Follow these steps:
+---
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Systemkrav
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+| Komponent | Version |
+|-----------|---------|
+| Docker & Docker Compose | 20+ / v2+ |
+| Node.js (för lokal utveckling) | 18+ |
+| npm | 9+ |
 
-# Step 3: Install the necessary dependencies.
-npm i
+---
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+## Installation
+
+### Docker (produktion)
+
+Hela applikationen (databas, backend, frontend) körs i tre Docker-containrar via Docker Compose.
+
+#### 1. Skapa miljövariabler
+
+```bash
+cp .env.example .env
+```
+
+Redigera `.env`:
+
+```env
+# OBLIGATORISKA — ändra dessa innan produktion
+DB_PASSWORD=ett_starkt_databaslösenord
+JWT_SECRET=en_lång_slumpmässig_sträng_för_jwt
+
+# VALFRIA
+APP_PORT=8080          # Port som frontend exponeras på (standard: 8080)
+```
+
+#### 2. Bygg och starta
+
+```bash
+docker compose up -d --build
+```
+
+Detta startar:
+- **db** — PostgreSQL 16 med automatisk databasinitiering (`db/init.sql`)
+- **backend** — Express.js API på port 3000 (internt)
+- **frontend** — React-app serverad via Nginx på port 8080
+
+#### 3. Verifiera
+
+```bash
+# Kontrollera att alla containrar körs
+docker compose ps
+
+# Kontrollera backend-hälsa
+curl http://localhost:3000/health
+
+# Kontrollera frontend-hälsa
+curl http://localhost:8080/health
+```
+
+#### 4. Stoppa
+
+```bash
+docker compose down          # Stoppa utan att radera data
+docker compose down -v       # Stoppa OCH radera databasvolym
+```
+
+### Lokal utveckling
+
+Frontend och backend kan köras separat utan Docker.
+
+#### Frontend
+
+```bash
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Frontend startar på `http://localhost:8080`. I detta läge används localStorage som datakälla (ingen backend behövs).
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+#### Backend
 
-**Use GitHub Codespaces**
+```bash
+cd backend
+npm install
+npm run dev
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Backend startar på `http://localhost:3000`. Kräver en PostgreSQL-databas — sätt miljövariabler:
 
-## What technologies are used for this project?
+```bash
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_NAME=rbac_access
+export DB_USER=rbac_user
+export DB_PASSWORD=ditt_lösenord
+export JWT_SECRET=din_jwt_hemlighet
+```
 
-This project is built with:
+#### Databas
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Initiera PostgreSQL-schemat manuellt:
 
-## How can I deploy this project?
+```bash
+psql -U rbac_user -d rbac_access -f db/init.sql
+```
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+---
 
-## Can I connect a custom domain to my Lovable project?
+## Första inloggning
 
-Yes, you can!
+| Fält | Värde |
+|------|-------|
+| E-post | `admin@foretag.se` |
+| Lösenord | `Admin123!` |
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+> **OBS:** Du måste byta lösenord vid första inloggning. Standardanvändaren skapas av backend vid databasinitiering.
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+---
+
+## Projektstruktur
+
+```
+├── backend/                 # Express.js backend (plain JS)
+│   ├── src/
+│   │   ├── index.js         # Appstart, route-registrering
+│   │   ├── db.js            # PostgreSQL-anslutning
+│   │   ├── middleware/
+│   │   │   ├── auth.js      # JWT-verifiering & token-signering
+│   │   │   ├── rbac.js      # Rollbaserad åtkomstkontroll
+│   │   │   └── rateLimit.js # Inloggningsbegränsning
+│   │   └── routes/          # API-routes (13 st)
+│   └── Dockerfile
+├── db/
+│   └── init.sql             # Fullständigt databasschema + seed-data
+├── src/                     # React frontend (TypeScript)
+│   ├── components/          # UI-komponenter (shadcn-ui baserade)
+│   ├── context/             # Auth, Theme, Branding contexts
+│   ├── pages/               # Sidkomponenter (14 st)
+│   ├── services/
+│   │   ├── api.ts           # HTTP-klient mot backend
+│   │   ├── dataStore.ts     # Abstraktionslager (API/localStorage)
+│   │   └── notifications.ts # Notifikationshantering
+│   └── types/               # TypeScript-typer
+├── docker-compose.yml       # 3-tjänste-uppsättning
+├── Dockerfile               # Frontend multi-stage build (Nginx)
+├── nginx.conf               # Reverse proxy & caching
+└── .env.example             # Mall för miljövariabler
+```
+
+---
+
+## Konfiguration
+
+### Miljövariabler
+
+| Variabel | Krävs | Beskrivning | Standard |
+|----------|-------|-------------|----------|
+| `DB_PASSWORD` | Ja | PostgreSQL-lösenord | — |
+| `JWT_SECRET` | Ja | Hemlig nyckel för JWT-signering | — |
+| `APP_PORT` | Nej | Port för frontend | `8080` |
+| `VITE_API_URL` | Nej | Backend-URL för frontend | `/api` (via Nginx) |
+
+### Systeminställningar (via GUI)
+
+Under **Inställningar** i applikationen kan administratörer konfigurera:
+
+- **Branding** — Applikationsnamn, undertext, logotyp-URL, primärfärg
+- **Notifikationer** — Antal dagar före utgång för påminnelser
+- **Säkerhet** — Sessionstimeout, max inloggningsförsök
+
+---
+
+## Kommandon
+
+| Uppgift | Kommando |
+|---------|----------|
+| Full stack (Docker) | `docker compose up -d --build` |
+| Frontend dev | `npm run dev` |
+| Frontend build | `npm run build` |
+| Frontend lint | `npm run lint` |
+| Backend dev | `cd backend && npm run dev` |
+
+---
+
+## Dokumentation
+
+| Dokument | Beskrivning |
+|----------|-------------|
+| [TECHNICAL.md](TECHNICAL.md) | Fullständig teknisk dokumentation (arkitektur, API, databas) |
+| [MANUAL.md](MANUAL.md) | Användarhandledning |
+| [AGENTS.md](AGENTS.md) | Utvecklarinstruktioner för AI-agenter |
+
+---
+
+## Felsökning
+
+### Containrar startar inte
+
+```bash
+docker compose logs db       # Kontrollera databasloggar
+docker compose logs backend  # Kontrollera backend-loggar
+```
+
+### "Felaktig e-post eller lösenord"
+
+- Kontrollera att e-postadressen är korrekt
+- Standardlösenord: `Admin123!`
+
+### "För många inloggningsförsök"
+
+- Vänta 15 minuter eller byt IP-adress
+- Rate limit: 5 försök per 15 minuter
+
+### Frontend visar ingen data
+
+- I Docker-läge: verifiera att backend-containern körs (`docker compose ps`)
+- I lokal dev: frontend använder localStorage — data finns bara lokalt
+
+### Databas behöver återställas
+
+```bash
+docker compose down -v       # Raderar databasvolymen
+docker compose up -d --build # Återskapar med init.sql
+```
