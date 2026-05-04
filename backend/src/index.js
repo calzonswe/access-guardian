@@ -23,8 +23,9 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Health check
+// Health check (both paths for nginx proxy and direct access)
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
 // Public routes
 app.use('/api/auth', authRoutes);
