@@ -88,6 +88,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const changePassword = useCallback(async (newPassword: string) => {
     if (!currentUser) throw new Error('Ej inloggad');
     if (newPassword.length < 8) throw new Error('Lösenordet måste vara minst 8 tecken');
+    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
+      throw new Error('Lösenordet måste innehålla stora och små bokstäver, siffror och specialtecken');
+    }
 
     if (store.isApiMode()) {
       const res = await api.changePassword(newPassword);

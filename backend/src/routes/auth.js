@@ -55,8 +55,11 @@ router.post('/login', async (req, res) => {
 router.post('/change-password', authMiddleware, async (req, res) => {
   try {
     const { newPassword } = req.body;
-    if (!newPassword || newPassword.length < 8) {
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
       return res.status(400).json({ error: 'Lösenordet måste vara minst 8 tecken' });
+    }
+    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
+      return res.status(400).json({ error: 'Lösenordet måste innehålla stora och små bokstäver, siffror och specialtecken' });
     }
     const hash = await bcrypt.hash(newPassword, 12);
     await pool.query(

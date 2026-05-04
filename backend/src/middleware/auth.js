@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import pg from 'pg';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -6,18 +7,46 @@ if (!JWT_SECRET) {
   process.exit(1);
 }
 
+if (JWT_SECRET.length < 32) {
+  console.error('FATAL: JWT_SECRET must be at least 32 characters long');
+  process.exit(1);
+}
+
+// Import pool lazily to avoid circular dependency
+let _pool = null;
+function getPool() {
+  if (!_pool) {
+    const { pool } = require('./db.js');
+    _pool = pool;
+  }
+  return _pool;
+}
+
 export function signToken(payload) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' });
 }
 
-export function authMiddleware(req, res, next) {
+export async function authMiddleware(req, res, next) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Ingen token angiven' });
   }
   try {
     const decoded = jwt.verify(header.slice(7), JWT_SECRET);
-    req.user = decoded;
+
+    // Always load fresh roles from the database
+    const { pool } = await import('./db.js');
+    const { rows } = await pool.query(
+      'SELECT role FROM user_roles WHERE user_id = $1',
+      [decoded.id]
+    );
+    const roles = rows.map(r => r.role);
+
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      roles,
+    };
     next();
   } catch {
     return res.status(401).json({ error: 'Ogiltig eller utgången token' });
