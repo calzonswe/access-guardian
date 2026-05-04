@@ -28,7 +28,12 @@ router.get('/', async (req, res) => {
       );
       return res.json(rows);
     }
-    res.json([]);
+    // Employees, contractors, line_managers: return basic facility info (id, name) for display purposes
+    const { rows } = await pool.query(
+      `SELECT f.id, f.name, f.description, f.address, f.created_at, '{}' AS admin_ids, NULL AS owner_id
+       FROM facilities f ORDER BY f.name`
+    );
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });
   }
