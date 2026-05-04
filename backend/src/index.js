@@ -20,7 +20,12 @@ import { authMiddleware } from './middleware/auth.js';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+// CORS: restrict origin in production
+const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
+app.use(cors({
+  origin: CORS_ORIGIN === '*' ? true : CORS_ORIGIN.split(',').map(s => s.trim()),
+  credentials: true,
+}));
 app.use(express.json({ limit: '10mb' }));
 
 // Health check (both paths for nginx proxy and direct access)
