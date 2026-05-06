@@ -13,9 +13,11 @@ import * as store from '@/services/dataStore';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import type { Facility } from '@/types/rbac';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 export default function FacilitiesPage() {
   const { currentUser } = useAuth();
+  const { loading, reload } = useDataRefresh();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editFacility, setEditFacility] = useState<Facility | null>(null);
   const [reqDialogOpen, setReqDialogOpen] = useState(false);
@@ -23,8 +25,6 @@ export default function FacilitiesPage() {
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
   const [adminFacilityId, setAdminFacilityId] = useState<string | null>(null);
   const [expandedReqs, setExpandedReqs] = useState<Set<string>>(new Set());
-  const [, setRefresh] = useState(0);
-  const reload = () => setRefresh(n => n + 1);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');

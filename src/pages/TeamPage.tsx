@@ -11,6 +11,7 @@ import { ROLE_LABELS } from '@/types/rbac';
 import type { User } from '@/types/rbac';
 import UserFormDialog from '@/components/users/UserFormDialog';
 import { toast } from 'sonner';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 function getSubordinates(managerId: string, allUsers: User[]): User[] {
   const direct = allUsers.filter(u => u.manager_id === managerId || u.contact_person_id === managerId);
@@ -26,10 +27,9 @@ function getSubordinates(managerId: string, allUsers: User[]): User[] {
 
 export default function TeamPage() {
   const { currentUser } = useAuth();
+  const { loading, reload } = useDataRefresh();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
-  const [, setRefresh] = useState(0);
-  const reload = () => setRefresh(n => n + 1);
 
   if (!currentUser) return null;
 

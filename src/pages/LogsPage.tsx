@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import * as store from '@/services/dataStore';
 import { exportLogs } from '@/services/exportService';
 import { toast } from 'sonner';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 const ACTION_OPTIONS = [
   'all', 'application_created', 'application_approved_manager', 'application_approved_facility',
@@ -20,6 +21,7 @@ const ACTION_OPTIONS = [
 const PAGE_SIZE = 50;
 
 export default function LogsPage() {
+  const { loading } = useDataRefresh();
   const allLogs = store.getLogs();
   const users = store.getUsers();
   const [filterAction, setFilterAction] = useState('all');

@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ROLE_LABELS } from '@/types/rbac';
 import * as store from '@/services/dataStore';
 import { toast } from 'sonner';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 export default function ProfilePage() {
   const { currentUser, changePassword, refreshUser } = useAuth();

@@ -7,10 +7,13 @@ import { Progress } from '@/components/ui/progress';
 import { StatCard } from '@/components/dashboard/StatCard';
 import * as store from '@/services/dataStore';
 import { useAuth } from '@/context/AuthContext';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 export default function MyAccessPage() {
   const { currentUser } = useAuth();
+  const { loading } = useDataRefresh();
   if (!currentUser) return null;
+  if (loading) return <div className="flex items-center justify-center p-8 text-muted-foreground">Laddar...</div>;
 
   const applications = store.getApplications();
   const requirements = store.getRequirements();

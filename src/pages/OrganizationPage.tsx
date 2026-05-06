@@ -12,6 +12,7 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { toast } from 'sonner';
 import * as store from '@/services/dataStore';
 import type { OrgNode } from '@/types/organization';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 function getInitials(name: string) { return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(); }
 

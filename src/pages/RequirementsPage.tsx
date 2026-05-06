@@ -14,16 +14,16 @@ import * as store from '@/services/dataStore';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import type { Requirement } from '@/types/rbac';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 const TYPE_LABELS: Record<string, string> = { certification: 'Certifiering', clearance: 'Säkerhetsprövning', training: 'Utbildning' };
 const TYPE_ICONS: Record<string, typeof Award> = { certification: Award, clearance: Lock, training: Shield };
 
 export default function RequirementsPage() {
   const { currentUser } = useAuth();
+  const { loading, reload } = useDataRefresh();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editReq, setEditReq] = useState<Requirement | null>(null);
-  const [, setRefresh] = useState(0);
-  const reload = () => setRefresh(n => n + 1);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
