@@ -14,22 +14,22 @@ import type { User } from '@/types/rbac';
 import UserFormDialog from '@/components/users/UserFormDialog';
 import UserRequirementDialog from '@/components/users/UserRequirementDialog';
 import { exportUsers, exportRequirementsFulfillment } from '@/services/exportService';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 const PAGE_SIZE = 10;
 const ALL_ROLES_FILTER: AppRole[] = ['administrator', 'facility_owner', 'facility_admin', 'line_manager', 'employee', 'contractor'];
 
 export default function UsersPage() {
   const { currentUser } = useAuth();
+  const { loading, reload } = useDataRefresh();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
   const [reqDialogOpen, setReqDialogOpen] = useState(false);
   const [reqTargetUser, setReqTargetUser] = useState<User | null>(null);
-  const [, setRefresh] = useState(0);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
-  const reload = () => setRefresh(n => n + 1);
 
   const users = currentUser ? store.getUsers() : [];
 

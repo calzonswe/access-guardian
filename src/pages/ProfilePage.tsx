@@ -11,8 +11,10 @@ import { useAuth } from '@/context/AuthContext';
 import { ROLE_LABELS } from '@/types/rbac';
 import * as store from '@/services/dataStore';
 import { toast } from 'sonner';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 export default function ProfilePage() {
+  useDataRefresh();
   const { currentUser, changePassword, refreshUser } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);

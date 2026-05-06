@@ -14,6 +14,7 @@ import * as store from '@/services/dataStore';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import type { Area } from '@/types/rbac';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 const SECURITY_COLORS: Record<string, string> = {
   low: 'bg-success/10 text-success border-success/20',
@@ -25,12 +26,11 @@ const SECURITY_LABELS: Record<string, string> = { low: 'Låg', medium: 'Medel', 
 
 export default function AreasPage() {
   const { currentUser } = useAuth();
+  const { loading, reload } = useDataRefresh();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editArea, setEditArea] = useState<Area | null>(null);
   const [reqDialogOpen, setReqDialogOpen] = useState(false);
   const [reqAreaId, setReqAreaId] = useState('');
-  const [, setRefresh] = useState(0);
-  const reload = () => setRefresh(n => n + 1);
 
   const [facilityId, setFacilityId] = useState('');
   const [name, setName] = useState('');

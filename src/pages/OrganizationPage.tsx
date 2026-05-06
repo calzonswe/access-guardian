@@ -12,6 +12,7 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { toast } from 'sonner';
 import * as store from '@/services/dataStore';
 import type { OrgNode } from '@/types/organization';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 function getInitials(name: string) { return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(); }
 
@@ -42,6 +43,7 @@ function OrgNodeCard({ node, depth, onEdit, onAddChild, onDelete }: OrgNodeCardP
 }
 
 export default function OrganizationPage() {
+  useDataRefresh();
   const [orgTree, setOrgTree] = useState<OrgNode[]>(() => store.getOrgTree());
   const [editDialog, setEditDialog] = useState<{ open: boolean; mode: 'add' | 'edit'; parentId?: string; node?: OrgNode }>({ open: false, mode: 'add' });
   const [formTitle, setFormTitle] = useState('');

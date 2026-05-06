@@ -4,10 +4,13 @@ import { ROLE_LABELS } from '@/types/rbac';
 import * as store from '@/services/dataStore';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ApplicationTable } from '@/components/dashboard/ApplicationTable';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
+  const { loading } = useDataRefresh();
   if (!currentUser) return null;
+  if (loading) return <div className="flex items-center justify-center p-8 text-muted-foreground">Laddar...</div>;
 
   const applications = store.getApplications();
   const users = store.getUsers();

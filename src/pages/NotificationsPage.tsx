@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import * as store from '@/services/dataStore';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 const TYPE_CONFIG: Record<string, { icon: typeof Bell; className: string; label: string }> = {
   info: { icon: Info, className: 'text-primary', label: 'Information' },
@@ -15,8 +16,8 @@ const TYPE_CONFIG: Record<string, { icon: typeof Bell; className: string; label:
 
 export default function NotificationsPage() {
   const { currentUser } = useAuth();
+  const { reload } = useDataRefresh();
   const [notifications, setNotifications] = useState(() => store.getNotifications(currentUser?.id || ''));
-  const [, setRefresh] = useState(0);
 
   if (!currentUser) return null;
 
