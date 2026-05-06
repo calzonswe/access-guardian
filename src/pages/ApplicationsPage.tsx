@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import type { Application, ApplicationStatus } from '@/types/rbac';
 import { exportApplications } from '@/services/exportService';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 const PAGE_SIZE = 10;
 
@@ -37,15 +38,13 @@ function getSubordinateIds(managerId: string, users: ReturnType<typeof store.get
 
 export default function ApplicationsPage() {
   const { currentUser } = useAuth();
+  const { loading, reload } = useDataRefresh();
   const [formOpen, setFormOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [editApp, setEditApp] = useState<Application | null>(null);
-  const [, setRefresh] = useState(0);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
-
-  const reload = () => setRefresh(n => n + 1);
   const roles = currentUser?.roles ?? [];
   const allUsers = currentUser ? store.getUsers() : [];
   const allFacilities = currentUser ? store.getFacilities() : [];
