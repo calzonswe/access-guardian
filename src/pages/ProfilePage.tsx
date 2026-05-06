@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 export default function ProfilePage() {
+  useDataRefresh();
   const { currentUser, changePassword, refreshUser } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);

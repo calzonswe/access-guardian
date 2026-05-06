@@ -43,6 +43,7 @@ function OrgNodeCard({ node, depth, onEdit, onAddChild, onDelete }: OrgNodeCardP
 }
 
 export default function OrganizationPage() {
+  useDataRefresh();
   const [orgTree, setOrgTree] = useState<OrgNode[]>(() => store.getOrgTree());
   const [editDialog, setEditDialog] = useState<{ open: boolean; mode: 'add' | 'edit'; parentId?: string; node?: OrgNode }>({ open: false, mode: 'add' });
   const [formTitle, setFormTitle] = useState('');
