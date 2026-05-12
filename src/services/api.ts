@@ -322,3 +322,29 @@ export function uploadAttachment(applicationId: string, fileName: string, fileDa
 export function deleteAttachment(id: string): Promise<void> {
   return del(`/attachments/${id}`);
 }
+
+/**
+ * Download an attachment as a Blob using the bearer token, then trigger a
+ * browser download. Use this instead of a plain <a href> because the API
+ * endpoint requires the Authorization header.
+ */
+export async function downloadAttachment(idOrUrl: string, fileName: string): Promise<void> {
+  // Accept legacy data: URLs (rendered directly), API paths, or bare IDs.
+  if (idOrUrl.startsWith('data:')) {
+    const a = document.createElement('a');
+    a.href = idOrUrl; a.download = fileName; a.click();
+    return;
+  }
+  const path = idOrUrl.startsWith('/api/')
+    ? idOrUrl.slice(4) // strip leading /api -> '/attachments/...'
+    : idOrUrl.startsWith('/') ? idOrUrl : `/attachments/${idOrUrl}/download`;
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}${path}`, { headers });
+  if (!res.ok) throw new Error(`Kunde inte hämta bilaga (HTTP ${res.status})`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fileName; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
