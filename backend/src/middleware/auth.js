@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import pg from 'pg';
+import { pool } from '../db.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -26,7 +26,6 @@ export async function authMiddleware(req, res, next) {
     const decoded = jwt.verify(header.slice(7), JWT_SECRET);
 
     // Always load fresh roles from the database
-    const { pool } = await import('./db.js');
     const { rows } = await pool.query(
       'SELECT role FROM user_roles WHERE user_id = $1',
       [decoded.id]
