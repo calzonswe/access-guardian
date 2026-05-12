@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { CheckCircle, XCircle, FileText, Trash2, Pencil, Ban, Download } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import * as store from '@/services/dataStore';
+import { downloadAttachment } from '@/services/api';
 import { notifyApplicationStatusChange } from '@/services/notifications';
 import type { Application, ApplicationStatus } from '@/types/rbac';
 
@@ -131,18 +132,16 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
               <p className="text-sm text-muted-foreground mb-1">Bilagor:</p>
               <div className="space-y-1">
                 {application.attachments.map(att => (
-                  <a
+                  <button
                     key={att.id}
-                    href={att.file_url}
-                    download={att.file_name}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-2 text-sm text-primary hover:underline"
+                    type="button"
+                    onClick={() => downloadAttachment(att.file_url || att.id, att.file_name).catch(err => toast.error(err.message))}
+                    className="flex w-full items-center gap-2 text-left text-sm text-primary hover:underline"
                   >
                     <FileText className="h-4 w-4" />
                     <span>{att.file_name}</span>
                     <Download className="h-3 w-3 ml-auto" />
-                  </a>
+                  </button>
                 ))}
               </div>
             </div>

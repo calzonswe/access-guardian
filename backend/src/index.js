@@ -16,9 +16,11 @@ import areaRequirementsRoutes from './routes/areaRequirements.js';
 import settingsRoutes from './routes/settings.js';
 import attachmentsRoutes from './routes/attachments.js';
 import { authMiddleware } from './middleware/auth.js';
+import { createRateLimit } from './middleware/rateLimit.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+app.set('trust proxy', 1); // honor X-Forwarded-For from nginx
 
 // CORS: restrict origin in production
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
@@ -31,6 +33,12 @@ app.use(express.json({ limit: '10mb' }));
 // Health check (both paths for nginx proxy and direct access)
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+
+// General API rate limit (per user-id when authenticated, otherwise per IP).
+// Generous default: 600 requests / minute. Override via API_RATE_LIMIT_MAX.
+const apiRateMax = parseInt(process.env.API_RATE_LIMIT_MAX || '600', 10);
+const apiRateWindowMs = parseInt(process.env.API_RATE_LIMIT_WINDOW_MS || '60000', 10);
+app.use('/api/', createRateLimit({ windowMs: apiRateWindowMs, max: apiRateMax }));
 
 // Public routes
 app.use('/api/auth', authRoutes);

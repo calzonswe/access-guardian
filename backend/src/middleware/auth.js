@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import pg from 'pg';
+import { pool } from '../db.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -12,15 +12,6 @@ if (JWT_SECRET.length < 32) {
   process.exit(1);
 }
 
-// Import pool lazily to avoid circular dependency
-let _pool = null;
-function getPool() {
-  if (!_pool) {
-    const { pool } = require('./db.js');
-    _pool = pool;
-  }
-  return _pool;
-}
 
 export function signToken(payload) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' });
@@ -35,7 +26,6 @@ export async function authMiddleware(req, res, next) {
     const decoded = jwt.verify(header.slice(7), JWT_SECRET);
 
     // Always load fresh roles from the database
-    const { pool } = await import('./db.js');
     const { rows } = await pool.query(
       'SELECT role FROM user_roles WHERE user_id = $1',
       [decoded.id]

@@ -7,6 +7,12 @@ RUN npm install --production
 
 COPY src/ ./src/
 
+# Persistent uploads directory (mount a volume here in production)
+RUN mkdir -p /app/uploads && chown -R node:node /app/uploads
+VOLUME ["/app/uploads"]
+
+USER node
+
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \

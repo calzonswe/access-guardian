@@ -6,6 +6,21 @@ const router = Router();
 
 const STATUS_ORDER = ['draft', 'pending_manager', 'pending_facility', 'pending_exception', 'approved', 'denied', 'expired'];
 
+// Convert internal storage URL to a public-facing download URL
+function mapAttachmentUrl(att) {
+  if (!att || !att.file_url) return att;
+  if (att.file_url.startsWith('fs:') || att.file_url.startsWith('data:')) {
+    return { ...att, file_url: `/api/attachments/${att.id}/download` };
+  }
+  return att;
+}
+function mapApp(row) {
+  if (Array.isArray(row.attachments)) {
+    row.attachments = row.attachments.map(mapAttachmentUrl);
+  }
+  return row;
+}
+
 export async function getApplicationScope(appId) {
   const { rows } = await pool.query(
     `SELECT a.applicant_id, a.facility_id, a.status,
@@ -48,7 +63,7 @@ router.get('/', async (req, res) => {
          LEFT JOIN attachments att ON att.application_id = a.id
          GROUP BY a.id ORDER BY a.created_at DESC`
       );
-      return res.json(rows);
+      return res.json(rows.map(mapApp));
     }
     const userId = req.user.id;
     // Collect applicant user IDs (for WHERE a.applicant_id = ANY)
@@ -93,7 +108,7 @@ router.get('/', async (req, res) => {
        GROUP BY a.id ORDER BY a.created_at DESC`,
       params
     );
-    res.json(rows);
+    res.json(rows.map(mapApp));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internt serverfel' });
@@ -123,7 +138,7 @@ router.get('/:id', async (req, res) => {
        WHERE a.id = $1 GROUP BY a.id`,
       [req.params.id]
     );
-    res.json(rows[0]);
+    res.json(mapApp(rows[0]));
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });
   }
@@ -278,7 +293,7 @@ router.put('/:id', async (req, res) => {
        WHERE a.id = $1 GROUP BY a.id`,
       [appId]
     );
-    res.json(rows[0]);
+    res.json(mapApp(rows[0]));
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(err);
