@@ -12,15 +12,6 @@ if (JWT_SECRET.length < 32) {
   process.exit(1);
 }
 
-// Import pool lazily to avoid circular dependency
-let _pool = null;
-function getPool() {
-  if (!_pool) {
-    const { pool } = require('./db.js');
-    _pool = pool;
-  }
-  return _pool;
-}
 
 export function signToken(payload) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' });
