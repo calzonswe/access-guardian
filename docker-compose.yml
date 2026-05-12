@@ -34,6 +34,12 @@ services:
       DB_USER: rbac_user
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
+      UPLOAD_DIR: /app/uploads
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      API_RATE_LIMIT_MAX: ${API_RATE_LIMIT_MAX:-600}
+      API_RATE_LIMIT_WINDOW_MS: ${API_RATE_LIMIT_WINDOW_MS:-60000}
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -55,6 +61,7 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:
 
 networks:
   internal:
