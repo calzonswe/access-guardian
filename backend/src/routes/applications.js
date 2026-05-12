@@ -63,7 +63,7 @@ router.get('/', async (req, res) => {
          LEFT JOIN attachments att ON att.application_id = a.id
          GROUP BY a.id ORDER BY a.created_at DESC`
       );
-      return res.json(rows);
+      return res.json(rows.map(mapApp));
     }
     const userId = req.user.id;
     // Collect applicant user IDs (for WHERE a.applicant_id = ANY)
@@ -108,7 +108,7 @@ router.get('/', async (req, res) => {
        GROUP BY a.id ORDER BY a.created_at DESC`,
       params
     );
-    res.json(rows);
+    res.json(rows.map(mapApp));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internt serverfel' });
@@ -138,7 +138,7 @@ router.get('/:id', async (req, res) => {
        WHERE a.id = $1 GROUP BY a.id`,
       [req.params.id]
     );
-    res.json(rows[0]);
+    res.json(mapApp(rows[0]));
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });
   }
@@ -293,7 +293,7 @@ router.put('/:id', async (req, res) => {
        WHERE a.id = $1 GROUP BY a.id`,
       [appId]
     );
-    res.json(rows[0]);
+    res.json(mapApp(rows[0]));
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(err);
