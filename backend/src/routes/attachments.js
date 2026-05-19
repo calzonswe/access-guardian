@@ -109,7 +109,7 @@ router.get('/:id/download', async (req, res) => {
 
     const access = await canAccessApp(req, att.application_id);
     if (!access.ok) return res.status(access.status).json({ error: access.error });
-    if (!(access.isAdmin || access.isApplicant || access.isManager || access.isFacilityStaff)) {
+    if (!(access.isAdmin || access.isApplicant || access.isManager || access.isSponsor || access.isFacilityStaff)) {
       return res.status(403).json({ error: 'Otillräckliga rättigheter' });
     }
 
