@@ -17,6 +17,7 @@ import settingsRoutes from './routes/settings.js';
 import attachmentsRoutes from './routes/attachments.js';
 import { authMiddleware } from './middleware/auth.js';
 import { createRateLimit } from './middleware/rateLimit.js';
+import { startExpiryScheduler, runExpiryJob } from './jobs/expiryJob.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
