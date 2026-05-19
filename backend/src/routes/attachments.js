@@ -35,9 +35,9 @@ async function canAccessApp(req, applicationId) {
   const isAdmin = req.user.roles.includes('administrator');
   const isApplicant = scope.applicantId === req.user.id;
   const isManager = scope.managerId === req.user.id || scope.teamIds.has(req.user.id);
+  const isSponsor = scope.contactPersonId === req.user.id;
   const isFacilityStaff = req.user.roles.includes('facility_owner') || req.user.roles.includes('facility_admin');
-  // Read access: applicant, their manager, facility staff for the facility, admin
-  return { ok: true, scope, isAdmin, isApplicant, isManager, isFacilityStaff };
+  return { ok: true, scope, isAdmin, isApplicant, isManager, isSponsor, isFacilityStaff };
 }
 
 // Upload (JSON body with base64 file_data — kept for frontend compat)
