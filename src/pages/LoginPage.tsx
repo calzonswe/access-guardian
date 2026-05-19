@@ -75,6 +75,12 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Loggar in...' : 'Logga in'}
             </Button>
+            <div className="text-center text-sm pt-2 border-t border-border">
+              <span className="text-muted-foreground">Är du extern entreprenör? </span>
+              <a href="/contractor-apply" className="text-primary hover:underline font-medium">
+                Ansök om tillträde
+              </a>
+            </div>
           </form>
         </CardContent>
       </Card>
