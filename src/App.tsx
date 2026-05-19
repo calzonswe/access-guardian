@@ -75,8 +75,10 @@ const App = () => (
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </AppLayout>
-            </AuthGuard>
+                  </AppLayout>
+                </AuthGuard>
+              } />
+            </Routes>
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
