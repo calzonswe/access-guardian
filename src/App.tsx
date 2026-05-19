@@ -10,6 +10,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import type { AppRole } from "@/types/rbac";
 import LoginPage from "./pages/LoginPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
+import ContractorApplyPage from "./pages/ContractorApplyPage";
 import Dashboard from "./pages/Dashboard";
 import ApplicationsPage from "./pages/ApplicationsPage";
 import FacilitiesPage from "./pages/FacilitiesPage";
