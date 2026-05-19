@@ -10,6 +10,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import type { AppRole } from "@/types/rbac";
 import LoginPage from "./pages/LoginPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
+import ContractorApplyPage from "./pages/ContractorApplyPage";
 import Dashboard from "./pages/Dashboard";
 import ApplicationsPage from "./pages/ApplicationsPage";
 import FacilitiesPage from "./pages/FacilitiesPage";
@@ -53,9 +54,12 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <AuthGuard>
-              <AppLayout>
-                <Routes>
+            <Routes>
+              <Route path="/contractor-apply" element={<ContractorApplyPage />} />
+              <Route path="*" element={
+                <AuthGuard>
+                  <AppLayout>
+                    <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/applications" element={<ApplicationsPage />} />
                   <Route path="/facilities" element={<RoleGuard roles={['administrator', 'facility_owner', 'facility_admin']}><FacilitiesPage /></RoleGuard>} />
@@ -71,8 +75,10 @@ const App = () => (
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </AppLayout>
-            </AuthGuard>
+                  </AppLayout>
+                </AuthGuard>
+              } />
+            </Routes>
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>

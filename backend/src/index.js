@@ -15,6 +15,7 @@ import facilityRequirementsRoutes from './routes/facilityRequirements.js';
 import areaRequirementsRoutes from './routes/areaRequirements.js';
 import settingsRoutes from './routes/settings.js';
 import attachmentsRoutes from './routes/attachments.js';
+import contractorRoutes from './routes/contractor.js';
 import { authMiddleware } from './middleware/auth.js';
 import { createRateLimit } from './middleware/rateLimit.js';
 import { startExpiryScheduler, runExpiryJob } from './jobs/expiryJob.js';
@@ -43,6 +44,12 @@ app.use('/api/', createRateLimit({ windowMs: apiRateWindowMs, max: apiRateMax })
 
 // Public routes
 app.use('/api/auth', authRoutes);
+
+// Public contractor application flow — stricter rate limit (20 req/h per IP)
+app.use('/api/contractor',
+  createRateLimit({ windowMs: 60 * 60 * 1000, max: 20 }),
+  contractorRoutes
+);
 
 // Protected routes
 app.use('/api/users', authMiddleware, usersRoutes);

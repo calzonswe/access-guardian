@@ -41,11 +41,15 @@ export async function getApplicationScope(appId) {
     facilityAreaIds = areaRows.map(r => r.id);
   }
   const applicantId = app.applicant_id;
-  const { rows: managerRows } = await pool.query('SELECT manager_id FROM users WHERE id = $1', [applicantId]);
+  const { rows: managerRows } = await pool.query(
+    'SELECT manager_id, contact_person_id FROM users WHERE id = $1',
+    [applicantId]
+  );
   const managerId = managerRows[0]?.manager_id;
+  const contactPersonId = managerRows[0]?.contact_person_id;
   const managedIds = managerId ? await getManagedUserIds(managerId) : [];
   const teamIds = new Set([...managedIds, applicantId]);
-  return { applicantId, facilityId, status: app.status, areaIds: app.area_ids, managerId, teamIds, facilityAreaIds };
+  return { applicantId, facilityId, status: app.status, areaIds: app.area_ids, managerId, contactPersonId, teamIds, facilityAreaIds };
 }
 
 router.get('/', async (req, res) => {
@@ -82,6 +86,12 @@ router.get('/', async (req, res) => {
       );
       userFacilities.forEach(r => facilityIds.push(r.id));
     }
+    // Contractors that this user sponsors (contact_person_id)
+    const { rows: sponsored } = await pool.query(
+      `SELECT id FROM users WHERE contact_person_id = $1`,
+      [userId]
+    );
+    sponsored.forEach(r => applicantIds.add(r.id));
     // Build query with OR conditions
     const conditions = [];
     const params = [];
@@ -123,6 +133,7 @@ router.get('/:id', async (req, res) => {
       scope.applicantId === req.user.id ||
       scope.teamIds.has(req.user.id) ||
       (scope.managerId === req.user.id) ||
+      (scope.contactPersonId === req.user.id) ||
       (req.user.roles.includes('facility_owner') || req.user.roles.includes('facility_admin')) && await isFacilityAdminOrOwner(req.user.id, scope.facilityId);
     if (!canView) return res.status(403).json({ error: 'Otillräckliga rättigheter' });
     const { rows } = await pool.query(
@@ -198,15 +209,17 @@ router.put('/:id', async (req, res) => {
         return res.status(400).json({ error: 'Kan inte skicka in ansökan i detta stadium' });
       }
       if (newStatus === 'pending_facility') {
-        const canApprove = req.user.roles.includes('line_manager') &&
+        const isManager = req.user.roles.includes('line_manager') &&
           (scope.applicantId === req.user.id || scope.managerId === req.user.id || scope.teamIds.has(req.user.id));
+        const isSponsor = scope.contactPersonId === req.user.id;
+        const canApprove = isManager || isSponsor;
         if (!canApprove && !req.user.roles.includes('administrator')) {
           await client.query('ROLLBACK');
-          return res.status(403).json({ error: 'Endast chef kan godkänna ansökan' });
+          return res.status(403).json({ error: 'Endast chef eller kontaktperson kan godkänna ansökan' });
         }
         if (scope.status !== 'draft' && scope.status !== 'pending_manager') {
           await client.query('ROLLBACK');
-          return res.status(400).json({ error: 'Fel ansökningsstatus för chef-godkännande' });
+          return res.status(400).json({ error: 'Fel ansökningsstatus för godkännande' });
         }
       }
       if (newStatus === 'approved') {
@@ -229,9 +242,17 @@ router.put('/:id', async (req, res) => {
       }
       if (newStatus === 'denied') {
         const canDeny = req.user.roles.includes('administrator') ||
-          (scope.status === 'pending_manager' && (req.user.roles.includes('line_manager') && (scope.managerId === req.user.id || scope.teamIds.has(req.user.id) || scope.applicantId === req.user.id))) ||
+          (scope.status === 'pending_manager' && (
+            (req.user.roles.includes('line_manager') && (scope.managerId === req.user.id || scope.teamIds.has(req.user.id) || scope.applicantId === req.user.id)) ||
+            scope.contactPersonId === req.user.id
+          )) ||
           (scope.status === 'pending_facility' && (req.user.roles.includes('facility_owner') || req.user.roles.includes('facility_admin'))) ||
           (scope.status === 'pending_exception' && req.user.roles.includes('administrator'));
+        if (!canDeny) {
+          await client.query('ROLLBACK');
+          return res.status(403).json({ error: 'Otillräckliga rättigheter för att neka ansökan' });
+        }
+      }
         if (!canDeny) {
           await client.query('ROLLBACK');
           return res.status(403).json({ error: 'Otillräckliga rättigheter för att neka ansökan' });
