@@ -41,11 +41,15 @@ export async function getApplicationScope(appId) {
     facilityAreaIds = areaRows.map(r => r.id);
   }
   const applicantId = app.applicant_id;
-  const { rows: managerRows } = await pool.query('SELECT manager_id FROM users WHERE id = $1', [applicantId]);
+  const { rows: managerRows } = await pool.query(
+    'SELECT manager_id, contact_person_id FROM users WHERE id = $1',
+    [applicantId]
+  );
   const managerId = managerRows[0]?.manager_id;
+  const contactPersonId = managerRows[0]?.contact_person_id;
   const managedIds = managerId ? await getManagedUserIds(managerId) : [];
   const teamIds = new Set([...managedIds, applicantId]);
-  return { applicantId, facilityId, status: app.status, areaIds: app.area_ids, managerId, teamIds, facilityAreaIds };
+  return { applicantId, facilityId, status: app.status, areaIds: app.area_ids, managerId, contactPersonId, teamIds, facilityAreaIds };
 }
 
 router.get('/', async (req, res) => {
