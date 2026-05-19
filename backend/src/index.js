@@ -17,6 +17,7 @@ import settingsRoutes from './routes/settings.js';
 import attachmentsRoutes from './routes/attachments.js';
 import { authMiddleware } from './middleware/auth.js';
 import { createRateLimit } from './middleware/rateLimit.js';
+import { startExpiryScheduler, runExpiryJob } from './jobs/expiryJob.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -58,8 +59,22 @@ app.use('/api/area-requirements', authMiddleware, areaRequirementsRoutes);
 app.use('/api/settings', authMiddleware, settingsRoutes);
 app.use('/api/attachments', authMiddleware, attachmentsRoutes);
 
+// Admin: trigger expiry job on demand
+app.post('/api/admin/run-expiry-job', authMiddleware, async (req, res) => {
+  if (!req.user.roles.includes('administrator')) {
+    return res.status(403).json({ error: 'Otillräckliga rättigheter' });
+  }
+  try {
+    await runExpiryJob();
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: 'Kunde inte köra expiry-jobbet' });
+  }
+});
+
 initDb().then(() => {
   app.listen(PORT, () => console.log(`Backend listening on port ${PORT}`));
+  startExpiryScheduler();
 }).catch(err => {
   console.error('Failed to initialize database:', err);
   process.exit(1);
