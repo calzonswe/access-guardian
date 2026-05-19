@@ -209,15 +209,17 @@ router.put('/:id', async (req, res) => {
         return res.status(400).json({ error: 'Kan inte skicka in ansökan i detta stadium' });
       }
       if (newStatus === 'pending_facility') {
-        const canApprove = req.user.roles.includes('line_manager') &&
+        const isManager = req.user.roles.includes('line_manager') &&
           (scope.applicantId === req.user.id || scope.managerId === req.user.id || scope.teamIds.has(req.user.id));
+        const isSponsor = scope.contactPersonId === req.user.id;
+        const canApprove = isManager || isSponsor;
         if (!canApprove && !req.user.roles.includes('administrator')) {
           await client.query('ROLLBACK');
-          return res.status(403).json({ error: 'Endast chef kan godkänna ansökan' });
+          return res.status(403).json({ error: 'Endast chef eller kontaktperson kan godkänna ansökan' });
         }
         if (scope.status !== 'draft' && scope.status !== 'pending_manager') {
           await client.query('ROLLBACK');
-          return res.status(400).json({ error: 'Fel ansökningsstatus för chef-godkännande' });
+          return res.status(400).json({ error: 'Fel ansökningsstatus för godkännande' });
         }
       }
       if (newStatus === 'approved') {
