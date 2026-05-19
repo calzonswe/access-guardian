@@ -242,9 +242,17 @@ router.put('/:id', async (req, res) => {
       }
       if (newStatus === 'denied') {
         const canDeny = req.user.roles.includes('administrator') ||
-          (scope.status === 'pending_manager' && (req.user.roles.includes('line_manager') && (scope.managerId === req.user.id || scope.teamIds.has(req.user.id) || scope.applicantId === req.user.id))) ||
+          (scope.status === 'pending_manager' && (
+            (req.user.roles.includes('line_manager') && (scope.managerId === req.user.id || scope.teamIds.has(req.user.id) || scope.applicantId === req.user.id)) ||
+            scope.contactPersonId === req.user.id
+          )) ||
           (scope.status === 'pending_facility' && (req.user.roles.includes('facility_owner') || req.user.roles.includes('facility_admin'))) ||
           (scope.status === 'pending_exception' && req.user.roles.includes('administrator'));
+        if (!canDeny) {
+          await client.query('ROLLBACK');
+          return res.status(403).json({ error: 'Otillräckliga rättigheter för att neka ansökan' });
+        }
+      }
         if (!canDeny) {
           await client.query('ROLLBACK');
           return res.status(403).json({ error: 'Otillräckliga rättigheter för att neka ansökan' });
