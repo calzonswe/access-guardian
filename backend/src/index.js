@@ -47,7 +47,7 @@ app.use('/api/auth', authRoutes);
 
 // Public contractor application flow — stricter rate limit (20 req/h per IP)
 app.use('/api/contractor',
-  createRateLimit({ windowMs: 60 * 60 * 1000, max: 20, keyByUser: false }),
+  createRateLimit({ windowMs: 60 * 60 * 1000, max: 20 }),
   contractorRoutes
 );
 
