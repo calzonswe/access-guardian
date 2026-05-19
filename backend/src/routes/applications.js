@@ -133,6 +133,7 @@ router.get('/:id', async (req, res) => {
       scope.applicantId === req.user.id ||
       scope.teamIds.has(req.user.id) ||
       (scope.managerId === req.user.id) ||
+      (scope.contactPersonId === req.user.id) ||
       (req.user.roles.includes('facility_owner') || req.user.roles.includes('facility_admin')) && await isFacilityAdminOrOwner(req.user.id, scope.facilityId);
     if (!canView) return res.status(403).json({ error: 'Otillräckliga rättigheter' });
     const { rows } = await pool.query(
