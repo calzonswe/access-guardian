@@ -54,9 +54,12 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <AuthGuard>
-              <AppLayout>
-                <Routes>
+            <Routes>
+              <Route path="/contractor-apply" element={<ContractorApplyPage />} />
+              <Route path="*" element={
+                <AuthGuard>
+                  <AppLayout>
+                    <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/applications" element={<ApplicationsPage />} />
                   <Route path="/facilities" element={<RoleGuard roles={['administrator', 'facility_owner', 'facility_admin']}><FacilitiesPage /></RoleGuard>} />
