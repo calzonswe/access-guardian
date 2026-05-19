@@ -86,6 +86,12 @@ router.get('/', async (req, res) => {
       );
       userFacilities.forEach(r => facilityIds.push(r.id));
     }
+    // Contractors that this user sponsors (contact_person_id)
+    const { rows: sponsored } = await pool.query(
+      `SELECT id FROM users WHERE contact_person_id = $1`,
+      [userId]
+    );
+    sponsored.forEach(r => applicantIds.add(r.id));
     // Build query with OR conditions
     const conditions = [];
     const params = [];
