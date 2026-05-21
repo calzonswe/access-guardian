@@ -1,6 +1,31 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
 import { isFacilityAdminOrOwner, isManagerOf, getManagedUserIds, getFacilityIdForArea } from '../middleware/rbac.js';
+import { sendMailToUser, isEmailEnabled } from '../services/email.js';
+import { audit } from '../services/audit.js';
+
+// Notify a user both in-app and via email (best-effort)
+async function notifyUser(client, userId, { title, message, type, link }) {
+  if (!userId) return;
+  try {
+    await client.query(
+      `INSERT INTO notifications (user_id, title, message, type, read, link)
+       VALUES ($1,$2,$3,$4,false,$5)`,
+      [userId, title, message, type, link || null]
+    );
+  } catch (err) {
+    console.warn('[applications] notify insert failed:', err.message);
+  }
+  if (isEmailEnabled()) {
+    sendMailToUser(userId, {
+      subject: title,
+      title,
+      body: `<p>${message}</p>`,
+      ctaLabel: link ? 'Öppna ansökan' : undefined,
+      ctaUrl: link,
+    }).catch(() => {});
+  }
+}
 
 const router = Router();
 

@@ -15,6 +15,7 @@
  */
 
 import { pool } from '../db.js';
+import { sendMailToUser, isEmailEnabled } from '../services/email.js';
 
 const DEFAULT_WARNING_DAYS = [30, 7, 1];
 
@@ -33,7 +34,7 @@ async function getWarningDays() {
   return DEFAULT_WARNING_DAYS;
 }
 
-async function notifyOnce(client, { userId, title, message, type, link }) {
+async function notifyOnce(client, { userId, title, message, type, link, email = true }) {
   // Skip if we already created an identical notification recently (48h window)
   const { rowCount } = await client.query(
     `SELECT 1 FROM notifications
@@ -48,6 +49,16 @@ async function notifyOnce(client, { userId, title, message, type, link }) {
      VALUES ($1,$2,$3,$4,false,$5)`,
     [userId, title, message, type, link || null]
   );
+  // Fire-and-forget email (no await on commit path)
+  if (email && isEmailEnabled()) {
+    sendMailToUser(userId, {
+      subject: title,
+      title,
+      body: `<p>${message}</p>`,
+      ctaLabel: link ? 'Öppna i Access Guardian' : undefined,
+      ctaUrl: link,
+    }).catch(() => {});
+  }
   return true;
 }
 
