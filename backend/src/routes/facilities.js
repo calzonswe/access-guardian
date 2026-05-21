@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
 import { requireRole, requireFacilityAccess, isFacilityAdminOrOwner } from '../middleware/rbac.js';
+import { audit } from '../services/audit.js';
 
 const router = Router();
 
@@ -74,6 +75,7 @@ router.post('/', async (req, res) => {
       'INSERT INTO facilities (name, description, address, owner_id) VALUES ($1,$2,$3,$4) RETURNING *',
       [name, description, address, facilityOwnerId]
     );
+    await audit({ req, action: 'facility_created', targetId: rows[0].id, targetType: 'facility', details: `Namn: ${name}` });
     res.status(201).json({ ...rows[0], admin_ids: [] });
   } catch (err) {
     console.error('Facility creation error:', err);
@@ -93,6 +95,7 @@ router.put('/:id', requireFacilityAccess('id'), async (req, res) => {
       [name, description, address, newOwnerId, facilityId]
     );
     const admins = await pool.query('SELECT user_id FROM facility_admins WHERE facility_id = $1', [facilityId]);
+    await audit({ req, action: 'facility_updated', targetId: facilityId, targetType: 'facility' });
     res.json({ ...rows[0], admin_ids: admins.rows.map(r => r.user_id) });
   } catch (err) {
     console.error('Facility update error:', err);
@@ -106,6 +109,7 @@ router.delete('/:id', async (req, res) => {
       return res.status(403).json({ error: 'Otillräckliga rättigheter' });
     }
     await pool.query('DELETE FROM facilities WHERE id = $1', [req.params.id]);
+    await audit({ req, action: 'facility_deleted', targetId: req.params.id, targetType: 'facility' });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });
@@ -124,6 +128,7 @@ router.post('/:id/admins', async (req, res) => {
       'INSERT INTO facility_admins (facility_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
       [facilityId, user_id]
     );
+    await audit({ req, action: 'facility_admin_added', targetId: facilityId, targetType: 'facility', details: `Användare: ${user_id}` });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });
@@ -141,6 +146,7 @@ router.delete('/:id/admins/:userId', async (req, res) => {
       'DELETE FROM facility_admins WHERE facility_id = $1 AND user_id = $2',
       [facilityId, req.params.userId]
     );
+    await audit({ req, action: 'facility_admin_removed', targetId: facilityId, targetType: 'facility', details: `Användare: ${req.params.userId}` });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
 import { requireFacilityAccess, isFacilityAdminOrOwner } from '../middleware/rbac.js';
+import { audit } from '../services/audit.js';
 
 const router = Router();
 
@@ -71,6 +72,7 @@ router.post('/', async (req, res) => {
       'INSERT INTO areas (facility_id, name, description, security_level) VALUES ($1,$2,$3,$4) RETURNING *',
       [facility_id, name, description, security_level || 'low']
     );
+    await audit({ req, action: 'area_created', targetId: rows[0].id, targetType: 'area', details: `Anläggning: ${facility_id}, namn: ${name}` });
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
@@ -92,6 +94,7 @@ router.put('/:id', async (req, res) => {
       'UPDATE areas SET name=$1, description=$2, security_level=$3 WHERE id=$4 RETURNING *',
       [name, description, security_level, areaId]
     );
+    await audit({ req, action: 'area_updated', targetId: areaId, targetType: 'area' });
     res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });
@@ -108,6 +111,7 @@ router.delete('/:id', async (req, res) => {
       if (!hasAccess) return res.status(403).json({ error: 'Ingen åtkomst till detta område' });
     }
     await pool.query('DELETE FROM areas WHERE id = $1', [areaId]);
+    await audit({ req, action: 'area_deleted', targetId: areaId, targetType: 'area' });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });
