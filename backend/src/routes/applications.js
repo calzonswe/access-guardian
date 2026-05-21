@@ -278,11 +278,6 @@ router.put('/:id', async (req, res) => {
           return res.status(403).json({ error: 'Otillräckliga rättigheter för att neka ansökan' });
         }
       }
-        if (!canDeny) {
-          await client.query('ROLLBACK');
-          return res.status(403).json({ error: 'Otillräckliga rättigheter för att neka ansökan' });
-        }
-      }
       if (newStatus === 'pending_exception') {
         if (!req.user.roles.includes('administrator') && !(scope.status === 'pending_facility' && scope.applicantId === req.user.id)) {
           await client.query('ROLLBACK');
