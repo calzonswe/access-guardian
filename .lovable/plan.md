@@ -80,7 +80,14 @@ Rate-limit finns bara på `/auth/login`. **Åtgärd:** Lägg till generell rate-
 
 ### Saknas för produktion
 
-**Must-have:**
+**Klart (efter fas 3):**
+- Contractor-flöde (publik registrering + sponsor-godkännande)
+- Cron för utgångna ansökningar/krav + förvarning (30/7/1 dagar)
+- SMTP e-postnotiser (nodemailer, aktiveras via `SMTP_HOST`)
+- Utökad audit-loggning på alla mutations + login
+
+**Saknas för produktion:**
+- Entra ID / SAML-integration (SSO)
 - Contractor-flöde (publik registrering med sponsor-godkännande)
 - E-postnotifikationer (SMTP-integration för påminnelser 30/7/1 dagar)
 - Automatisk expiry-hantering (cron/scheduled job som sätter `expired` på utgångna ansökningar/krav)
