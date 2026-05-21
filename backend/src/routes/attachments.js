@@ -4,6 +4,7 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import { pool } from '../db.js';
 import { getApplicationScope } from './applications.js';
+import { audit } from '../services/audit.js';
 
 const router = Router();
 
@@ -87,6 +88,7 @@ router.post('/', async (req, res) => {
       [application_id, safeName, `fs:${storedName}`]
     );
     const row = rows[0];
+    await audit({ req, action: 'attachment_uploaded', targetId: row.id, targetType: 'attachment', details: `Ansökan: ${application_id}, fil: ${safeName}` });
     res.status(201).json({
       ...row,
       file_url: `/api/attachments/${row.id}/download`,
@@ -167,6 +169,7 @@ router.delete('/:id', async (req, res) => {
       }
     }
     await pool.query('DELETE FROM attachments WHERE id = $1', [req.params.id]);
+    await audit({ req, action: 'attachment_deleted', targetId: req.params.id, targetType: 'attachment' });
     res.json({ success: true });
   } catch (err) {
     console.error('attachment delete error', err);

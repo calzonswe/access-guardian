@@ -38,6 +38,15 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
       API_RATE_LIMIT_MAX: ${API_RATE_LIMIT_MAX:-600}
       API_RATE_LIMIT_WINDOW_MS: ${API_RATE_LIMIT_WINDOW_MS:-60000}
+      EXPIRY_JOB_INTERVAL_MS: ${EXPIRY_JOB_INTERVAL_MS:-3600000}
+      # SMTP (optional — leave SMTP_HOST empty to disable email)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@access-guardian.local}
+      APP_BASE_URL: ${APP_BASE_URL:-}
     volumes:
       - uploads_data:/app/uploads
     depends_on:
