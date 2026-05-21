@@ -2,6 +2,8 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db.js';
 import { requireRole, getManagedUserIds } from '../middleware/rbac.js';
+import { audit } from '../services/audit.js';
+import { sendMail, isEmailEnabled } from '../services/email.js';
 
 const router = Router();
 
@@ -117,6 +119,17 @@ router.post('/', requireRole('administrator'), async (req, res) => {
     }
     await client.query('COMMIT');
     const { password_hash, ...pub } = user;
+    await audit({ req, action: 'user_created', targetId: user.id, targetType: 'user', details: `E-post: ${email}, roller: ${(roles || []).join(',')}` });
+    if (isEmailEnabled()) {
+      sendMail({
+        to: email,
+        subject: 'Välkommen till Access Guardian',
+        title: 'Ditt konto har skapats',
+        body: `<p>Hej ${full_name},</p><p>Ett konto har skapats åt dig. Ditt tillfälliga lösenord är: <b>${password.replace(/./g, '•')}</b> (delat med dig av administratören).</p><p>Du måste byta lösenord vid första inloggning.</p>`,
+        ctaLabel: 'Logga in',
+        ctaUrl: '/login',
+      }).catch(() => {});
+    }
     res.status(201).json({ ...pub, roles: roles || [] });
   } catch (err) {
     await client.query('ROLLBACK');
@@ -189,6 +202,11 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Ej hittad' });
     const { password_hash, ...pub } = rows[0];
+    const changed = [];
+    if (roles !== undefined) changed.push(`roller=${(roles || []).join(',')}`);
+    if (is_active !== undefined) changed.push(`aktiv=${is_active}`);
+    if (password) changed.push('lösenord');
+    await audit({ req, action: 'user_updated', targetId, targetType: 'user', details: changed.join('; ') || 'profiluppdatering' });
     res.json({ ...pub, roles: pub.roles || [] });
   } catch (err) {
     await client.query('ROLLBACK');
@@ -206,6 +224,7 @@ router.delete('/:id', requireRole('administrator'), async (req, res) => {
       return res.status(403).json({ error: 'Du kan inte ta bort ditt eget konto' });
     }
     await pool.query('DELETE FROM users WHERE id = $1', [targetId]);
+    await audit({ req, action: 'user_deleted', targetId, targetType: 'user' });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });
