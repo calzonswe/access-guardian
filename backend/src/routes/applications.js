@@ -322,6 +322,64 @@ router.put('/:id', async (req, res) => {
       }
     }
     await client.query('COMMIT');
+
+    // ----- Post-commit: audit log + status-change notifications -----
+    if (newStatus && newStatus !== scope.status) {
+      const titleMap = {
+        pending_manager: ['Ansökan inskickad', 'Din ansökan har skickats in för granskning.'],
+        pending_facility: ['Ansökan vidarebefordrad', 'Din ansökan har godkänts av närmaste chef och väntar på anläggningens godkännande.'],
+        pending_exception: ['Undantagsbegäran skickad', 'Din ansökan har skickats vidare för undantagsbedömning.'],
+        approved: ['Ansökan godkänd', 'Din tillträdesansökan har godkänts.'],
+        denied: ['Ansökan nekad', `Din tillträdesansökan har nekats.${body.denied_reason ? ` Anledning: ${String(body.denied_reason).slice(0, 500)}` : ''}`],
+      };
+      const tm = titleMap[newStatus];
+      if (tm) {
+        await notifyUser(pool, scope.applicantId, {
+          title: tm[0], message: tm[1],
+          type: newStatus === 'approved' ? 'success' : (newStatus === 'denied' ? 'warning' : 'info'),
+          link: `/applications/${appId}`,
+        });
+      }
+      // Notify next-step approvers
+      if (newStatus === 'pending_facility') {
+        const { rows: approvers } = await pool.query(
+          `SELECT owner_id AS uid FROM facilities WHERE id = $1 AND owner_id IS NOT NULL
+           UNION SELECT user_id AS uid FROM facility_admins WHERE facility_id = $1`,
+          [scope.facilityId]
+        );
+        for (const a of approvers) {
+          await notifyUser(pool, a.uid, {
+            title: 'Ansökan väntar på anläggningens godkännande',
+            message: 'En tillträdesansökan har godkänts av närmaste chef och väntar på din granskning.',
+            type: 'action_required',
+            link: `/applications/${appId}`,
+          });
+        }
+      }
+      if (newStatus === 'pending_exception') {
+        const { rows: admins } = await pool.query(
+          `SELECT user_id AS uid FROM user_roles WHERE role = 'administrator'`
+        );
+        for (const a of admins) {
+          await notifyUser(pool, a.uid, {
+            title: 'Undantagsbegäran att granska',
+            message: 'En ansökan har eskalerats för undantagsbedömning.',
+            type: 'action_required',
+            link: `/applications/${appId}`,
+          });
+        }
+      }
+      await audit({
+        req,
+        action: `application_${newStatus}`,
+        targetId: appId,
+        targetType: 'application',
+        details: `Status: ${scope.status} → ${newStatus}${body.denied_reason ? ` (${String(body.denied_reason).slice(0, 200)})` : ''}`,
+      });
+    } else {
+      await audit({ req, action: 'application_updated', targetId: appId, targetType: 'application' });
+    }
+
     const { rows } = await pool.query(
       `SELECT a.*,
               COALESCE(array_agg(aa.area_id) FILTER (WHERE aa.area_id IS NOT NULL), '{}') AS area_ids,
