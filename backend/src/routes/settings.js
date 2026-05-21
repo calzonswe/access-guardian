@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
 import { requireRole } from '../middleware/rbac.js';
+import { audit } from '../services/audit.js';
 
 const router = Router();
 
@@ -35,6 +36,7 @@ router.put('/', async (req, res) => {
         );
       }
       await client.query('COMMIT');
+      await audit({ req, action: 'settings_updated', targetType: 'settings', details: `Nycklar: ${Object.keys(settings).join(', ')}` });
       const { rows } = await pool.query('SELECT * FROM system_settings ORDER BY key');
       const result = {};
       for (const row of rows) {
@@ -63,6 +65,7 @@ router.put('/:key', async (req, res) => {
        ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = now()`,
       [key, JSON.stringify(value)]
     );
+    await audit({ req, action: 'settings_updated', targetType: 'settings', details: `Nyckel: ${key}` });
     const { rows } = await pool.query('SELECT * FROM system_settings WHERE key = $1', [key]);
     res.json({ [key]: rows[0].value });
   } catch (err) {
