@@ -205,6 +205,7 @@ router.post('/', async (req, res) => {
       }
     }
     await client.query('COMMIT');
+    await audit({ req, action: 'application_created', targetId: app.id, targetType: 'application', details: `Anläggning: ${facility_id}` });
     res.status(201).json({ ...app, area_ids: area_ids || [], attachments: [] });
   } catch (err) {
     await client.query('ROLLBACK');
@@ -414,6 +415,7 @@ router.delete('/:id', async (req, res) => {
       return res.status(400).json({ error: 'Kan endast ta bort utkast eller nekade ansökningar' });
     }
     await pool.query('DELETE FROM applications WHERE id = $1', [req.params.id]);
+    await audit({ req, action: 'application_deleted', targetId: req.params.id, targetType: 'application' });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });
