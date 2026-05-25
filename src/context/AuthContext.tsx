@@ -23,6 +23,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
+    // Soft 401: clear auth state instead of full page reload.
+    api.setUnauthorizedHandler(() => {
+      setCurrentUser(null);
+      setMustChangePassword(false);
+    });
     const init = async () => {
       await store.initPromise;
 
@@ -54,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setInitialized(true);
     };
     init();
+    return () => api.setUnauthorizedHandler(null);
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
