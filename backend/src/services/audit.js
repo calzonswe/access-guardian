@@ -21,6 +21,7 @@ export async function audit({ req, client, action, actorId, targetId, targetType
       [action, actor, targetId || null, targetType || null, details ? String(details).slice(0, 2000) : null]
     );
   } catch (err) {
-    console.warn(`[audit] failed to log ${action}:`, err.message);
+    // Loud failure: audit gaps are a security concern.
+    console.error(`[audit] FAILED to log action="${action}" target=${targetType || ''}:${targetId || ''} -- ${err.message}`);
   }
 }

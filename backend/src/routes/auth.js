@@ -1,11 +1,21 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
+import { createHash, randomBytes } from 'crypto';
 import { pool } from '../db.js';
 import { signToken, authMiddleware } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimit.js';
+import { createRateLimit } from '../middleware/rateLimit.js';
 import { audit } from '../services/audit.js';
+import { sendMail, isEmailEnabled } from '../services/email.js';
 
 const router = Router();
+
+const RESET_TOKEN_TTL_MIN = 60;
+const APP_BASE_URL = process.env.APP_BASE_URL || '';
+
+function hashToken(raw) {
+  return createHash('sha256').update(raw).digest('hex');
+}
 
 router.post('/login', async (req, res) => {
   const ip = req.ip || req.connection.remoteAddress || 'unknown';
