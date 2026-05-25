@@ -198,15 +198,12 @@ export default function SettingsPage() {
                   onCheckedChange={v => updateSetting('general', { selfRegistration: v })}
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between opacity-60">
                 <div>
                   <p className="text-sm font-medium text-foreground">Kräv tvåfaktorsautentisering</p>
-                  <p className="text-xs text-muted-foreground">Alla användare måste använda 2FA</p>
+                  <p className="text-xs text-muted-foreground">Kommer i en framtida version</p>
                 </div>
-                <Switch
-                  checked={settings.security?.twoFactorRequired || false}
-                  onCheckedChange={v => updateSetting('security', { twoFactorRequired: v })}
-                />
+                <Switch checked={false} disabled />
               </div>
             </CardContent>
           </Card>
@@ -366,46 +363,20 @@ export default function SettingsPage() {
                 />
               </div>
               <Separator />
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between opacity-60">
                 <div>
                   <p className="text-sm font-medium text-foreground">Entra ID / Azure AD (OIDC)</p>
-                  <p className="text-xs text-muted-foreground">Single Sign-On via Microsoft</p>
+                  <p className="text-xs text-muted-foreground">Single Sign-On via Microsoft — kommer i en framtida version</p>
                 </div>
-                <Switch
-                  checked={settings.auth?.entraEnabled || false}
-                  onCheckedChange={v => updateSetting('auth', { entraEnabled: v })}
-                />
+                <Switch checked={false} disabled />
               </div>
-              {settings.auth?.entraEnabled && (
-                <div className="grid gap-4 sm:grid-cols-2 pl-4 border-l-2 border-border ml-2">
-                  <div className="space-y-2">
-                    <Label>Tenant ID</Label>
-                    <Input
-                      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                      value={settings.auth?.entraTenantId || ''}
-                      onChange={e => updateSetting('auth', { entraTenantId: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Client ID</Label>
-                    <Input
-                      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                      value={settings.auth?.entraClientId || ''}
-                      onChange={e => updateSetting('auth', { entraClientId: e.target.value })}
-                    />
-                  </div>
-                </div>
-              )}
               <Separator />
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between opacity-60">
                 <div>
                   <p className="text-sm font-medium text-foreground">SAML 2.0</p>
-                  <p className="text-xs text-muted-foreground">SAML-baserad federerad inloggning</p>
+                  <p className="text-xs text-muted-foreground">SAML-baserad federerad inloggning — kommer i en framtida version</p>
                 </div>
-                <Switch
-                  checked={settings.auth?.samlEnabled || false}
-                  onCheckedChange={v => updateSetting('auth', { samlEnabled: v })}
-                />
+                <Switch checked={false} disabled />
               </div>
             </CardContent>
           </Card>

@@ -121,14 +121,29 @@ router.post('/', requireRole('administrator'), async (req, res) => {
     const { password_hash, ...pub } = user;
     await audit({ req, action: 'user_created', targetId: user.id, targetType: 'user', details: `E-post: ${email}, roller: ${(roles || []).join(',')}` });
     if (isEmailEnabled()) {
-      sendMail({
-        to: email,
-        subject: 'Välkommen till Access Guardian',
-        title: 'Ditt konto har skapats',
-        body: `<p>Hej ${full_name},</p><p>Ett konto har skapats åt dig. Ditt tillfälliga lösenord är: <b>${password.replace(/./g, '•')}</b> (delat med dig av administratören).</p><p>Du måste byta lösenord vid första inloggning.</p>`,
-        ctaLabel: 'Logga in',
-        ctaUrl: '/login',
-      }).catch(() => {});
+      // Issue a one-shot reset token so the new user sets their own password
+      // instead of receiving the admin-typed one in cleartext.
+      try {
+        const { createHash, randomBytes } = await import('crypto');
+        const raw = randomBytes(32).toString('hex');
+        const tokenHash = createHash('sha256').update(raw).digest('hex');
+        const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h for onboarding
+        await pool.query(
+          'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1,$2,$3)',
+          [user.id, tokenHash, expires]
+        );
+        const link = `${process.env.APP_BASE_URL || ''}/reset-password?token=${raw}`;
+        sendMail({
+          to: email,
+          subject: 'Välkommen till Access Guardian',
+          title: 'Ditt konto har skapats',
+          body: `<p>Hej ${full_name},</p><p>Ett konto har skapats åt dig. Klicka på knappen nedan för att välja ditt lösenord. Länken gäller i 24 timmar.</p>`,
+          ctaLabel: 'Välj lösenord',
+          ctaUrl: link,
+        }).catch(() => {});
+      } catch (err) {
+        console.warn('[users] welcome email setup failed:', err.message);
+      }
     }
     res.status(201).json({ ...pub, roles: roles || [] });
   } catch (err) {

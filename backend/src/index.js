@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { pool, initDb } from './db.js';
+import { runMigrations } from './migrations.js';
 import authRoutes from './routes/auth.js';
 import usersRoutes from './routes/users.js';
 import facilitiesRoutes from './routes/facilities.js';
@@ -79,9 +80,26 @@ app.post('/api/admin/run-expiry-job', authMiddleware, async (req, res) => {
   }
 });
 
-initDb().then(() => {
-  app.listen(PORT, () => console.log(`Backend listening on port ${PORT}`));
+initDb().then(async () => {
+  try {
+    await runMigrations();
+  } catch (err) {
+    console.error('Migrations failed at startup:', err);
+    process.exit(1);
+  }
+  const server = app.listen(PORT, () => console.log(`Backend listening on port ${PORT}`));
   startExpiryScheduler();
+
+  // Graceful shutdown
+  const shutdown = (sig) => {
+    console.log(`Received ${sig}, shutting down...`);
+    server.close(() => {
+      pool.end().finally(() => process.exit(0));
+    });
+    setTimeout(() => process.exit(1), 10_000).unref();
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }).catch(err => {
   console.error('Failed to initialize database:', err);
   process.exit(1);

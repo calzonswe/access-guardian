@@ -1,11 +1,21 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
+import { createHash, randomBytes } from 'crypto';
 import { pool } from '../db.js';
 import { signToken, authMiddleware } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimit.js';
+import { createRateLimit } from '../middleware/rateLimit.js';
 import { audit } from '../services/audit.js';
+import { sendMail, isEmailEnabled } from '../services/email.js';
 
 const router = Router();
+
+const RESET_TOKEN_TTL_MIN = 60;
+const APP_BASE_URL = process.env.APP_BASE_URL || '';
+
+function hashToken(raw) {
+  return createHash('sha256').update(raw).digest('hex');
+}
 
 router.post('/login', async (req, res) => {
   const ip = req.ip || req.connection.remoteAddress || 'unknown';
@@ -85,6 +95,97 @@ router.post('/change-password', authMiddleware, async (req, res) => {
     res.json({ token, user: mapUser(rows[0]), mustChangePassword: false });
   } catch (err) {
     console.error('Change password error:', err);
+    res.status(500).json({ error: 'Internt serverfel' });
+  }
+});
+
+// ---------- Forgot password ----------
+// Generic response to avoid user enumeration.
+const forgotLimiter = createRateLimit({ windowMs: 60 * 60 * 1000, max: 10 });
+router.post('/forgot-password', forgotLimiter, async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email || typeof email !== 'string') {
+      return res.json({ success: true });
+    }
+    const { rows } = await pool.query(
+      'SELECT id, email, full_name FROM users WHERE LOWER(email) = LOWER($1) AND is_active = true',
+      [email]
+    );
+    if (rows.length === 0) {
+      return res.json({ success: true });
+    }
+    const user = rows[0];
+    const raw = randomBytes(32).toString('hex');
+    const tokenHash = hashToken(raw);
+    const expires = new Date(Date.now() + RESET_TOKEN_TTL_MIN * 60 * 1000);
+    // Invalidate old unused tokens for this user
+    await pool.query(
+      'DELETE FROM password_reset_tokens WHERE user_id = $1 AND used_at IS NULL',
+      [user.id]
+    );
+    await pool.query(
+      'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1,$2,$3)',
+      [user.id, tokenHash, expires]
+    );
+    await audit({ action: 'password_reset_requested', actorId: user.id, targetId: user.id, targetType: 'user' });
+
+    if (isEmailEnabled()) {
+      const link = `${APP_BASE_URL}/reset-password?token=${raw}`;
+      sendMail({
+        to: user.email,
+        subject: 'Återställ ditt lösenord',
+        title: 'Återställ ditt lösenord',
+        body: `<p>Hej ${user.full_name || ''},</p><p>Klicka på knappen nedan för att välja ett nytt lösenord. Länken gäller i ${RESET_TOKEN_TTL_MIN} minuter.</p><p>Om du inte begärt återställning kan du ignorera detta meddelande.</p>`,
+        ctaLabel: 'Återställ lösenord',
+        ctaUrl: link,
+      }).catch(() => {});
+    } else {
+      // Helpful for on-prem installs without SMTP
+      console.log(`[auth] password reset token for ${user.email}: ${raw} (valid ${RESET_TOKEN_TTL_MIN}m)`);
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('forgot-password error:', err);
+    res.json({ success: true }); // never leak
+  }
+});
+
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body || {};
+    if (!token || typeof token !== 'string') return res.status(400).json({ error: 'Token saknas' });
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+      return res.status(400).json({ error: 'Lösenordet måste vara minst 8 tecken' });
+    }
+    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
+      return res.status(400).json({ error: 'Lösenordet måste innehålla stora och små bokstäver, siffror och specialtecken' });
+    }
+    const tokenHash = hashToken(token);
+    const { rows } = await pool.query(
+      `SELECT id, user_id, expires_at, used_at FROM password_reset_tokens
+       WHERE token_hash = $1`,
+      [tokenHash]
+    );
+    if (rows.length === 0) return res.status(400).json({ error: 'Ogiltig eller använd länk' });
+    const t = rows[0];
+    if (t.used_at) return res.status(400).json({ error: 'Länken har redan använts' });
+    if (new Date(t.expires_at).getTime() < Date.now()) {
+      return res.status(400).json({ error: 'Länken har gått ut' });
+    }
+    const hash = await bcrypt.hash(newPassword, 12);
+    await pool.query(
+      'UPDATE users SET password_hash = $1, must_change_password = false WHERE id = $2',
+      [hash, t.user_id]
+    );
+    await pool.query(
+      'UPDATE password_reset_tokens SET used_at = now() WHERE id = $1',
+      [t.id]
+    );
+    await audit({ action: 'password_reset_completed', actorId: t.user_id, targetId: t.user_id, targetType: 'user' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('reset-password error:', err);
     res.status(500).json({ error: 'Internt serverfel' });
   }
 });

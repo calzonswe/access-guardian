@@ -10,6 +10,8 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import type { AppRole } from "@/types/rbac";
 import LoginPage from "./pages/LoginPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ContractorApplyPage from "./pages/ContractorApplyPage";
 import Dashboard from "./pages/Dashboard";
 import ApplicationsPage from "./pages/ApplicationsPage";
@@ -56,6 +58,8 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/contractor-apply" element={<ContractorApplyPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="*" element={
                 <AuthGuard>
                   <AppLayout>
