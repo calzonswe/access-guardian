@@ -25,6 +25,14 @@ export function getToken(): string | null {
   return token;
 }
 
+// Callback that AuthContext can subscribe to so a 401 clears auth state
+// without a full page reload.
+type UnauthorizedHandler = () => void;
+let unauthorizedHandler: UnauthorizedHandler | null = null;
+export function setUnauthorizedHandler(fn: UnauthorizedHandler | null) {
+  unauthorizedHandler = fn;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -36,7 +44,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (res.status === 401) {
     setToken(null);
-    window.location.href = '/';
+    if (unauthorizedHandler) unauthorizedHandler();
     throw new Error('Unauthorized');
   }
 
@@ -90,6 +98,14 @@ export async function getMe(): Promise<{ user: User; mustChangePassword: boolean
 
 export function logout() {
   setToken(null);
+}
+
+export function forgotPassword(email: string): Promise<{ success: boolean }> {
+  return post('/auth/forgot-password', { email });
+}
+
+export function resetPassword(token: string, newPassword: string): Promise<{ success: boolean }> {
+  return post('/auth/reset-password', { token, newPassword });
 }
 
 // ============= USERS =============

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Shield } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -75,6 +76,11 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Loggar in...' : 'Logga in'}
             </Button>
+            <div className="text-center text-sm">
+              <Link to="/forgot-password" className="text-primary hover:underline">
+                Glömt lösenord?
+              </Link>
+            </div>
             <div className="text-center text-sm pt-2 border-t border-border">
               <span className="text-muted-foreground">Är du extern entreprenör? </span>
               <a href="/contractor-apply" className="text-primary hover:underline font-medium">
