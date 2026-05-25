@@ -83,9 +83,9 @@ router.post('/', async (req, res) => {
     // Insert row; file_url stores the API download endpoint so the frontend
     // can render it as a link (auth header is added by the api client).
     const { rows } = await pool.query(
-      `INSERT INTO attachments (application_id, file_name, file_url)
-       VALUES ($1, $2, $3) RETURNING id, application_id, file_name, file_url, uploaded_at`,
-      [application_id, safeName, `fs:${storedName}`]
+      `INSERT INTO attachments (application_id, file_name, file_url, mime_type)
+       VALUES ($1, $2, $3, $4) RETURNING id, application_id, file_name, file_url, mime_type, uploaded_at`,
+      [application_id, safeName, `fs:${storedName}`, detectedMime]
     );
     const row = rows[0];
     await audit({ req, action: 'attachment_uploaded', targetId: row.id, targetType: 'attachment', details: `Ansökan: ${application_id}, fil: ${safeName}` });
@@ -103,7 +103,7 @@ router.post('/', async (req, res) => {
 router.get('/:id/download', async (req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT id, application_id, file_name, file_url FROM attachments WHERE id = $1',
+      'SELECT id, application_id, file_name, file_url, mime_type FROM attachments WHERE id = $1',
       [req.params.id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Bilaga ej funnen' });
@@ -115,13 +115,12 @@ router.get('/:id/download', async (req, res) => {
       return res.status(403).json({ error: 'Otillräckliga rättigheter' });
     }
 
-    // Legacy data: URL stored directly in file_url -> redirect to it
+    // Legacy data: URL stored directly in file_url -> stream inline
     if (att.file_url.startsWith('data:')) {
-      // Parse and stream the inline data so headers are correct
       const m = /^data:([^;]+);base64,(.*)$/s.exec(att.file_url);
       if (!m) return res.status(500).json({ error: 'Skadad bilagepost' });
       const buf = Buffer.from(m[2], 'base64');
-      res.setHeader('Content-Type', m[1] || 'application/octet-stream');
+      res.setHeader('Content-Type', att.mime_type || m[1] || 'application/octet-stream');
       res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(att.file_name)}"`);
       return res.end(buf);
     }
@@ -130,14 +129,13 @@ router.get('/:id/download', async (req, res) => {
       return res.status(500).json({ error: 'Okänd lagringstyp' });
     }
     const storedName = att.file_url.slice(3);
-    // Prevent path traversal: stored names are UUID-prefixed with no separators
     if (storedName.includes('/') || storedName.includes('..') || storedName.includes('\\')) {
       return res.status(400).json({ error: 'Ogiltig sökväg' });
     }
     const fullPath = path.join(UPLOAD_DIR, storedName);
     if (!existsSync(fullPath)) return res.status(404).json({ error: 'Filen saknas på disk' });
 
-    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Type', att.mime_type || 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(att.file_name)}"`);
     createReadStream(fullPath).pipe(res);
   } catch (err) {
