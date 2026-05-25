@@ -47,8 +47,12 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-no-reply@access-guardian.local}
       APP_BASE_URL: ${APP_BASE_URL:-}
+      MIGRATIONS_DIR: /app/migrations
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
     volumes:
       - uploads_data:/app/uploads
+      - ./db/migrations:/app/migrations:ro
     depends_on:
       db:
         condition: service_healthy

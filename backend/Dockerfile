@@ -6,7 +6,6 @@ COPY package.json ./
 RUN npm install --production
 
 COPY src/ ./src/
-COPY migrations/ ./migrations/
 
 # Persistent uploads directory (mount a volume here in production)
 RUN mkdir -p /app/uploads && chown -R node:node /app/uploads
