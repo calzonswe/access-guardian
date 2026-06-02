@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import { requireRole } from '../middleware/rbac.js';
 import { audit } from '../services/audit.js';
+import { invalidateSettingsCache } from '../services/settings.js';
 
 const router = Router();
 
