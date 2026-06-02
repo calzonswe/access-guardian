@@ -219,7 +219,8 @@ router.get('/me', authMiddleware, async (req, res) => {
       [req.user.id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Användare hittades ej' });
-    res.json({ user: mapUser(rows[0]), mustChangePassword: rows[0].must_change_password });
+    const { sessionTimeoutMinutes } = await getSecuritySettings();
+    res.json({ user: mapUser(rows[0]), mustChangePassword: rows[0].must_change_password, sessionTimeoutMinutes });
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });
   }
