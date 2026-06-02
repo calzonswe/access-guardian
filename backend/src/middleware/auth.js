@@ -13,8 +13,8 @@ if (JWT_SECRET.length < 32) {
 }
 
 
-export function signToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' });
+export function signToken(payload, expiresIn = '8h') {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn });
 }
 
 export async function authMiddleware(req, res, next) {
