@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { toast } from 'sonner';
 import type { User, AppRole } from '@/types/rbac';
 import type { StoredUser } from '@/services/dataStore';
 import * as store from '@/services/dataStore';
 import * as api from '@/services/api';
+import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -20,6 +22,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState(0);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
