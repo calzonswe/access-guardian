@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { promises as fs, createReadStream, existsSync } from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import multer from 'multer';
 import { pool } from '../db.js';
 import { getApplicationScope } from './applications.js';
 import { audit } from '../services/audit.js';
@@ -41,7 +42,51 @@ async function canAccessApp(req, applicationId) {
   return { ok: true, scope, isAdmin, isApplicant, isManager, isSponsor, isFacilityStaff };
 }
 
-// Upload (JSON body with base64 file_data — kept for frontend compat)
+// ---------- Multipart upload (preferred) ----------
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_FILE_BYTES, files: 1 },
+});
+
+router.post('/multipart', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Ingen fil bifogad' });
+    const application_id = req.body.application_id;
+    if (!application_id) return res.status(400).json({ error: 'application_id krävs' });
+
+    const access = await canAccessApp(req, application_id);
+    if (!access.ok) return res.status(access.status).json({ error: access.error });
+    if (!(access.isAdmin || access.isApplicant)) {
+      return res.status(403).json({ error: 'Otillräckliga rättigheter' });
+    }
+
+    const mime = req.file.mimetype || 'application/octet-stream';
+    if (!ALLOWED_MIME.has(mime)) {
+      return res.status(400).json({ error: 'Filtypen tillåts inte' });
+    }
+    const safeName = sanitizeFileName(req.file.originalname || 'file');
+    const storedName = `${randomUUID()}_${safeName}`;
+    const fullPath = path.join(UPLOAD_DIR, storedName);
+    await fs.writeFile(fullPath, req.file.buffer, { mode: 0o640 });
+
+    const { rows } = await pool.query(
+      `INSERT INTO attachments (application_id, file_name, file_url, mime_type)
+       VALUES ($1, $2, $3, $4) RETURNING id, application_id, file_name, file_url, mime_type, uploaded_at`,
+      [application_id, safeName, `fs:${storedName}`, mime]
+    );
+    const row = rows[0];
+    await audit({ req, action: 'attachment_uploaded', targetId: row.id, targetType: 'attachment', details: `Ansökan: ${application_id}, fil: ${safeName}` });
+    res.status(201).json({ ...row, file_url: `/api/attachments/${row.id}/download` });
+  } catch (err) {
+    if (err && err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'Filen är för stor (max 10 MB)' });
+    }
+    console.error('attachment multipart upload error', err);
+    res.status(500).json({ error: 'Internt serverfel' });
+  }
+});
+
+// Upload (JSON body with base64 file_data — kept for legacy frontend compat)
 router.post('/', async (req, res) => {
   try {
     const { application_id, file_name, file_data, mime_type } = req.body;

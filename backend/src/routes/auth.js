@@ -3,10 +3,11 @@ import bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
 import { pool } from '../db.js';
 import { signToken, authMiddleware } from '../middleware/auth.js';
-import { rateLimit } from '../middleware/rateLimit.js';
 import { createRateLimit } from '../middleware/rateLimit.js';
 import { audit } from '../services/audit.js';
 import { sendMail, isEmailEnabled } from '../services/email.js';
+import { getSecuritySettings } from '../services/settings.js';
+import { checkLock, recordFailure, recordSuccess } from '../services/loginAttempts.js';
 
 const router = Router();
 
@@ -19,9 +20,6 @@ function hashToken(raw) {
 
 router.post('/login', async (req, res) => {
   const ip = req.ip || req.connection.remoteAddress || 'unknown';
-  if (!rateLimit(ip)) {
-    return res.status(429).json({ error: 'För många inloggningsförsök. Försök igen om 15 minuter.' });
-  }
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -31,6 +29,14 @@ router.post('/login', async (req, res) => {
     if (!emailRegex.test(email)) {
       return res.status(400).json({ error: 'Ogiltig e-postadress' });
     }
+
+    // Per-email persistent lockout
+    const lock = await checkLock(email);
+    if (lock.locked) {
+      const mins = Math.ceil(lock.remainingSeconds / 60);
+      return res.status(429).json({ error: `Kontot är tillfälligt låst pga för många misslyckade försök. Försök igen om ${mins} minut(er).` });
+    }
+
     const { rows } = await pool.query(
       `SELECT u.*, array_agg(ur.role) AS roles
        FROM users u
@@ -40,6 +46,7 @@ router.post('/login', async (req, res) => {
       [email]
     );
     if (rows.length === 0) {
+      await recordFailure(email);
       await audit({ action: 'login_failed', targetType: 'user', details: `E-post: ${String(email).slice(0,128)}, IP: ${ip}` });
       return res.status(401).json({ error: 'Felaktig e-post eller lösenord' });
     }
@@ -53,16 +60,26 @@ router.post('/login', async (req, res) => {
     }
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) {
+      const result = await recordFailure(email);
       await audit({ action: 'login_failed', actorId: user.id, targetId: user.id, targetType: 'user', details: `IP: ${ip}` });
+      if (result.locked) {
+        return res.status(429).json({ error: `Kontot är låst i ${result.lockoutMinutes} minut(er) pga för många misslyckade försök.` });
+      }
       return res.status(401).json({ error: 'Felaktig e-post eller lösenord' });
     }
 
-    const token = signToken({ id: user.id, email: user.email, roles: roles.filter(Boolean) });
+    await recordSuccess(email);
+    const { sessionTimeoutMinutes } = await getSecuritySettings();
+    const token = signToken(
+      { id: user.id, email: user.email, roles: roles.filter(Boolean) },
+      `${sessionTimeoutMinutes}m`
+    );
     await audit({ action: 'login_success', actorId: user.id, targetId: user.id, targetType: 'user', details: `IP: ${ip}` });
     res.json({
       token,
       user: mapUser(user),
       mustChangePassword: user.must_change_password,
+      sessionTimeoutMinutes,
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -91,8 +108,12 @@ router.post('/change-password', authMiddleware, async (req, res) => {
        LEFT JOIN user_roles ur ON ur.user_id = u.id WHERE u.id = $1 GROUP BY u.id`,
       [req.user.id]
     );
-    const token = signToken({ id: rows[0].id, email: rows[0].email, roles: rows[0].roles.filter(Boolean) });
-    res.json({ token, user: mapUser(rows[0]), mustChangePassword: false });
+    const { sessionTimeoutMinutes } = await getSecuritySettings();
+    const token = signToken(
+      { id: rows[0].id, email: rows[0].email, roles: rows[0].roles.filter(Boolean) },
+      `${sessionTimeoutMinutes}m`
+    );
+    res.json({ token, user: mapUser(rows[0]), mustChangePassword: false, sessionTimeoutMinutes });
   } catch (err) {
     console.error('Change password error:', err);
     res.status(500).json({ error: 'Internt serverfel' });
@@ -198,7 +219,8 @@ router.get('/me', authMiddleware, async (req, res) => {
       [req.user.id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Användare hittades ej' });
-    res.json({ user: mapUser(rows[0]), mustChangePassword: rows[0].must_change_password });
+    const { sessionTimeoutMinutes } = await getSecuritySettings();
+    res.json({ user: mapUser(rows[0]), mustChangePassword: rows[0].must_change_password, sessionTimeoutMinutes });
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });
   }

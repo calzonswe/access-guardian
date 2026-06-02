@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { toast } from 'sonner';
 import type { User, AppRole } from '@/types/rbac';
 import type { StoredUser } from '@/services/dataStore';
 import * as store from '@/services/dataStore';
 import * as api from '@/services/api';
+import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -20,6 +22,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState(0);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
@@ -27,6 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     api.setUnauthorizedHandler(() => {
       setCurrentUser(null);
       setMustChangePassword(false);
+      setSessionTimeoutMinutes(0);
     });
     const init = async () => {
       await store.initPromise;
@@ -36,9 +40,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const token = api.getToken();
         if (token) {
           try {
-            const { user, mustChangePassword: mcp } = await api.getMe();
+            const { user, mustChangePassword: mcp, sessionTimeoutMinutes: sto } = await api.getMe();
             setCurrentUser(user);
             setMustChangePassword(mcp);
+            if (sto) setSessionTimeoutMinutes(sto);
             await store.refreshAll();
           } catch {
             api.setToken(null);
@@ -68,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await api.login(email, password);
         setCurrentUser(res.user);
         setMustChangePassword(res.mustChangePassword);
+        if (res.sessionTimeoutMinutes) setSessionTimeoutMinutes(res.sessionTimeoutMinutes);
         await store.refreshAll();
         return { success: true };
       } catch (err: any) {
@@ -87,9 +93,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     store.clearSession();
+    api.setToken(null);
     setCurrentUser(null);
     setMustChangePassword(false);
+    setSessionTimeoutMinutes(0);
   }, []);
+
+  // Auto-logout on idle when a server-driven session timeout is known.
+  useIdleTimeout(!!currentUser && sessionTimeoutMinutes > 0, sessionTimeoutMinutes, () => {
+    toast.info('Du har loggats ut på grund av inaktivitet');
+    logout();
+  });
 
   const changePassword = useCallback(async (newPassword: string) => {
     if (!currentUser) throw new Error('Ej inloggad');
