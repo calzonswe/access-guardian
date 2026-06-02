@@ -33,7 +33,7 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
   const [startDate, setStartDate] = useState(editApplication?.start_date || '');
   const [endDate, setEndDate] = useState(editApplication?.end_date || '');
   const [justification, setJustification] = useState(editApplication?.exception_justification || '');
-  const [pendingFiles, setPendingFiles] = useState<{ name: string; data: string }[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [existingAttachments, setExistingAttachments] = useState<Attachment[]>(editApplication?.attachments || []);
   const [uploading, setUploading] = useState(false);
 
@@ -63,25 +63,18 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
   const fulfilledReqIds = userReqs.filter(ur => ur.status === 'fulfilled').map(ur => ur.requirement_id);
   const hasMissingReqs = combinedRequirements.length > 0 && combinedRequirements.some(r => !fulfilledReqIds.includes(r.id));
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    const newFiles: { name: string; data: string }[] = [];
+    const accepted: File[] = [];
     for (const file of Array.from(files)) {
       if (file.size > 10 * 1024 * 1024) {
         toast.error(`${file.name} är för stor (max 10 MB)`);
         continue;
       }
-      const reader = new FileReader();
-      await new Promise<void>((resolve) => {
-        reader.onload = () => {
-          newFiles.push({ name: file.name, data: reader.result as string });
-          resolve();
-        };
-        reader.readAsDataURL(file);
-      });
+      accepted.push(file);
     }
-    setPendingFiles(prev => [...prev, ...newFiles]);
+    setPendingFiles(prev => [...prev, ...accepted]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -129,8 +122,7 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
     const newAttachments: Attachment[] = [];
     for (const pf of pendingFiles) {
       try {
-        const data = pf.data.replace(/^data:[^;]+;base64,/, '');
-        const att = await api.uploadAttachment(appId, pf.name, data);
+        const att = await api.uploadAttachmentMultipart(appId, pf);
         newAttachments.push(att);
       } catch {
         toast.error(`Kunde inte ladda upp ${pf.name}`);
