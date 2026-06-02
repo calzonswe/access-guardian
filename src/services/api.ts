@@ -336,6 +336,29 @@ export function uploadAttachment(applicationId: string, fileName: string, fileDa
   return post('/attachments', { application_id: applicationId, file_name: fileName, file_data: fileData });
 }
 
+/**
+ * Upload a file via multipart/form-data. Preferred over base64 — avoids the
+ * 33% encoding overhead and streams directly to disk on the backend.
+ */
+export async function uploadAttachmentMultipart(applicationId: string, file: File): Promise<Attachment> {
+  const fd = new FormData();
+  fd.append('application_id', applicationId);
+  fd.append('file', file, file.name);
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/attachments/multipart`, { method: 'POST', headers, body: fd });
+  if (res.status === 401) {
+    setToken(null);
+    if (unauthorizedHandler) unauthorizedHandler();
+    throw new Error('Unauthorized');
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 export function deleteAttachment(id: string): Promise<void> {
   return del(`/attachments/${id}`);
 }
