@@ -108,8 +108,12 @@ router.post('/change-password', authMiddleware, async (req, res) => {
        LEFT JOIN user_roles ur ON ur.user_id = u.id WHERE u.id = $1 GROUP BY u.id`,
       [req.user.id]
     );
-    const token = signToken({ id: rows[0].id, email: rows[0].email, roles: rows[0].roles.filter(Boolean) });
-    res.json({ token, user: mapUser(rows[0]), mustChangePassword: false });
+    const { sessionTimeoutMinutes } = await getSecuritySettings();
+    const token = signToken(
+      { id: rows[0].id, email: rows[0].email, roles: rows[0].roles.filter(Boolean) },
+      `${sessionTimeoutMinutes}m`
+    );
+    res.json({ token, user: mapUser(rows[0]), mustChangePassword: false, sessionTimeoutMinutes });
   } catch (err) {
     console.error('Change password error:', err);
     res.status(500).json({ error: 'Internt serverfel' });
