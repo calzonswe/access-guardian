@@ -78,6 +78,7 @@ export interface LoginResponse {
   token: string;
   user: User;
   mustChangePassword: boolean;
+  sessionTimeoutMinutes?: number;
 }
 
 export async function login(email: string, password: string): Promise<LoginResponse> {
@@ -92,7 +93,7 @@ export async function changePassword(newPassword: string): Promise<LoginResponse
   return res;
 }
 
-export async function getMe(): Promise<{ user: User; mustChangePassword: boolean }> {
+export async function getMe(): Promise<{ user: User; mustChangePassword: boolean; sessionTimeoutMinutes?: number }> {
   return get('/auth/me');
 }
 
