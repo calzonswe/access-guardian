@@ -18,10 +18,8 @@ export function useIdleTimeout(enabled: boolean, timeoutMinutes: number, onIdle:
       timer = setTimeout(() => onIdleRef.current(), ms);
     };
 
-    const events: (keyof WindowEventMap)[] = [
-      'mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'visibilitychange',
-    ];
-    for (const ev of events) window.addEventListener(ev, reset, { passive: true });
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'visibilitychange'];
+    for (const ev of events) window.addEventListener(ev, reset, { passive: true } as AddEventListenerOptions);
     reset();
     return () => {
       if (timer) clearTimeout(timer);
