@@ -18,6 +18,15 @@ function hashToken(raw) {
   return createHash('sha256').update(raw).digest('hex');
 }
 
+// Mask email for audit logs (GDPR: avoid storing plaintext personal data with IP)
+function maskEmail(email) {
+  if (!email || typeof email !== 'string') return 'unknown';
+  const [local, domain] = email.split('@');
+  if (!domain) return '***';
+  const head = local.slice(0, Math.min(2, local.length));
+  return `${head}${'*'.repeat(Math.max(1, local.length - head.length))}@${domain}`;
+}
+
 router.post('/login', async (req, res) => {
   const ip = req.ip || req.connection.remoteAddress || 'unknown';
   try {
