@@ -1,6 +1,8 @@
 
 # 1.0-release: vad som behöver fixas
 
+**Status:** Fas 1–4 klara. Återstår enbart Lågt-prio (L1–L9) som backlog efter 1.0.
+
 Genomgång av hela kodbasen mot vad som krävs för en stabil produktionssläpp. Listan är sorterad efter allvar.
 
 ## Kritiska buggar (blockerar 1.0)
