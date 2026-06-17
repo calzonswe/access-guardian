@@ -34,8 +34,16 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 
 // Health check (both paths for nginx proxy and direct access)
-app.get('/health', (_req, res) => res.json({ status: 'ok' }));
-app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+async function healthHandler(_req, res) {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', db: 'ok' });
+  } catch {
+    res.status(503).json({ status: 'degraded', db: 'down' });
+  }
+}
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
 
 // General API rate limit (per user-id when authenticated, otherwise per IP).
 // Generous default: 600 requests / minute. Override via API_RATE_LIMIT_MAX.
