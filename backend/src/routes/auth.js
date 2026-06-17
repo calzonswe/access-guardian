@@ -6,7 +6,7 @@ import { signToken, authMiddleware } from '../middleware/auth.js';
 import { createRateLimit } from '../middleware/rateLimit.js';
 import { audit } from '../services/audit.js';
 import { sendMail, isEmailEnabled } from '../services/email.js';
-import { getSecuritySettings } from '../services/settings.js';
+import { getSecuritySettings, getPasswordPolicy, validatePassword } from '../services/settings.js';
 import { checkLock, recordFailure, recordSuccess } from '../services/loginAttempts.js';
 
 const router = Router();
@@ -99,12 +99,9 @@ router.post('/login', async (req, res) => {
 router.post('/change-password', authMiddleware, async (req, res) => {
   try {
     const { newPassword } = req.body;
-    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
-      return res.status(400).json({ error: 'Lösenordet måste vara minst 8 tecken' });
-    }
-    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
-      return res.status(400).json({ error: 'Lösenordet måste innehålla stora och små bokstäver, siffror och specialtecken' });
-    }
+    const policy = await getPasswordPolicy();
+    const policyErr = validatePassword(newPassword, policy);
+    if (policyErr) return res.status(400).json({ error: policyErr });
     const hash = await bcrypt.hash(newPassword, 12);
     await pool.query(
       'UPDATE users SET password_hash = $1, must_change_password = false WHERE id = $2',
@@ -181,16 +178,22 @@ router.post('/forgot-password', forgotLimiter, async (req, res) => {
   }
 });
 
+// Public: lets the frontend show real-time policy hints.
+router.get('/password-policy', async (_req, res) => {
+  try {
+    res.json(await getPasswordPolicy());
+  } catch {
+    res.status(500).json({ error: 'Internt serverfel' });
+  }
+});
+
 router.post('/reset-password', async (req, res) => {
   try {
     const { token, newPassword } = req.body || {};
     if (!token || typeof token !== 'string') return res.status(400).json({ error: 'Token saknas' });
-    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
-      return res.status(400).json({ error: 'Lösenordet måste vara minst 8 tecken' });
-    }
-    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
-      return res.status(400).json({ error: 'Lösenordet måste innehålla stora och små bokstäver, siffror och specialtecken' });
-    }
+    const policy = await getPasswordPolicy();
+    const policyErr = validatePassword(newPassword, policy);
+    if (policyErr) return res.status(400).json({ error: policyErr });
     const tokenHash = hashToken(token);
     const { rows } = await pool.query(
       `SELECT id, user_id, expires_at, used_at FROM password_reset_tokens
