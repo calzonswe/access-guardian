@@ -14,6 +14,13 @@ const DEFAULTS = {
     maxLoginAttempts: 5,
     lockoutMinutes: 15,
   },
+  passwordPolicy: {
+    minLength: 8,
+    requireUpper: true,
+    requireLower: true,
+    requireDigit: true,
+    requireSymbol: true,
+  },
 };
 
 async function loadSettings() {
@@ -50,4 +57,33 @@ export async function getSecuritySettings() {
     maxLoginAttempts: Number(sec.maxLoginAttempts) > 0 ? Number(sec.maxLoginAttempts) : DEFAULTS.security.maxLoginAttempts,
     lockoutMinutes: Number(sec.lockoutMinutes) > 0 ? Number(sec.lockoutMinutes) : DEFAULTS.security.lockoutMinutes,
   };
+}
+
+export async function getPasswordPolicy() {
+  const s = await getAllSettings();
+  const p = (s && s.passwordPolicy) || {};
+  const min = Number(p.minLength);
+  return {
+    minLength: min >= 6 && min <= 128 ? min : DEFAULTS.passwordPolicy.minLength,
+    requireUpper: p.requireUpper !== false,
+    requireLower: p.requireLower !== false,
+    requireDigit: p.requireDigit !== false,
+    requireSymbol: p.requireSymbol !== false,
+  };
+}
+
+/**
+ * Validate a password against a policy. Returns null on success, or a
+ * human-readable Swedish error message on failure.
+ */
+export function validatePassword(pw, policy) {
+  if (!pw || typeof pw !== 'string') return 'Lösenord krävs';
+  if (pw.length < policy.minLength) return `Lösenordet måste vara minst ${policy.minLength} tecken`;
+  const missing = [];
+  if (policy.requireUpper && !/[A-Z]/.test(pw)) missing.push('stora bokstäver');
+  if (policy.requireLower && !/[a-z]/.test(pw)) missing.push('små bokstäver');
+  if (policy.requireDigit && !/[0-9]/.test(pw)) missing.push('siffror');
+  if (policy.requireSymbol && !/[^A-Za-z0-9]/.test(pw)) missing.push('specialtecken');
+  if (missing.length) return `Lösenordet måste innehålla ${missing.join(', ')}`;
+  return null;
 }
