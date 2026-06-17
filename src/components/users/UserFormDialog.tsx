@@ -65,6 +65,13 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
     if (!firstName.trim() || !lastName.trim()) { toast.error('Förnamn och efternamn krävs'); return; }
     if (!email.trim()) { toast.error('E-post krävs'); return; }
     if (!editUser && !password.trim()) { toast.error('Lösenord krävs för nya användare'); return; }
+    if (password.trim()) {
+      const pw = password;
+      if (pw.length < 8) { toast.error('Lösenordet måste vara minst 8 tecken'); return; }
+      if (!/[A-Z]/.test(pw) || !/[a-z]/.test(pw) || !/[0-9]/.test(pw) || !/[^A-Za-z0-9]/.test(pw)) {
+        toast.error('Lösenordet måste innehålla stora och små bokstäver, siffror och specialtecken'); return;
+      }
+    }
     if (roles.length === 0) { toast.error('Välj minst en roll'); return; }
     if (isContractor && !contactPersonId) { toast.error('Kontaktperson krävs för entreprenörer'); return; }
 
