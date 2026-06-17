@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, XCircle, Plus, Trash2, Clock, Paperclip, Download } from 'lucide-react';
+import { CheckCircle, XCircle, Plus, Trash2, Clock, Paperclip } from 'lucide-react';
 import * as store from '@/services/dataStore';
+import * as api from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import type { User, UserRequirement } from '@/types/rbac';
@@ -22,10 +23,11 @@ const TYPE_LABELS: Record<string, string> = { certification: 'Certifiering', cle
 export default function UserRequirementDialog({ open, onOpenChange, targetUser, onUpdated }: Props) {
   const { currentUser } = useAuth();
   const [addReqId, setAddReqId] = useState('');
-  const [attachmentFile, setAttachmentFile] = useState<{ name: string; data: string } | null>(null);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [, setRefresh] = useState(0);
   const reload = () => setRefresh(n => n + 1);
+  const [busy, setBusy] = useState(false);
 
   if (!targetUser || !currentUser) return null;
 
@@ -36,57 +38,65 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { toast.error('Filen får inte vara större än 5 MB'); return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setAttachmentFile({ name: file.name, data: reader.result as string });
-    };
-    reader.readAsDataURL(file);
+    if (file.size > 10 * 1024 * 1024) { toast.error('Filen får inte vara större än 10 MB'); return; }
+    setAttachmentFile(file);
   };
 
-  const handleAdd = () => {
-    if (!addReqId) return;
+  const handleAdd = async () => {
+    if (!addReqId || busy) return;
     const req = allRequirements.find(r => r.id === addReqId);
     if (!req) return;
+    setBusy(true);
+    try {
+      const now = new Date().toISOString();
+      const expiresAt = req.has_expiry && req.validity_days
+        ? new Date(Date.now() + req.validity_days * 86400000).toISOString()
+        : undefined;
 
-    const now = new Date().toISOString();
-    const expiresAt = req.has_expiry && req.validity_days
-      ? new Date(Date.now() + req.validity_days * 86400000).toISOString()
-      : undefined;
+      const created = await store.createUserRequirement({
+        user_id: targetUser.id,
+        requirement_id: addReqId,
+        fulfilled_at: now,
+        expires_at: expiresAt,
+        certified_by: currentUser.id,
+        status: 'fulfilled',
+        attachment_name: attachmentFile?.name,
+      });
 
-    store.createUserRequirement({
-      user_id: targetUser.id,
-      requirement_id: addReqId,
-      fulfilled_at: now,
-      expires_at: expiresAt,
-      certified_by: currentUser.id,
-      status: 'fulfilled',
-      attachment_name: attachmentFile?.name,
-      attachment_data: attachmentFile?.data,
-    });
+      // Upload attachment as a second step via multipart
+      if (attachmentFile && created?.id) {
+        try {
+          await api.uploadUserRequirementAttachment(created.id, attachmentFile);
+        } catch (err: any) {
+          toast.error(`Bilagan kunde inte laddas upp: ${err.message || ''}`);
+        }
+      }
 
-    store.addLog({
-      action: 'requirement_fulfilled',
-      actor_id: currentUser.id,
-      target_id: targetUser.id,
-      target_type: 'user',
-      details: `Krav uppfyllt: ${req.name} för ${targetUser.full_name}${attachmentFile ? ` (bilaga: ${attachmentFile.name})` : ''}`,
-    });
+      store.addLog({
+        action: 'requirement_fulfilled',
+        actor_id: currentUser.id,
+        target_id: targetUser.id,
+        target_type: 'user',
+        details: `Krav uppfyllt: ${req.name} för ${targetUser.full_name}${attachmentFile ? ` (bilaga: ${attachmentFile.name})` : ''}`,
+      });
 
-    store.createNotification({
-      user_id: targetUser.id,
-      title: 'Krav registrerat',
-      message: `${req.name} har markerats som uppfyllt av ${currentUser.full_name}`,
-      type: 'info',
-      read: false,
-    });
+      store.createNotification({
+        user_id: targetUser.id,
+        title: 'Krav registrerat',
+        message: `${req.name} har markerats som uppfyllt av ${currentUser.full_name}`,
+        type: 'info',
+        read: false,
+      });
 
-    toast.success(`${req.name} registrerat som uppfyllt`);
-    setAddReqId('');
-    setAttachmentFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    reload();
-    onUpdated?.();
+      toast.success(`${req.name} registrerat som uppfyllt`);
+      setAddReqId('');
+      setAttachmentFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      reload();
+      onUpdated?.();
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleRemove = (ur: UserRequirement) => {
@@ -99,12 +109,19 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
     }
   };
 
-  const handleDownload = (ur: UserRequirement & { attachment_name?: string; attachment_data?: string }) => {
-    if (!ur.attachment_data || !ur.attachment_name) return;
-    const a = document.createElement('a');
-    a.href = ur.attachment_data;
-    a.download = ur.attachment_name;
-    a.click();
+  const handleDownload = async (ur: UserRequirement) => {
+    // Legacy: localStorage rows may still have data URLs
+    if (ur.attachment_data && ur.attachment_name) {
+      const a = document.createElement('a');
+      a.href = ur.attachment_data; a.download = ur.attachment_name; a.click();
+      return;
+    }
+    if (!ur.attachment_name) return;
+    try {
+      await api.downloadUserRequirementAttachment(ur.id, ur.attachment_name);
+    } catch (err: any) {
+      toast.error(err.message || 'Kunde inte hämta bilaga');
+    }
   };
 
   return (
@@ -124,7 +141,7 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
                   const req = allRequirements.find(r => r.id === ur.requirement_id);
                   if (!req) return null;
                   const isExpired = ur.expires_at && new Date(ur.expires_at) < new Date();
-                  const hasAttachment = !!(ur as any).attachment_data;
+                  const hasAttachment = !!(ur.attachment_name);
                   return (
                     <div key={ur.id} className="flex items-center gap-2 rounded-lg border border-border p-3">
                       {isExpired
@@ -143,11 +160,11 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
                           )}
                           {hasAttachment && (
                             <button
-                              onClick={() => handleDownload(ur as any)}
+                              onClick={() => handleDownload(ur)}
                               className="text-xs flex items-center gap-1 text-primary hover:underline"
                             >
                               <Paperclip className="h-3 w-3" />
-                              {(ur as any).attachment_name}
+                              {ur.attachment_name}
                             </button>
                           )}
                         </div>
@@ -174,12 +191,12 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
                     ))}
                   </SelectContent>
                 </Select>
-                <Button onClick={handleAdd} disabled={!addReqId} size="icon">
+                <Button onClick={handleAdd} disabled={!addReqId || busy} size="icon">
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Bifoga intyg/certifikat (valfritt, max 5 MB)</Label>
+                <Label className="text-xs text-muted-foreground">Bifoga intyg/certifikat (valfritt, max 10 MB)</Label>
                 <div className="flex items-center gap-2">
                   <input
                     ref={fileInputRef}
