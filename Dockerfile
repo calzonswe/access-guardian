@@ -12,8 +12,10 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine AS production
 
-# Copy custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy custom nginx config template — nginx:alpine runs envsubst on
+# /etc/nginx/templates/*.template at container start and writes the result
+# to /etc/nginx/conf.d/, so CSP_CONNECT_SRC etc. are injected from env.
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
 # Copy built app
 COPY --from=build /app/dist /usr/share/nginx/html
