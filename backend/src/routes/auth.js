@@ -56,7 +56,7 @@ router.post('/login', async (req, res) => {
     );
     if (rows.length === 0) {
       await recordFailure(email);
-      await audit({ action: 'login_failed', targetType: 'user', details: `E-post: ${String(email).slice(0,128)}, IP: ${ip}` });
+      await audit({ action: 'login_failed', targetType: 'user', details: `E-post: ${maskEmail(email)}, IP: ${ip}` });
       return res.status(401).json({ error: 'Felaktig e-post eller lösenord' });
     }
 
