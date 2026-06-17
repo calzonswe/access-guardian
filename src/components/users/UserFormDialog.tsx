@@ -7,9 +7,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ROLE_LABELS, type AppRole, type User } from '@/types/rbac';
 import * as store from '@/services/dataStore';
+import * as api from '@/services/api';
 import { toast } from 'sonner';
 
 const ALL_ROLES: AppRole[] = ['administrator', 'facility_owner', 'facility_admin', 'line_manager', 'employee', 'contractor'];
+
+const DEFAULT_POLICY: api.PasswordPolicy = {
+  minLength: 8, requireUpper: true, requireLower: true, requireDigit: true, requireSymbol: true,
+};
 
 interface Props {
   open: boolean;
@@ -32,6 +37,12 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
   const [department, setDepartment] = useState('');
   const [managerId, setManagerId] = useState('');
   const [contactPersonId, setContactPersonId] = useState('');
+  const [policy, setPolicy] = useState<api.PasswordPolicy>(DEFAULT_POLICY);
+
+  useEffect(() => {
+    if (!open) return;
+    api.getPasswordPolicy().then(setPolicy).catch(() => setPolicy(DEFAULT_POLICY));
+  }, [open]);
 
   useEffect(() => {
     if (open) {
@@ -66,11 +77,8 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
     if (!email.trim()) { toast.error('E-post krävs'); return; }
     if (!editUser && !password.trim()) { toast.error('Lösenord krävs för nya användare'); return; }
     if (password.trim()) {
-      const pw = password;
-      if (pw.length < 8) { toast.error('Lösenordet måste vara minst 8 tecken'); return; }
-      if (!/[A-Z]/.test(pw) || !/[a-z]/.test(pw) || !/[0-9]/.test(pw) || !/[^A-Za-z0-9]/.test(pw)) {
-        toast.error('Lösenordet måste innehålla stora och små bokstäver, siffror och specialtecken'); return;
-      }
+      const err = api.validatePasswordAgainstPolicy(password, policy);
+      if (err) { toast.error(err); return; }
     }
     if (roles.length === 0) { toast.error('Välj minst en roll'); return; }
     if (isContractor && !contactPersonId) { toast.error('Kontaktperson krävs för entreprenörer'); return; }

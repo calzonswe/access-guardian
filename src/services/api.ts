@@ -235,6 +235,64 @@ export function deleteUserRequirement(id: string): Promise<void> {
   return del(`/user-requirements/${id}`);
 }
 
+/** Upload a certificate file for a user_requirement (multipart). */
+export async function uploadUserRequirementAttachment(urId: string, file: File): Promise<UserRequirement> {
+  const fd = new FormData();
+  fd.append('file', file, file.name);
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/user-requirements/${urId}/attachment`, {
+    method: 'POST', headers, body: fd,
+  });
+  if (res.status === 401) {
+    setToken(null);
+    if (unauthorizedHandler) unauthorizedHandler();
+    throw new Error('Unauthorized');
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/** Download a user_requirement attachment, triggering a browser save. */
+export async function downloadUserRequirementAttachment(urId: string, fileName: string): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/user-requirements/${urId}/attachment`, { headers });
+  if (!res.ok) throw new Error(`Kunde inte hämta bilaga (HTTP ${res.status})`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fileName; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export interface PasswordPolicy {
+  minLength: number;
+  requireUpper: boolean;
+  requireLower: boolean;
+  requireDigit: boolean;
+  requireSymbol: boolean;
+}
+
+export function getPasswordPolicy(): Promise<PasswordPolicy> {
+  return get('/auth/password-policy');
+}
+
+export function validatePasswordAgainstPolicy(pw: string, policy: PasswordPolicy): string | null {
+  if (!pw) return 'Lösenord krävs';
+  if (pw.length < policy.minLength) return `Lösenordet måste vara minst ${policy.minLength} tecken`;
+  const missing: string[] = [];
+  if (policy.requireUpper && !/[A-Z]/.test(pw)) missing.push('stora bokstäver');
+  if (policy.requireLower && !/[a-z]/.test(pw)) missing.push('små bokstäver');
+  if (policy.requireDigit && !/[0-9]/.test(pw)) missing.push('siffror');
+  if (policy.requireSymbol && !/[^A-Za-z0-9]/.test(pw)) missing.push('specialtecken');
+  if (missing.length) return `Lösenordet måste innehålla ${missing.join(', ')}`;
+  return null;
+}
+
 // ============= FACILITY REQUIREMENTS =============
 
 export function getFacilityRequirements(facilityId?: string): Promise<FacilityRequirement[]> {

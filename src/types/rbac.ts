@@ -83,7 +83,11 @@ export interface UserRequirement {
   certified_by?: string;      // Linjechef who certified
   status: 'fulfilled' | 'expired' | 'pending';
   attachment_name?: string;
-  attachment_data?: string;    // base64 data URL
+  attachment_storage_key?: string;  // Presence indicates a file is on disk
+  attachment_mime?: string;
+  attachment_size_bytes?: number;
+  /** @deprecated kept for legacy local-storage rows only */
+  attachment_data?: string;
 }
 
 export type ApplicationStatus = 

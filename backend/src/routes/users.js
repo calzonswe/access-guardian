@@ -4,6 +4,7 @@ import { pool } from '../db.js';
 import { requireRole, getManagedUserIds } from '../middleware/rbac.js';
 import { audit } from '../services/audit.js';
 import { sendMail, isEmailEnabled } from '../services/email.js';
+import { getPasswordPolicy, validatePassword } from '../services/settings.js';
 
 const router = Router();
 
@@ -102,8 +103,11 @@ router.post('/', requireRole('administrator'), async (req, res) => {
     // Input validation
     if (!email || typeof email !== 'string' || email.length > 255) return res.status(400).json({ error: 'Ogiltig e-postadress' });
     if (!full_name || typeof full_name !== 'string' || full_name.length > 255) return res.status(400).json({ error: 'Namn krävs (max 255 tecken)' });
-    if (!password || typeof password !== 'string' || password.length < 8) return res.status(400).json({ error: 'Lösenord krävs (minst 8 tecken)' });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Ogiltig e-postadress' });
+    const policy = await getPasswordPolicy();
+    const policyErr = validatePassword(password, policy);
+    if (policyErr) { await client.query('ROLLBACK'); return res.status(400).json({ error: policyErr }); }
+
 
     const hash = await bcrypt.hash(password, 12);
     const { rows } = await client.query(
@@ -188,10 +192,9 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
     addField('is_active', is_active);
 
     if (password) {
-      if (password.length < 8) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ error: 'Lösenordet måste vara minst 8 tecken' });
-      }
+      const policy = await getPasswordPolicy();
+      const policyErr = validatePassword(password, policy);
+      if (policyErr) { await client.query('ROLLBACK'); return res.status(400).json({ error: policyErr }); }
       const hash = await bcrypt.hash(password, 12);
       addField('password_hash', hash);
       addField('must_change_password', true);
