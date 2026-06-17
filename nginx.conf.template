@@ -15,7 +15,7 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 30s;
         proxy_send_timeout 30s;
-        client_max_body_size 16m;
+        client_max_body_size 32m;
     }
 
     # SPA fallback - all routes serve index.html
@@ -50,7 +50,10 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'" always;
+    # CSP — connect-src is configurable via CSP_CONNECT_SRC env (default 'self').
+    # Add extra origins when VITE_API_URL points to another host, e.g.
+    # CSP_CONNECT_SRC="'self' https://api.example.com"
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src ${CSP_CONNECT_SRC}" always;
 
     # Gzip compression
     gzip on;
