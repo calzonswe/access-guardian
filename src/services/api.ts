@@ -446,3 +446,37 @@ export async function downloadAttachment(idOrUrl: string, fileName: string): Pro
   a.href = url; a.download = fileName; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+// ============= ADMIN / SYSTEM STATUS =============
+
+export interface SystemStatus {
+  db: { ok: boolean; latencyMs?: number; error?: string };
+  email: {
+    enabled: boolean;
+    host: string | null;
+    port: number | null;
+    secure: boolean | null;
+    from: string | null;
+    verified: boolean;
+    lastError: string | null;
+    lastSentAt: string | null;
+  };
+  expiryJob: {
+    enabled: boolean;
+    intervalMs: number | null;
+    lastRunAt: string | null;
+    lastDurationMs: number | null;
+    lastResult: { expiredApps: number; expiredReqs: number; warnApps: number; warnReqs: number } | null;
+    lastError: string | null;
+    totalRuns: number;
+  };
+  server: { nodeVersion: string; uptimeSeconds: number; env: string; version: string | null };
+}
+
+export function getSystemStatus(): Promise<SystemStatus> {
+  return get<SystemStatus>('/admin/system-status');
+}
+
+export function runExpiryJobNow(): Promise<{ success: boolean; stats: SystemStatus['expiryJob'] }> {
+  return post('/admin/run-expiry-job', {});
+}
