@@ -15,6 +15,8 @@ const APP_BASE_URL = process.env.APP_BASE_URL || '';
 
 let transporter = null;
 let verified = false;
+let lastError = null;
+let lastSentAt = null;
 
 export function isEmailEnabled() {
   return !!SMTP_HOST;
@@ -31,11 +33,27 @@ function getTransport() {
   });
   transporter.verify().then(() => {
     verified = true;
+    lastError = null;
     console.log(`[email] SMTP ready ${SMTP_HOST}:${SMTP_PORT}`);
   }).catch(err => {
+    verified = false;
+    lastError = err.message;
     console.warn(`[email] SMTP verify failed: ${err.message}`);
   });
   return transporter;
+}
+
+export function getEmailStatus() {
+  return {
+    enabled: isEmailEnabled(),
+    host: SMTP_HOST || null,
+    port: SMTP_HOST ? SMTP_PORT : null,
+    secure: SMTP_HOST ? SMTP_SECURE : null,
+    from: SMTP_HOST ? SMTP_FROM : null,
+    verified,
+    lastError,
+    lastSentAt,
+  };
 }
 
 function htmlEscape(s) {
@@ -80,8 +98,10 @@ export async function sendMail({ to, subject, text, html, title, body, ctaLabel,
       text: finalText,
       html: finalHtml,
     });
+    lastSentAt = new Date().toISOString();
     return true;
   } catch (err) {
+    lastError = err.message;
     console.error('[email] send failed:', err.message);
     return false;
   }

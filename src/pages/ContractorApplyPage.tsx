@@ -39,6 +39,15 @@ export default function ContractorApplyPage() {
   const [endDate, setEndDate] = useState('');
   const [justification, setJustification] = useState('');
   const [files, setFiles] = useState<{ name: string; data: string; mime: string }[]>([]);
+  const [captcha, setCaptcha] = useState<{ token: string; question: string } | null>(null);
+  const [captchaAnswer, setCaptchaAnswer] = useState('');
+
+  const loadCaptcha = () => {
+    fetch(`${API_BASE}/contractor/captcha`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.token) { setCaptcha(d); setCaptchaAnswer(''); } })
+      .catch(() => {});
+  };
 
   useEffect(() => {
     fetch(`${API_BASE}/contractor/facilities`)
@@ -46,6 +55,7 @@ export default function ContractorApplyPage() {
       .then(d => { setFacilities(d.facilities || []); setAreas(d.areas || []); })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
+    loadCaptcha();
   }, []);
 
   const facilityAreas = areas.filter(a => a.facility_id === facilityId);
@@ -87,6 +97,8 @@ export default function ContractorApplyPage() {
           file_data: f.data.replace(/^data:[^;]+;base64,/, ''),
           mime_type: f.mime,
         })),
+        captcha_token: captcha?.token,
+        captcha_answer: captchaAnswer.trim(),
       };
       const res = await fetch(`${API_BASE}/contractor/apply`, {
         method: 'POST',
@@ -94,7 +106,10 @@ export default function ContractorApplyPage() {
         body: JSON.stringify(payload),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || 'Något gick fel');
+      if (!res.ok) {
+        loadCaptcha(); // captcha is one-time use, refresh on any failure
+        throw new Error(body.error || 'Något gick fel');
+      }
       setSuccess({ tempPassword: body.temp_password || null, message: body.message || 'Ansökan mottagen.' });
     } catch (err: any) {
       setError(err.message || 'Något gick fel');
@@ -231,6 +246,25 @@ export default function ContractorApplyPage() {
                   <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
                     <Paperclip className="mr-2 h-4 w-4" />Lägg till bilagor
                   </Button>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Säkerhetskontroll *</Label>
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-md border border-border bg-muted px-3 py-2 font-mono text-sm select-none">
+                      {captcha ? `${captcha.question} = ?` : '...'}
+                    </div>
+                    <Input
+                      required
+                      inputMode="numeric"
+                      placeholder="Svar"
+                      value={captchaAnswer}
+                      onChange={e => setCaptchaAnswer(e.target.value)}
+                      className="max-w-[120px]"
+                    />
+                    <Button type="button" variant="ghost" size="sm" onClick={loadCaptcha}>Nytt</Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Lös uppgiften för att bevisa att du inte är en bot.</p>
                 </div>
 
                 {error && <p className="text-sm text-destructive">{error}</p>}

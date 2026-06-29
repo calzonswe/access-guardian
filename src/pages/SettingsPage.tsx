@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Palette, Shield, Globe, Plus, Pencil, Trash2, Clock, Award, Lock, Save } from 'lucide-react';
+import { Palette, Shield, Globe, Plus, Pencil, Trash2, Clock, Award, Lock, Save, Activity, RefreshCw, PlayCircle, Database, Mail, Server } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -162,6 +162,9 @@ export default function SettingsPage() {
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="notifications">Aviseringar</TabsTrigger>
           <TabsTrigger value="auth">Autentisering</TabsTrigger>
+          {currentUser?.roles?.includes('administrator') && (
+            <TabsTrigger value="system">System</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="general" className="space-y-4">
@@ -381,6 +384,12 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {currentUser?.roles?.includes('administrator') && (
+          <TabsContent value="system" className="space-y-4">
+            <SystemStatusTab />
+          </TabsContent>
+        )}
       </Tabs>
 
       <Dialog open={reqDialogOpen} onOpenChange={setReqDialogOpen}>
@@ -533,5 +542,194 @@ function RequirementsTab({ reqDialogOpen, setReqDialogOpen, openCreateReq, openE
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function StatusDot({ ok }: { ok: boolean }) {
+  return (
+    <span
+      className={`inline-block h-2.5 w-2.5 rounded-full ${ok ? 'bg-green-500' : 'bg-destructive'}`}
+      aria-label={ok ? 'OK' : 'Fel'}
+    />
+  );
+}
+
+function formatRelative(iso: string | null): string {
+  if (!iso) return 'Aldrig';
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 0) return new Date(iso).toLocaleString('sv-SE');
+  const s = Math.round(diff / 1000);
+  if (s < 60) return `${s} s sedan`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m} min sedan`;
+  const h = Math.round(m / 60);
+  if (h < 48) return `${h} h sedan`;
+  return new Date(iso).toLocaleString('sv-SE');
+}
+
+function SystemStatusTab() {
+  const [status, setStatus] = useState<api.SystemStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      setStatus(await api.getSystemStatus());
+    } catch (e: any) {
+      setError(e?.message || 'Kunde inte hämta systemstatus');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const triggerExpiry = async () => {
+    setRunning(true);
+    try {
+      await api.runExpiryJobNow();
+      toast.success('Expiry-jobbet kördes');
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message || 'Kunde inte köra expiry-jobbet');
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Activity className="h-4 w-4 text-primary" />
+                Systemstatus
+              </CardTitle>
+              <CardDescription>Drift, integrationer och bakgrundsjobb</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Uppdatera
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          {!status ? (
+            <p className="text-sm text-muted-foreground">{loading ? 'Laddar...' : '–'}</p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-lg border border-border p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Database className="h-4 w-4 text-muted-foreground" />
+                  Databas
+                  <span className="ml-auto"><StatusDot ok={status.db.ok} /></span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {status.db.ok ? `Svarstid: ${status.db.latencyMs} ms` : status.db.error || 'Otillgänglig'}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-border p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  E-post (SMTP)
+                  <span className="ml-auto">
+                    <StatusDot ok={status.email.enabled && status.email.verified} />
+                  </span>
+                </div>
+                {status.email.enabled ? (
+                  <div className="space-y-0.5 text-xs text-muted-foreground">
+                    <p>{status.email.host}:{status.email.port}{status.email.secure ? ' (TLS)' : ''}</p>
+                    <p>Status: {status.email.verified ? 'Verifierad' : 'Ej verifierad'}</p>
+                    {status.email.lastError && <p className="text-destructive">Fel: {status.email.lastError}</p>}
+                    <p>Senast skickat: {formatRelative(status.email.lastSentAt)}</p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">SMTP är inte konfigurerat (sätt SMTP_HOST).</p>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-border p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Server className="h-4 w-4 text-muted-foreground" />
+                  Server
+                  <span className="ml-auto"><StatusDot ok={true} /></span>
+                </div>
+                <div className="space-y-0.5 text-xs text-muted-foreground">
+                  <p>Node {status.server.nodeVersion} ({status.server.env})</p>
+                  <p>Uptime: {Math.floor(status.server.uptimeSeconds / 3600)}h {Math.floor((status.server.uptimeSeconds % 3600) / 60)}m</p>
+                  {status.server.version && <p>Version: {status.server.version}</p>}
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {status && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" />
+                  Bakgrundsjobb: utgångskontroll
+                </CardTitle>
+                <CardDescription>Markerar utgångna ansökningar/krav och skickar förvarningar</CardDescription>
+              </div>
+              <Button size="sm" onClick={triggerExpiry} disabled={running}>
+                <PlayCircle className="mr-2 h-4 w-4" />
+                {running ? 'Kör...' : 'Kör nu'}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">Status:</span>
+                <Badge variant={status.expiryJob.enabled ? 'secondary' : 'outline'}>
+                  {status.expiryJob.enabled ? 'Aktiverat' : 'Avstängt'}
+                </Badge>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Intervall:</span>{' '}
+                {status.expiryJob.intervalMs ? `${Math.round(status.expiryJob.intervalMs / 60000)} min` : '–'}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Senaste körning:</span>{' '}
+                {formatRelative(status.expiryJob.lastRunAt)}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Senaste längd:</span>{' '}
+                {status.expiryJob.lastDurationMs != null ? `${status.expiryJob.lastDurationMs} ms` : '–'}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Antal körningar:</span> {status.expiryJob.totalRuns}
+              </div>
+            </div>
+            {status.expiryJob.lastResult && (
+              <div className="mt-2 rounded-md bg-muted/40 p-3 text-xs">
+                <p className="font-medium mb-1">Senaste resultat</p>
+                <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
+                  <span>Utgångna ansökningar: <strong>{status.expiryJob.lastResult.expiredApps}</strong></span>
+                  <span>Utgångna krav: <strong>{status.expiryJob.lastResult.expiredReqs}</strong></span>
+                  <span>Varningar (ansökan): <strong>{status.expiryJob.lastResult.warnApps}</strong></span>
+                  <span>Varningar (krav): <strong>{status.expiryJob.lastResult.warnReqs}</strong></span>
+                </div>
+              </div>
+            )}
+            {status.expiryJob.lastError && (
+              <p className="text-sm text-destructive">Senaste fel: {status.expiryJob.lastError}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }
