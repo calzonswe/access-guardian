@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Palette, Shield, Globe, Plus, Pencil, Trash2, Clock, Award, Lock, Save } from 'lucide-react';
+import { Palette, Shield, Globe, Plus, Pencil, Trash2, Clock, Award, Lock, Save, Activity, RefreshCw, PlayCircle, Database, Mail, Server } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
