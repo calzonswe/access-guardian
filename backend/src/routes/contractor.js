@@ -8,8 +8,14 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { randomUUID, randomBytes } from 'crypto';
 import { pool } from '../db.js';
+import { issueCaptcha, verifyCaptcha } from '../services/captcha.js';
 
 const router = Router();
+
+// GET /api/contractor/captcha — issue a one-time math captcha for the public form
+router.get('/captcha', (_req, res) => {
+  res.json(issueCaptcha());
+});
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || '/app/uploads';
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -74,7 +80,13 @@ router.post('/apply', async (req, res) => {
       first_name, last_name, email, phone, company,
       sponsor_email, facility_id, area_ids, start_date, end_date,
       justification, attachments,
+      captcha_token, captcha_answer,
     } = req.body || {};
+
+    // ---- Captcha ----
+    if (!verifyCaptcha(captcha_token, captcha_answer)) {
+      return res.status(400).json({ error: 'Captcha-svar är felaktigt eller utgånget. Försök igen.' });
+    }
 
     // ---- Validation ----
     if (!first_name || !last_name || typeof first_name !== 'string' || typeof last_name !== 'string') {
