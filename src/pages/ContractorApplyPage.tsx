@@ -248,6 +248,25 @@ export default function ContractorApplyPage() {
                   </Button>
                 </div>
 
+                <div className="space-y-2">
+                  <Label>Säkerhetskontroll *</Label>
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-md border border-border bg-muted px-3 py-2 font-mono text-sm select-none">
+                      {captcha ? `${captcha.question} = ?` : '...'}
+                    </div>
+                    <Input
+                      required
+                      inputMode="numeric"
+                      placeholder="Svar"
+                      value={captchaAnswer}
+                      onChange={e => setCaptchaAnswer(e.target.value)}
+                      className="max-w-[120px]"
+                    />
+                    <Button type="button" variant="ghost" size="sm" onClick={loadCaptcha}>Nytt</Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Lös uppgiften för att bevisa att du inte är en bot.</p>
+                </div>
+
                 {error && <p className="text-sm text-destructive">{error}</p>}
 
                 <div className="flex items-center justify-between pt-2">
