@@ -162,6 +162,9 @@ export default function SettingsPage() {
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="notifications">Aviseringar</TabsTrigger>
           <TabsTrigger value="auth">Autentisering</TabsTrigger>
+          {currentUser?.roles?.includes('administrator') && (
+            <TabsTrigger value="system">System</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="general" className="space-y-4">
@@ -381,6 +384,12 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {currentUser?.roles?.includes('administrator') && (
+          <TabsContent value="system" className="space-y-4">
+            <SystemStatusTab />
+          </TabsContent>
+        )}
       </Tabs>
 
       <Dialog open={reqDialogOpen} onOpenChange={setReqDialogOpen}>
