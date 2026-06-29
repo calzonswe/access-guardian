@@ -16,8 +16,24 @@
 
 import { pool } from '../db.js';
 import { sendMailToUser, isEmailEnabled } from '../services/email.js';
+import { logger } from '../services/logger.js';
 
 const DEFAULT_WARNING_DAYS = [30, 7, 1];
+
+// Runtime stats exposed via /api/admin/system-status
+const stats = {
+  lastRunAt: null,
+  lastDurationMs: null,
+  lastResult: null,
+  lastError: null,
+  totalRuns: 0,
+  intervalMs: null,
+  enabled: false,
+};
+
+export function getExpiryStats() {
+  return { ...stats };
+}
 
 async function getWarningDays() {
   try {
@@ -166,6 +182,7 @@ async function processUpcomingRequirements(client, warningDays) {
 }
 
 export async function runExpiryJob() {
+  const t0 = Date.now();
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -175,15 +192,21 @@ export async function runExpiryJob() {
     const warnApps = await processUpcomingApplications(client, warningDays);
     const warnReqs = await processUpcomingRequirements(client, warningDays);
     await client.query('COMMIT');
+    const result = { expiredApps, expiredReqs, warnApps, warnReqs };
+    stats.lastRunAt = new Date().toISOString();
+    stats.lastDurationMs = Date.now() - t0;
+    stats.lastResult = result;
+    stats.lastError = null;
+    stats.totalRuns++;
     if (expiredApps + expiredReqs + warnApps + warnReqs > 0) {
-      console.log(
-        `[expiryJob] expiredApps=${expiredApps} expiredReqs=${expiredReqs} ` +
-        `warnApps=${warnApps} warnReqs=${warnReqs}`
-      );
+      logger.info('expiry-job completed', { ...result, durationMs: stats.lastDurationMs });
     }
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
-    console.error('[expiryJob] error', err);
+    stats.lastRunAt = new Date().toISOString();
+    stats.lastDurationMs = Date.now() - t0;
+    stats.lastError = err.message;
+    logger.error('expiry-job failed', { err });
   } finally {
     client.release();
   }
@@ -195,13 +218,16 @@ export async function runExpiryJob() {
  */
 export function startExpiryScheduler() {
   const intervalMs = parseInt(process.env.EXPIRY_JOB_INTERVAL_MS || '3600000', 10);
+  stats.intervalMs = intervalMs;
   if (!intervalMs || intervalMs <= 0) {
-    console.log('[expiryJob] disabled (EXPIRY_JOB_INTERVAL_MS=0)');
+    stats.enabled = false;
+    logger.info('expiry-job disabled (EXPIRY_JOB_INTERVAL_MS=0)');
     return;
   }
+  stats.enabled = true;
   // Run shortly after startup, then on the configured interval.
   setTimeout(() => { runExpiryJob().catch(() => {}); }, 10_000).unref?.();
   const handle = setInterval(() => { runExpiryJob().catch(() => {}); }, intervalMs);
   handle.unref?.();
-  console.log(`[expiryJob] scheduled every ${Math.round(intervalMs / 1000)}s`);
+  logger.info('expiry-job scheduled', { intervalSeconds: Math.round(intervalMs / 1000) });
 }
