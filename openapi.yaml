@@ -1,0 +1,171 @@
+openapi: 3.0.3
+info:
+  title: Access Guardian API
+  version: "1.0.0"
+  description: |
+    RBAC access-management backend. All endpoints (except those under
+    `/api/auth`, `/api/contractor` and `/health`) require a Bearer JWT
+    obtained from `POST /api/auth/login`.
+servers:
+  - url: /api
+    description: Same-origin via nginx proxy
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+    LoginResponse:
+      type: object
+      properties:
+        token: { type: string }
+        user: { $ref: '#/components/schemas/User' }
+        mustChangePassword: { type: boolean }
+        sessionTimeoutMinutes: { type: integer }
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        full_name: { type: string }
+        is_active: { type: boolean }
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [administrator, facility_owner, facility_admin, line_manager, employee, contractor]
+    PaginatedLogs:
+      type: object
+      properties:
+        items: { type: array, items: { type: object } }
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+paths:
+  /health:
+    get:
+      summary: Health check (DB ping)
+      security: []
+      responses:
+        '200': { description: OK }
+        '503': { description: Degraded }
+  /auth/login:
+    post:
+      summary: Log in
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/LoginRequest' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/LoginResponse' } } } }
+        '401': { description: Invalid credentials, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: Locked out }
+  /auth/me:
+    get:
+      summary: Current user
+      responses:
+        '200': { description: OK }
+  /auth/change-password:
+    post:
+      summary: Change own password
+      responses:
+        '200': { description: OK }
+  /auth/forgot-password:
+    post:
+      summary: Request password reset link
+      security: []
+      responses:
+        '200': { description: OK (always) }
+  /auth/reset-password:
+    post:
+      summary: Complete password reset with token
+      security: []
+      responses:
+        '200': { description: OK }
+  /auth/password-policy:
+    get:
+      summary: Current password policy (public)
+      security: []
+      responses:
+        '200': { description: OK }
+  /users:
+    get: { summary: List users (filtered by hierarchy), responses: { '200': { description: OK } } }
+    post: { summary: Create user (admin), responses: { '201': { description: Created } } }
+  /users/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+    get: { summary: Get user, responses: { '200': { description: OK } } }
+    put: { summary: Update user, responses: { '200': { description: OK } } }
+    delete: { summary: Delete user (admin), responses: { '204': { description: Deleted } } }
+  /facilities:
+    get: { summary: List facilities, responses: { '200': { description: OK } } }
+    post: { summary: Create facility (admin), responses: { '201': { description: Created } } }
+  /areas:
+    get: { summary: List areas, responses: { '200': { description: OK } } }
+  /requirements:
+    get: { summary: List requirement templates, responses: { '200': { description: OK } } }
+  /applications:
+    get: { summary: List applications (RBAC-filtered), responses: { '200': { description: OK } } }
+    post: { summary: Create application, responses: { '201': { description: Created } } }
+  /applications/{id}/approve:
+    post:
+      summary: Approve at current step
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK } }
+  /applications/{id}/deny:
+    post:
+      summary: Deny application
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK } }
+  /logs:
+    get:
+      summary: System log (admin). Pass ?page=&pageSize= for pagination.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 500 } }
+        - { name: action, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: OK (paginated when page/pageSize supplied)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: array
+                    items: { type: object }
+                  - $ref: '#/components/schemas/PaginatedLogs'
+  /notifications:
+    get: { summary: List own notifications, responses: { '200': { description: OK } } }
+  /attachments:
+    post: { summary: Upload attachment (multipart or base64), responses: { '201': { description: Created } } }
+  /attachments/{id}/download:
+    get:
+      summary: Stream attachment
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: Binary stream } }
+  /contractor/apply:
+    post:
+      summary: Public contractor application (rate-limited, captcha-protected)
+      security: []
+      responses:
+        '201': { description: Created }
+        '400': { description: Validation error }
+  /settings:
+    get: { summary: Read system settings, responses: { '200': { description: OK } } }
+    put: { summary: Update system settings (admin), responses: { '200': { description: OK } } }
+  /admin/system-status:
+    get: { summary: Aggregated health (DB, SMTP, expiry job), responses: { '200': { description: OK } } }
+  /admin/run-expiry-job:
+    post: { summary: Manually trigger expiry job (admin), responses: { '200': { description: OK } } }

@@ -6,10 +6,34 @@ const router = Router();
 
 router.use(requireRole('administrator'));
 
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM system_logs ORDER BY created_at DESC LIMIT 1000');
-    res.json(rows);
+    const paginated = 'page' in req.query || 'pageSize' in req.query;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const pageSize = Math.min(500, Math.max(1, parseInt(req.query.pageSize, 10) || 100));
+    const action = req.query.action ? String(req.query.action) : null;
+
+    const where = [];
+    const params = [];
+    if (action) { params.push(action); where.push(`action = $${params.length}`); }
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+    if (!paginated) {
+      const { rows } = await pool.query(
+        `SELECT * FROM system_logs ${whereSql} ORDER BY created_at DESC LIMIT 1000`,
+        params
+      );
+      return res.json(rows);
+    }
+
+    const [{ rows: countRows }, { rows }] = await Promise.all([
+      pool.query(`SELECT COUNT(*)::int AS total FROM system_logs ${whereSql}`, params),
+      pool.query(
+        `SELECT * FROM system_logs ${whereSql} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, pageSize, (page - 1) * pageSize]
+      ),
+    ]);
+    res.json({ items: rows, total: countRows[0].total, page, pageSize });
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });
   }
