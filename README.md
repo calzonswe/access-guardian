@@ -261,3 +261,69 @@ docker compose logs backend  # Kontrollera backend-loggar
 docker compose down -v       # Raderar databasvolymen
 docker compose up -d --build # Återskapar med init.sql
 ```
+
+---
+
+## Backup och återställning
+
+Två Docker-volymer innehåller all persistent data:
+
+| Volym | Innehåll |
+|-------|----------|
+| `postgres_data` | Hela PostgreSQL-databasen (användare, ansökningar, loggar, inställningar) |
+| `uploads_data` | Filuppladdningar (bilagor, kravbevis) |
+
+### Daglig backup (rekommenderat)
+
+Lägg följande i en cron-fil (`/etc/cron.d/access-guardian-backup`) på hosten:
+
+```bash
+# Backup varje natt kl 02:00 — sparar 14 dagar bakåt
+0 2 * * * root cd /opt/access-guardian && \
+  docker compose exec -T db pg_dump -U rbac_user rbac_access | gzip > \
+  /var/backups/access-guardian/db-$(date +\%Y\%m\%d).sql.gz && \
+  tar czf /var/backups/access-guardian/uploads-$(date +\%Y\%m\%d).tar.gz \
+  -C /var/lib/docker/volumes/access-guardian_uploads_data/_data . && \
+  find /var/backups/access-guardian -type f -mtime +14 -delete
+```
+
+### Manuell backup
+
+```bash
+# Databas
+docker compose exec -T db pg_dump -U rbac_user rbac_access | gzip > backup-db.sql.gz
+
+# Uppladdningar
+docker run --rm -v access-guardian_uploads_data:/data -v $(pwd):/backup alpine \
+  tar czf /backup/backup-uploads.tar.gz -C /data .
+```
+
+### Återställning
+
+```bash
+# Stoppa backend så inga skrivningar sker under återställning
+docker compose stop backend
+
+# Återställ databas
+gunzip -c backup-db.sql.gz | docker compose exec -T db psql -U rbac_user rbac_access
+
+# Återställ uppladdningar
+docker run --rm -v access-guardian_uploads_data:/data -v $(pwd):/backup alpine \
+  sh -c "cd /data && tar xzf /backup/backup-uploads.tar.gz"
+
+docker compose start backend
+```
+
+Testa återställningsproceduren minst en gång per kvartal på en staging-miljö.
+
+---
+
+## Kända begränsningar (v1.0)
+
+Följande funktioner är medvetet inte med i 1.0-släppet och ligger i backloggen:
+
+- **Refresh-tokens**: JWT lever 8h (eller enligt `sessionTimeoutMinutes`) och kan inte förnyas tyst — användaren loggas ut vid timeout.
+- **Självservice-byte av e-post**: E-post kan bara ändras av administratör i användarhanteringen (kräver verifieringsflöde för självservice).
+- **Server-side sök/filter**: Listor filtreras klient-sidan efter API-hämtning (skalar upp till ~1000 rader). Loggar stödjer server-side paginering via `?page=&pageSize=`.
+- **OpenAPI/Swagger UI**: Ett förenklat API-schema finns i `openapi.yaml`; interaktiv utforskare kommer i 1.1.
+
