@@ -90,17 +90,21 @@ CREATE TABLE user_roles (
   UNIQUE (user_id, role)
 );
 
--- Organization positions (company hierarchy tree)
-CREATE TABLE organization_positions (
+-- Organization units (VD -> Avdelning -> Enhet -> Grupp)
+CREATE TABLE organization_units (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title VARCHAR(255) NOT NULL,
-  department VARCHAR(100),
-  parent_id UUID REFERENCES organization_positions(id) ON DELETE SET NULL,
-  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  name VARCHAR(255) NOT NULL,
+  type VARCHAR(20) NOT NULL DEFAULT 'department', -- company | department | unit | group
+  description TEXT,
+  parent_id UUID REFERENCES organization_units(id) ON DELETE CASCADE,
+  manager_id UUID REFERENCES users(id) ON DELETE SET NULL,
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Users belong to one organization unit
+ALTER TABLE users ADD COLUMN org_unit_id UUID REFERENCES organization_units(id) ON DELETE SET NULL;
 
 -- Facilities
 CREATE TABLE facilities (
