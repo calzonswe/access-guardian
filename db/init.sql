@@ -90,17 +90,21 @@ CREATE TABLE user_roles (
   UNIQUE (user_id, role)
 );
 
--- Organization positions (company hierarchy tree)
-CREATE TABLE organization_positions (
+-- Organization units (VD -> Avdelning -> Enhet -> Grupp)
+CREATE TABLE organization_units (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title VARCHAR(255) NOT NULL,
-  department VARCHAR(100),
-  parent_id UUID REFERENCES organization_positions(id) ON DELETE SET NULL,
-  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  name VARCHAR(255) NOT NULL,
+  type VARCHAR(20) NOT NULL DEFAULT 'department', -- company | department | unit | group
+  description TEXT,
+  parent_id UUID REFERENCES organization_units(id) ON DELETE CASCADE,
+  manager_id UUID REFERENCES users(id) ON DELETE SET NULL,
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Users belong to one organization unit
+ALTER TABLE users ADD COLUMN org_unit_id UUID REFERENCES organization_units(id) ON DELETE SET NULL;
 
 -- Facilities
 CREATE TABLE facilities (
@@ -125,6 +129,7 @@ CREATE TABLE facility_admins (
 CREATE TABLE areas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   facility_id UUID NOT NULL REFERENCES facilities(id) ON DELETE CASCADE,
+  parent_id UUID REFERENCES areas(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   description TEXT,
   security_level security_level NOT NULL DEFAULT 'low',
@@ -247,9 +252,11 @@ CREATE TABLE system_settings (
 
 CREATE INDEX idx_user_roles_user ON user_roles(user_id);
 CREATE INDEX idx_user_roles_role ON user_roles(role);
-CREATE INDEX idx_org_positions_parent ON organization_positions(parent_id);
-CREATE INDEX idx_org_positions_user ON organization_positions(user_id);
+CREATE INDEX idx_org_units_parent ON organization_units(parent_id);
+CREATE INDEX idx_org_units_manager ON organization_units(manager_id);
+CREATE INDEX idx_users_org_unit ON users(org_unit_id);
 CREATE INDEX idx_areas_facility ON areas(facility_id);
+CREATE INDEX idx_areas_parent ON areas(parent_id);
 CREATE INDEX idx_area_requirements_area ON area_requirements(area_id);
 CREATE INDEX idx_facility_requirements_facility ON facility_requirements(facility_id);
 CREATE INDEX idx_user_requirements_user ON user_requirements(user_id);
@@ -297,7 +304,7 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER trg_facilities_updated_at BEFORE UPDATE ON facilities FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER trg_applications_updated_at BEFORE UPDATE ON applications FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER trg_org_positions_updated_at BEFORE UPDATE ON organization_positions FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER trg_org_units_updated_at BEFORE UPDATE ON organization_units FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ============================================
 -- SEED DATA
