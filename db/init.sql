@@ -129,6 +129,7 @@ CREATE TABLE facility_admins (
 CREATE TABLE areas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   facility_id UUID NOT NULL REFERENCES facilities(id) ON DELETE CASCADE,
+  parent_id UUID REFERENCES areas(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   description TEXT,
   security_level security_level NOT NULL DEFAULT 'low',
@@ -251,9 +252,11 @@ CREATE TABLE system_settings (
 
 CREATE INDEX idx_user_roles_user ON user_roles(user_id);
 CREATE INDEX idx_user_roles_role ON user_roles(role);
-CREATE INDEX idx_org_positions_parent ON organization_positions(parent_id);
-CREATE INDEX idx_org_positions_user ON organization_positions(user_id);
+CREATE INDEX idx_org_units_parent ON organization_units(parent_id);
+CREATE INDEX idx_org_units_manager ON organization_units(manager_id);
+CREATE INDEX idx_users_org_unit ON users(org_unit_id);
 CREATE INDEX idx_areas_facility ON areas(facility_id);
+CREATE INDEX idx_areas_parent ON areas(parent_id);
 CREATE INDEX idx_area_requirements_area ON area_requirements(area_id);
 CREATE INDEX idx_facility_requirements_facility ON facility_requirements(facility_id);
 CREATE INDEX idx_user_requirements_user ON user_requirements(user_id);
@@ -301,7 +304,7 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER trg_facilities_updated_at BEFORE UPDATE ON facilities FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER trg_applications_updated_at BEFORE UPDATE ON applications FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER trg_org_positions_updated_at BEFORE UPDATE ON organization_positions FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER trg_org_units_updated_at BEFORE UPDATE ON organization_units FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ============================================
 -- SEED DATA
