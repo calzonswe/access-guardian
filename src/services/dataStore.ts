@@ -7,7 +7,7 @@
  */
 
 import type { User, Facility, Area, Requirement, Application, SystemLog, Notification, UserRequirement, FacilityRequirement } from '@/types/rbac';
-import type { OrgNode } from '@/types/organization';
+import type { OrgUnit, OrgUnitType } from '@/types/organization';
 import * as api from '@/services/api';
 
 export interface StoredUser extends User {
@@ -25,7 +25,7 @@ let _applications: Application[] = [];
 let _userRequirements: UserRequirement[] = [];
 let _logs: SystemLog[] = [];
 let _notifications: Notification[] = [];
-let _orgTree: OrgNode[] = [];
+let _orgUnits: OrgUnit[] = [];
 let _facilityRequirements: FacilityRequirement[] = [];
 let _areaRequirements: { id: string; area_id: string; requirement_id: string }[] = [];
 
@@ -53,7 +53,7 @@ async function loadFromApi(): Promise<void> {
   if (!token) return; // No token = can't load yet, will load after login
 
   try {
-    const [users, facilities, areas, requirements, applications, logs, notifications, orgTree, userRequirements, facilityRequirements, areaRequirements] = await Promise.all([
+    const [users, facilities, areas, requirements, applications, logs, notifications, orgUnits, userRequirements, facilityRequirements, areaRequirements] = await Promise.all([
       api.getUsers(),
       api.getFacilities(),
       api.getAreas(),
@@ -61,7 +61,7 @@ async function loadFromApi(): Promise<void> {
       api.getApplications(),
       api.getLogs(),
       api.getNotifications(),
-      api.getOrgTree(),
+      api.getOrgUnits(),
       api.getUserRequirements(),
       api.getFacilityRequirements(),
       api.getAreaRequirements(),
@@ -73,7 +73,7 @@ async function loadFromApi(): Promise<void> {
     _applications = applications;
     _logs = logs;
     _notifications = notifications;
-    _orgTree = orgTree;
+    _orgUnits = orgUnits;
     _userRequirements = userRequirements;
     _facilityRequirements = facilityRequirements;
     _areaRequirements = areaRequirements;
@@ -105,7 +105,7 @@ const KEYS = {
   USER_REQUIREMENTS: 'rbac_user_requirements',
   LOGS: 'rbac_logs',
   NOTIFICATIONS: 'rbac_notifications',
-  ORG_TREE: 'rbac_org_tree',
+  ORG_UNITS: 'rbac_org_units',
   SESSION: 'rbac_session',
 };
 
@@ -699,18 +699,77 @@ export async function saveSettings(settings: SystemSettings): Promise<SystemSett
   return settings;
 }
 
-// ============= ORG TREE =============
+// ============= ORGANIZATION UNITS =============
 
-export function getOrgTree(): OrgNode[] {
-  if (_apiMode) return _orgTree;
-  return localGet<OrgNode>(KEYS.ORG_TREE);
+interface LocalOrgUnit {
+  id: string;
+  name: string;
+  type: OrgUnitType;
+  description?: string;
+  parentId?: string;
+  managerId?: string;
+  sortOrder?: number;
 }
 
-export async function setOrgTree(tree: OrgNode[]): Promise<void> {
+function buildOrgTree(flat: LocalOrgUnit[]): OrgUnit[] {
+  const map: Record<string, OrgUnit> = {};
+  flat.forEach(u => { map[u.id] = { ...u, children: [] }; });
+  const roots: OrgUnit[] = [];
+  flat.forEach(u => {
+    if (u.parentId && map[u.parentId]) map[u.parentId].children!.push(map[u.id]);
+    else roots.push(map[u.id]);
+  });
+  return roots;
+}
+
+export function getOrgUnits(): OrgUnit[] {
+  if (_apiMode) return _orgUnits;
+  return buildOrgTree(localGet<LocalOrgUnit>(KEYS.ORG_UNITS));
+}
+
+export async function createOrgUnit(data: Omit<OrgUnit, 'id' | 'children'>): Promise<void> {
   if (_apiMode) {
-    await api.setOrgTree(tree);
-    _orgTree = tree;
+    await api.createOrgUnit({
+      name: data.name, type: data.type, description: data.description,
+      parent_id: data.parentId || null, manager_id: data.managerId || null, sort_order: data.sortOrder ?? 0,
+    });
+    _orgUnits = await api.getOrgUnits();
     return;
   }
-  localSet(KEYS.ORG_TREE, tree);
+  const items = localGet<LocalOrgUnit>(KEYS.ORG_UNITS);
+  items.push({ ...data, id: uid() } as LocalOrgUnit);
+  localSet(KEYS.ORG_UNITS, items);
+}
+
+export async function updateOrgUnit(id: string, data: Partial<Omit<OrgUnit, 'id' | 'children'>>): Promise<void> {
+  if (_apiMode) {
+    await api.updateOrgUnit(id, {
+      name: data.name, type: data.type, description: data.description,
+      parent_id: data.parentId !== undefined ? (data.parentId || null) : undefined,
+      manager_id: data.managerId !== undefined ? (data.managerId || null) : undefined,
+      sort_order: data.sortOrder,
+    });
+    _orgUnits = await api.getOrgUnits();
+    return;
+  }
+  const items = localGet<LocalOrgUnit>(KEYS.ORG_UNITS).map(u => u.id === id ? { ...u, ...data } as LocalOrgUnit : u);
+  localSet(KEYS.ORG_UNITS, items);
+}
+
+export async function deleteOrgUnit(id: string): Promise<void> {
+  if (_apiMode) {
+    await api.deleteOrgUnit(id);
+    _orgUnits = await api.getOrgUnits();
+    return;
+  }
+  const items = localGet<LocalOrgUnit>(KEYS.ORG_UNITS);
+  const removed = new Set<string>([id]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    items.forEach(u => {
+      if (u.parentId && removed.has(u.parentId) && !removed.has(u.id)) { removed.add(u.id); changed = true; }
+    });
+  }
+  localSet(KEYS.ORG_UNITS, items.filter(u => !removed.has(u.id)));
 }

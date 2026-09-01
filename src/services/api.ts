@@ -7,7 +7,7 @@ import type {
   User, Facility, Area, Requirement, Application, SystemLog,
   Notification, UserRequirement, FacilityRequirement, AppRole,
 } from '@/types/rbac';
-import type { OrgNode } from '@/types/organization';
+import type { OrgUnit } from '@/types/organization';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -354,12 +354,29 @@ export function markAllNotificationsRead(userId: string): Promise<void> {
 
 // ============= ORG TREE =============
 
-export function getOrgTree(): Promise<OrgNode[]> {
+export function getOrgUnits(): Promise<OrgUnit[]> {
   return get('/org');
 }
 
-export function setOrgTree(tree: OrgNode[]): Promise<void> {
-  return put('/org', tree);
+export interface OrgUnitInput {
+  name: string;
+  type: string;
+  description?: string;
+  parent_id?: string | null;
+  manager_id?: string | null;
+  sort_order?: number;
+}
+
+export function createOrgUnit(data: OrgUnitInput): Promise<unknown> {
+  return post('/org', data);
+}
+
+export function updateOrgUnit(id: string, data: Partial<OrgUnitInput>): Promise<unknown> {
+  return put(`/org/${id}`, data);
+}
+
+export function deleteOrgUnit(id: string): Promise<void> {
+  return del(`/org/${id}`);
 }
 
 // ============= SETTINGS =============

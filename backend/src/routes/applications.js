@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import { isFacilityAdminOrOwner, isManagerOf, getManagedUserIds, getFacilityIdForArea } from '../middleware/rbac.js';
 import { sendMailToUser, isEmailEnabled } from '../services/email.js';
+import { getOrgManagerForUser } from './org.js';
 import { audit } from '../services/audit.js';
 
 // Notify a user both in-app and via email (best-effort)
@@ -70,7 +71,7 @@ export async function getApplicationScope(appId) {
     'SELECT manager_id, contact_person_id FROM users WHERE id = $1',
     [applicantId]
   );
-  const managerId = managerRows[0]?.manager_id;
+  const managerId = managerRows[0]?.manager_id || await getOrgManagerForUser(applicantId);
   const contactPersonId = managerRows[0]?.contact_person_id;
   const managedIds = managerId ? await getManagedUserIds(managerId) : [];
   const teamIds = new Set([...managedIds, applicantId]);

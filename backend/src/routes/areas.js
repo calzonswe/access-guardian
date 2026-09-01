@@ -5,6 +5,27 @@ import { audit } from '../services/audit.js';
 
 const router = Router();
 
+async function validateParent(parentId, facilityId, selfId = null) {
+  if (!parentId) return null;
+  if (parentId === selfId) return 'Ett område kan inte vara sitt eget överordnade';
+  const { rows } = await pool.query('SELECT facility_id FROM areas WHERE id = $1', [parentId]);
+  if (rows.length === 0) return 'Överordnat område hittades inte';
+  if (rows[0].facility_id !== facilityId) return 'Överordnat område måste tillhöra samma anläggning';
+  if (selfId) {
+    const { rows: anc } = await pool.query(
+      `WITH RECURSIVE chain AS (
+         SELECT id, parent_id FROM areas WHERE id = $1
+         UNION ALL
+         SELECT a.id, a.parent_id FROM areas a JOIN chain c ON a.id = c.parent_id
+       ) SELECT 1 FROM chain WHERE id = $2`,
+      [parentId, selfId]
+    );
+    if (anc.length > 0) return 'Cirkulär områdesstruktur är inte tillåten';
+  }
+  return null;
+}
+
+
 router.get('/', async (req, res) => {
   try {
     const facilityId = req.query.facility_id;
@@ -63,14 +84,16 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { facility_id, name, description, security_level } = req.body;
+    const { facility_id, name, description, security_level, parent_id } = req.body;
     if (!req.user.roles.includes('administrator')) {
       const hasAccess = await isFacilityAdminOrOwner(req.user.id, facility_id);
       if (!hasAccess) return res.status(403).json({ error: 'Ingen åtkomst till denna anläggning' });
     }
+    const parentErr = await validateParent(parent_id || null, facility_id);
+    if (parentErr) return res.status(400).json({ error: parentErr });
     const { rows } = await pool.query(
-      'INSERT INTO areas (facility_id, name, description, security_level) VALUES ($1,$2,$3,$4) RETURNING *',
-      [facility_id, name, description, security_level || 'low']
+      'INSERT INTO areas (facility_id, name, description, security_level, parent_id) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+      [facility_id, name, description, security_level || 'low', parent_id || null]
     );
     await audit({ req, action: 'area_created', targetId: rows[0].id, targetType: 'area', details: `Anläggning: ${facility_id}, namn: ${name}` });
     res.status(201).json(rows[0]);
@@ -90,9 +113,14 @@ router.put('/:id', async (req, res) => {
       if (!hasAccess) return res.status(403).json({ error: 'Ingen åtkomst till detta område' });
     }
     const { name, description, security_level } = req.body;
+    const parentId = req.body.parent_id !== undefined ? (req.body.parent_id || null) : undefined;
+    if (parentId !== undefined) {
+      const parentErr = await validateParent(parentId, areaRows[0].facility_id, areaId);
+      if (parentErr) return res.status(400).json({ error: parentErr });
+    }
     const { rows } = await pool.query(
-      'UPDATE areas SET name=$1, description=$2, security_level=$3 WHERE id=$4 RETURNING *',
-      [name, description, security_level, areaId]
+      'UPDATE areas SET name=$1, description=$2, security_level=$3, parent_id=COALESCE($4, CASE WHEN $5::boolean THEN NULL ELSE parent_id END) WHERE id=$6 RETURNING *',
+      [name, description, security_level, parentId ?? null, parentId !== undefined, areaId]
     );
     await audit({ req, action: 'area_updated', targetId: areaId, targetType: 'area' });
     res.json(rows[0]);
