@@ -9,7 +9,7 @@ import { getPasswordPolicy, validatePassword } from '../services/settings.js';
 const router = Router();
 
 const USER_SELECT = `SELECT u.id, u.email, u.full_name, u.first_name, u.last_name, u.department,
-              u.title, u.phone, u.manager_id, u.contact_person_id, u.company,
+              u.title, u.phone, u.manager_id, u.contact_person_id, u.company, u.org_unit_id,
               u.is_active, u.created_at,
               array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL) AS roles
        FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id`;
@@ -98,7 +98,7 @@ router.post('/', requireRole('administrator'), async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const { email, full_name, first_name, last_name, password, roles, department, title, phone, manager_id, contact_person_id, company, is_active } = req.body;
+    const { email, full_name, first_name, last_name, password, roles, department, title, phone, manager_id, contact_person_id, company, is_active, org_unit_id } = req.body;
 
     // Input validation
     if (!email || typeof email !== 'string' || email.length > 255) return res.status(400).json({ error: 'Ogiltig e-postadress' });
@@ -111,9 +111,9 @@ router.post('/', requireRole('administrator'), async (req, res) => {
 
     const hash = await bcrypt.hash(password, 12);
     const { rows } = await client.query(
-      `INSERT INTO users (email, full_name, first_name, last_name, password_hash, department, title, phone, manager_id, contact_person_id, company, is_active, must_change_password)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,true) RETURNING *`,
-      [email, full_name, (first_name || '').slice(0, 128), (last_name || '').slice(0, 128), hash, (department || '').slice(0, 100), (title || '').slice(0, 255), (phone || '').slice(0, 50), manager_id || null, contact_person_id || null, (company || '').slice(0, 255), is_active ?? true]
+      `INSERT INTO users (email, full_name, first_name, last_name, password_hash, department, title, phone, manager_id, contact_person_id, company, is_active, org_unit_id, must_change_password)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,true) RETURNING *`,
+      [email, full_name, (first_name || '').slice(0, 128), (last_name || '').slice(0, 128), hash, (department || '').slice(0, 100), (title || '').slice(0, 255), (phone || '').slice(0, 50), manager_id || null, contact_person_id || null, (company || '').slice(0, 255), is_active ?? true, org_unit_id || null]
     );
     const user = rows[0];
     if (roles?.length) {
@@ -165,7 +165,7 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
   try {
     await client.query('BEGIN');
     const targetId = req.params.id;
-    const { email, full_name, first_name, last_name, password, roles, department, title, phone, manager_id, contact_person_id, company, is_active } = req.body;
+    const { email, full_name, first_name, last_name, password, roles, department, title, phone, manager_id, contact_person_id, company, is_active, org_unit_id } = req.body;
 
     const updates = [];
     const vals = [];
@@ -190,6 +190,7 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
     addField('contact_person_id', contact_person_id || null);
     addField('company', company !== undefined ? (company || '').slice(0, 255) : undefined);
     addField('is_active', is_active);
+    if (org_unit_id !== undefined) addField('org_unit_id', org_unit_id || null);
 
     if (password) {
       const policy = await getPasswordPolicy();
