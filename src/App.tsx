@@ -67,7 +67,8 @@ const App = () => (
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/applications" element={<ApplicationsPage />} />
                   <Route path="/facilities" element={<RoleGuard roles={['administrator', 'facility_owner', 'facility_admin']}><FacilitiesPage /></RoleGuard>} />
-                  <Route path="/areas" element={<RoleGuard roles={['administrator', 'facility_owner', 'facility_admin']}><AreasPage /></RoleGuard>} />
+                  <Route path="/facilities/:facilityId/areas" element={<RoleGuard roles={['administrator', 'facility_owner', 'facility_admin']}><AreasPage /></RoleGuard>} />
+                  <Route path="/areas" element={<Navigate to="/facilities" replace />} />
                   <Route path="/requirements" element={<RoleGuard roles={['administrator', 'facility_owner', 'facility_admin', 'line_manager']}><RequirementsPage /></RoleGuard>} />
                   <Route path="/users" element={<RoleGuard roles={['administrator']}><UsersPage /></RoleGuard>} />
                   <Route path="/organization" element={<RoleGuard roles={['administrator']}><OrganizationPage /></RoleGuard>} />

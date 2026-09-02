@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Building2, MapPin, Shield, FileText,
+  LayoutDashboard, Building2, Shield, FileText,
   Users, ScrollText, Settings, Bell, Network, ChevronDown, UserCircle
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
@@ -30,9 +30,6 @@ const navItems: NavItem[] = [
   {
     title: 'Anläggningar', url: '/facilities', icon: Building2,
     roles: ['administrator', 'facility_owner', 'facility_admin'],
-    children: [
-      { title: 'Områden', url: '/areas', icon: MapPin, roles: ['administrator', 'facility_owner', 'facility_admin'] },
-    ],
   },
   { title: 'Krav', url: '/requirements', icon: Shield, roles: ['administrator', 'facility_owner', 'facility_admin', 'line_manager'] },
   { title: 'Användare', url: '/users', icon: Users, roles: ['administrator'] },
