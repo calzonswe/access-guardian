@@ -146,7 +146,7 @@ async function initLocalMode(): Promise<void> {
   localSet(KEYS.USER_REQUIREMENTS, []);
   localSet(KEYS.LOGS, []);
   localSet(KEYS.NOTIFICATIONS, []);
-  localSet(KEYS.ORG_TREE, []);
+  localSet(KEYS.ORG_UNITS, []);
 }
 
 async function initIfNeeded(): Promise<void> {
