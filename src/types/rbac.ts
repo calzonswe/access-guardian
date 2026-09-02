@@ -29,6 +29,7 @@ export interface User {
   phone?: string;             // Telefonnummer
   manager_id?: string;        // Närmaste chef ID
   contact_person_id?: string; // For contractors
+  org_unit_id?: string;       // Placering i organisationen
   company?: string;           // Företag
   is_active: boolean;
   created_at: string;
