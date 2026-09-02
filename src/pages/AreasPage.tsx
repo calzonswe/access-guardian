@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { MapPin, Plus, Pencil, Trash2, Shield } from 'lucide-react';
+import { MapPin, Plus, Pencil, Trash2, Shield, ArrowLeft } from 'lucide-react';
+import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ export default function AreasPage() {
   const [reqDialogOpen, setReqDialogOpen] = useState(false);
   const [reqAreaId, setReqAreaId] = useState('');
 
+  const { facilityId: routeFacilityId } = useParams<{ facilityId: string }>();
   const [facilityId, setFacilityId] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -39,14 +41,15 @@ export default function AreasPage() {
 
   if (!currentUser) return null;
 
-  const facilities = store.getFacilities();
+  const facilities = store.getFacilities().filter(f => !routeFacilityId || f.id === routeFacilityId);
+  const facility = routeFacilityId ? facilities[0] : undefined;
   const allAreas = store.getAreas();
   const allRequirements = store.getRequirements();
   const canEdit = currentUser.roles.includes('administrator') || currentUser.roles.includes('facility_owner') || currentUser.roles.includes('facility_admin');
 
   const openCreate = () => {
     setEditArea(null);
-    setFacilityId(facilities[0]?.id || ''); setName(''); setDescription(''); setSecurityLevel('medium');
+    setFacilityId(routeFacilityId || facilities[0]?.id || ''); setName(''); setDescription(''); setSecurityLevel('medium');
     setDialogOpen(true);
   };
 
@@ -96,8 +99,11 @@ export default function AreasPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Områden</h1>
-          <p className="text-sm text-muted-foreground mt-1">Hantera områden inom anläggningar</p>
+          <Button variant="ghost" size="sm" asChild className="mb-2 -ml-2 text-muted-foreground">
+            <Link to="/facilities"><ArrowLeft className="mr-1 h-4 w-4" />Tillbaka till anläggningar</Link>
+          </Button>
+          <h1 className="text-2xl font-semibold text-foreground">Områden{facility ? ` – ${facility.name}` : ''}</h1>
+          <p className="text-sm text-muted-foreground mt-1">Hantera områden inom {facility ? 'denna anläggning' : 'anläggningar'}</p>
         </div>
         {canEdit && (
           <Button onClick={openCreate} disabled={facilities.length === 0}><Plus className="mr-2 h-4 w-4" />Nytt område</Button>
@@ -177,7 +183,7 @@ export default function AreasPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Anläggning</Label>
-              <Select value={facilityId} onValueChange={setFacilityId} disabled={!!editArea}>
+              <Select value={facilityId} onValueChange={setFacilityId} disabled={!!editArea || !!routeFacilityId}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{facilities.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
               </Select>
