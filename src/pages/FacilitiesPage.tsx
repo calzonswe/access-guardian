@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import * as store from '@/services/dataStore';
 import { useAuth } from '@/context/AuthContext';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { Facility } from '@/types/rbac';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
@@ -165,6 +166,9 @@ export default function FacilitiesPage() {
                     </div>
                     {(currentUser.roles.includes('administrator') || facility.owner_id === currentUser.id) && (
                       <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Hantera områden" asChild>
+                          <Link to={`/facilities/${facility.id}/areas`}><MapPin className="h-3.5 w-3.5 text-primary" /></Link>
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(facility)}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
