@@ -134,12 +134,9 @@ router.post('/apply', async (req, res) => {
     let contractorId;
     let tempPassword = null;
     if (existing.length > 0) {
+      // Known address: leave the existing account completely untouched.
+      // The application is simply queued for sponsor approval.
       contractorId = existing[0].id;
-      // Refresh sponsor link + company + phone
-      await client.query(
-        `UPDATE users SET contact_person_id = $1, company = $2, phone = COALESCE($3, phone), is_active = true WHERE id = $4`,
-        [sponsor.id, String(company).slice(0, 255), phone ? String(phone).slice(0, 50) : null, contractorId]
-      );
     } else {
       tempPassword = generateTempPassword();
       const hash = await bcrypt.hash(tempPassword, 12);
