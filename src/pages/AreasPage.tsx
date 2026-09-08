@@ -222,6 +222,19 @@ export default function AreasPage() {
                 <SelectContent>{facilities.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Överordnat område (valfritt)</Label>
+              <Select value={parentId || '__none__'} onValueChange={v => setParentId(v === '__none__' ? '' : v)}>
+                <SelectTrigger><SelectValue placeholder="Inget – toppnivå" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Inget – toppnivå</SelectItem>
+                  {parentOptions().map(({ area, depth }) => (
+                    <SelectItem key={area.id} value={area.id}>{'\u00A0'.repeat(depth * 3)}{area.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Tillträde till ett underområde kräver alltid tillträde till områdena ovanför.</p>
+            </div>
             <div className="space-y-2"><Label>Namn</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
             <div className="space-y-2"><Label>Beskrivning</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} /></div>
             <div className="space-y-2">
