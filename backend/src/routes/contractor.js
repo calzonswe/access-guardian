@@ -162,7 +162,7 @@ router.post('/apply', async (req, res) => {
       [contractorId, facility_id, start_date, end_date || null, hasException, hasException ? String(justification).slice(0, 2000) : null]
     );
     const appId = appRows[0].id;
-    for (const areaId of area_ids) {
+    for (const areaId of await expandAreaAncestors(client, area_ids)) {
       await client.query(
         `INSERT INTO application_areas (application_id, area_id) VALUES ($1,$2)`,
         [appId, areaId]

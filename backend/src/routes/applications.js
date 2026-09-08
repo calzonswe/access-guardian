@@ -200,14 +200,13 @@ router.post('/', async (req, res) => {
       [applicant_id, facility_id, status || 'draft', start_date, end_date || null, has_exception ?? false, exception_justification]
     );
     const app = rows[0];
-    if (area_ids?.length) {
-      for (const areaId of area_ids) {
-        await client.query('INSERT INTO application_areas (application_id, area_id) VALUES ($1,$2)', [app.id, areaId]);
-      }
+    const expandedAreaIds = await expandAreaAncestors(client, area_ids || []);
+    for (const areaId of expandedAreaIds) {
+      await client.query('INSERT INTO application_areas (application_id, area_id) VALUES ($1,$2)', [app.id, areaId]);
     }
     await client.query('COMMIT');
     await audit({ req, action: 'application_created', targetId: app.id, targetType: 'application', details: `Anläggning: ${facility_id}` });
-    res.status(201).json({ ...app, area_ids: area_ids || [], attachments: [] });
+    res.status(201).json({ ...app, area_ids: expandedAreaIds, attachments: [] });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(err);
@@ -319,7 +318,7 @@ router.put('/:id', async (req, res) => {
     }
     if (body.area_ids !== undefined) {
       await client.query('DELETE FROM application_areas WHERE application_id = $1', [appId]);
-      for (const areaId of body.area_ids) {
+      for (const areaId of await expandAreaAncestors(client, body.area_ids || [])) {
         await client.query('INSERT INTO application_areas (application_id, area_id) VALUES ($1,$2)', [appId, areaId]);
       }
     }
