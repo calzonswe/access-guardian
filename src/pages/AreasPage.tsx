@@ -143,7 +143,7 @@ export default function AreasPage() {
         <Card><CardContent className="py-16 text-center text-muted-foreground">Skapa en anläggning först</CardContent></Card>
       ) : (
         facilities.map(facility => {
-          const areas = allAreas.filter(a => a.facility_id === facility.id);
+          const areas = treeFor(facility.id);
           return (
             <Card key={facility.id}>
               <CardHeader className="pb-3">
@@ -167,11 +167,16 @@ export default function AreasPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {areas.map(area => {
+                      {areas.map(({ area, depth }) => {
                         const areaReqs = areaReqsForArea(area.id);
                         return (
                           <TableRow key={area.id}>
-                            <TableCell className="font-medium">{area.name}</TableCell>
+                            <TableCell className="font-medium">
+                              <span style={{ paddingLeft: depth * 20 }} className="inline-flex items-center gap-1">
+                                {depth > 0 && <span className="text-muted-foreground">↳</span>}
+                                {area.name}
+                              </span>
+                            </TableCell>
                             <TableCell className="text-muted-foreground">{area.description}</TableCell>
                             <TableCell>
                               <Badge variant="outline" className={SECURITY_COLORS[area.security_level]}>
