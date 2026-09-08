@@ -9,6 +9,7 @@ import path from 'path';
 import { randomUUID, randomBytes } from 'crypto';
 import { pool } from '../db.js';
 import { issueCaptcha, verifyCaptcha } from '../services/captcha.js';
+import { expandAreaAncestors } from '../services/areaTree.js';
 
 const router = Router();
 

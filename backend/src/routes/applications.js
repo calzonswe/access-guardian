@@ -4,6 +4,7 @@ import { isFacilityAdminOrOwner, isManagerOf, getManagedUserIds, getFacilityIdFo
 import { sendMailToUser, isEmailEnabled } from '../services/email.js';
 import { getOrgManagerForUser } from './org.js';
 import { audit } from '../services/audit.js';
+import { expandAreaAncestors } from '../services/areaTree.js';
 
 // Notify a user both in-app and via email (best-effort)
 async function notifyUser(client, userId, { title, message, type, link }) {
