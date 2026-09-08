@@ -190,11 +190,17 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
           {facilityId && areas.length > 0 && (
             <div className="space-y-2">
               <Label>Områden (valfritt)</Label>
+              <p className="text-xs text-muted-foreground">Väljer du ett underområde inkluderas överordnade områden automatiskt.</p>
               <div className="space-y-2 rounded-lg border border-border p-3">
-                {areas.map(area => (
-                  <div key={area.id} className="flex items-center gap-2">
-                    <Checkbox checked={selectedAreas.includes(area.id)} onCheckedChange={() => toggleArea(area.id)} />
+                {areaTree.map(({ area, depth }) => (
+                  <div key={area.id} className="flex items-center gap-2" style={{ paddingLeft: depth * 16 }}>
+                    <Checkbox
+                      checked={selectedAreas.includes(area.id)}
+                      disabled={lockedAreaIds.has(area.id)}
+                      onCheckedChange={() => toggleArea(area.id)}
+                    />
                     <span className="text-sm">{area.name}</span>
+                    {lockedAreaIds.has(area.id) && <span className="text-xs text-muted-foreground">(krävs)</span>}
                     <Badge variant="outline" className="text-xs ml-auto">{SECURITY_LABELS[area.security_level]}</Badge>
                   </div>
                 ))}
