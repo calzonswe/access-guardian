@@ -35,6 +35,7 @@ export default function AreasPage() {
 
   const { facilityId: routeFacilityId } = useParams<{ facilityId: string }>();
   const [facilityId, setFacilityId] = useState('');
+  const [parentId, setParentId] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [securityLevel, setSecurityLevel] = useState<Area['security_level']>('medium');
@@ -47,25 +48,53 @@ export default function AreasPage() {
   const allRequirements = store.getRequirements();
   const canEdit = currentUser.roles.includes('administrator') || currentUser.roles.includes('facility_owner') || currentUser.roles.includes('facility_admin');
 
+  /** Areas of a facility ordered as a tree, with depth for indentation. */
+  const treeFor = (fid: string) => {
+    const areas = allAreas.filter(a => a.facility_id === fid);
+    const out: { area: Area; depth: number }[] = [];
+    const walk = (parent: string | null, depth: number) => {
+      areas
+        .filter(a => (a.parent_id || null) === parent)
+        .sort((x, y) => x.name.localeCompare(y.name, 'sv'))
+        .forEach(a => { out.push({ area: a, depth }); walk(a.id, depth + 1); });
+    };
+    walk(null, 0);
+    // Include any orphans (parent outside the list) so nothing disappears
+    for (const a of areas) if (!out.some(o => o.area.id === a.id)) out.push({ area: a, depth: 0 });
+    return out;
+  };
+
+  /** Descendants of an area – cannot be chosen as its own parent. */
+  const descendantIds = (areaId: string): string[] => {
+    const kids = allAreas.filter(a => a.parent_id === areaId);
+    return kids.flatMap(k => [k.id, ...descendantIds(k.id)]);
+  };
+
+  const parentOptions = () => {
+    const blocked = editArea ? new Set([editArea.id, ...descendantIds(editArea.id)]) : new Set<string>();
+    return treeFor(facilityId).filter(t => !blocked.has(t.area.id));
+  };
+
   const openCreate = () => {
     setEditArea(null);
-    setFacilityId(routeFacilityId || facilities[0]?.id || ''); setName(''); setDescription(''); setSecurityLevel('medium');
+    setFacilityId(routeFacilityId || facilities[0]?.id || ''); setName(''); setDescription(''); setSecurityLevel('medium'); setParentId('');
     setDialogOpen(true);
   };
 
   const openEdit = (a: Area) => {
     setEditArea(a);
     setFacilityId(a.facility_id); setName(a.name); setDescription(a.description); setSecurityLevel(a.security_level);
+    setParentId(a.parent_id || '');
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
     if (!name.trim() || !facilityId) { toast.error('Fyll i alla fält'); return; }
     if (editArea) {
-      await store.updateArea(editArea.id, { facility_id: facilityId, name, description, security_level: securityLevel });
+      await store.updateArea(editArea.id, { facility_id: facilityId, name, description, security_level: securityLevel, parent_id: parentId || null });
       toast.success('Område uppdaterat');
     } else {
-      await store.createArea({ facility_id: facilityId, name, description, security_level: securityLevel });
+      await store.createArea({ facility_id: facilityId, name, description, security_level: securityLevel, parent_id: parentId || null });
       await store.addLog({ action: 'area_created', actor_id: currentUser.id, details: `Nytt område skapat: ${name}` });
       toast.success('Område skapat');
     }
@@ -114,7 +143,7 @@ export default function AreasPage() {
         <Card><CardContent className="py-16 text-center text-muted-foreground">Skapa en anläggning först</CardContent></Card>
       ) : (
         facilities.map(facility => {
-          const areas = allAreas.filter(a => a.facility_id === facility.id);
+          const areas = treeFor(facility.id);
           return (
             <Card key={facility.id}>
               <CardHeader className="pb-3">
@@ -138,11 +167,16 @@ export default function AreasPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {areas.map(area => {
+                      {areas.map(({ area, depth }) => {
                         const areaReqs = areaReqsForArea(area.id);
                         return (
                           <TableRow key={area.id}>
-                            <TableCell className="font-medium">{area.name}</TableCell>
+                            <TableCell className="font-medium">
+                              <span style={{ paddingLeft: depth * 20 }} className="inline-flex items-center gap-1">
+                                {depth > 0 && <span className="text-muted-foreground">↳</span>}
+                                {area.name}
+                              </span>
+                            </TableCell>
                             <TableCell className="text-muted-foreground">{area.description}</TableCell>
                             <TableCell>
                               <Badge variant="outline" className={SECURITY_COLORS[area.security_level]}>
@@ -187,6 +221,19 @@ export default function AreasPage() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{facilities.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Överordnat område (valfritt)</Label>
+              <Select value={parentId || '__none__'} onValueChange={v => setParentId(v === '__none__' ? '' : v)}>
+                <SelectTrigger><SelectValue placeholder="Inget – toppnivå" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Inget – toppnivå</SelectItem>
+                  {parentOptions().map(({ area, depth }) => (
+                    <SelectItem key={area.id} value={area.id}>{'\u00A0'.repeat(depth * 3)}{area.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Tillträde till ett underområde kräver alltid tillträde till områdena ovanför.</p>
             </div>
             <div className="space-y-2"><Label>Namn</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
             <div className="space-y-2"><Label>Beskrivning</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} /></div>

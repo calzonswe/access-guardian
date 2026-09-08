@@ -48,6 +48,7 @@ export interface Facility {
 export interface Area {
   id: string;
   facility_id: string;
+  parent_id?: string | null;   // Överordnat område inom samma anläggning
   name: string;
   description: string;
   security_level: 'low' | 'medium' | 'high' | 'critical';

@@ -43,6 +43,30 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
   const areas = facilityId ? store.getAreas(facilityId) : [];
   const userReqs = store.getUserRequirements(currentUser.id);
 
+  // Areas ordered as a tree with depth for indentation
+  const areaTree: { area: typeof areas[number]; depth: number }[] = [];
+  const walkAreas = (parent: string | null, depth: number) => {
+    areas
+      .filter(a => (a.parent_id || null) === parent)
+      .sort((x, y) => x.name.localeCompare(y.name, 'sv'))
+      .forEach(a => { areaTree.push({ area: a, depth }); walkAreas(a.id, depth + 1); });
+  };
+  walkAreas(null, 0);
+  for (const a of areas) if (!areaTree.some(t => t.area.id === a.id)) areaTree.push({ area: a, depth: 0 });
+
+  const ancestorsOf = (areaId: string): string[] => {
+    const out: string[] = [];
+    let cur = areas.find(a => a.id === areaId)?.parent_id || null;
+    while (cur) { out.push(cur); cur = areas.find(a => a.id === cur)?.parent_id || null; }
+    return out;
+  };
+  const descendantsOf = (areaId: string): string[] => {
+    const kids = areas.filter(a => a.parent_id === areaId);
+    return kids.flatMap(k => [k.id, ...descendantsOf(k.id)]);
+  };
+  // A parent is locked while any of its sub-areas is selected
+  const lockedAreaIds = new Set(selectedAreas.flatMap(id => ancestorsOf(id)));
+
   const facilityReqLinks = facilityId ? store.getFacilityRequirements(facilityId) : [];
   const facilityReqIds = facilityReqLinks.map(fr => fr.requirement_id);
 
@@ -57,7 +81,15 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
   const combinedRequirements = store.getRequirements().filter(r => allReqIds.has(r.id));
 
   const toggleArea = (areaId: string) => {
-    setSelectedAreas(prev => prev.includes(areaId) ? prev.filter(id => id !== areaId) : [...prev, areaId]);
+    setSelectedAreas(prev => {
+      if (prev.includes(areaId)) {
+        // Unselecting a parent also unselects everything below it
+        const remove = new Set([areaId, ...descendantsOf(areaId)]);
+        return prev.filter(id => !remove.has(id));
+      }
+      // Selecting an area automatically includes all areas above it
+      return Array.from(new Set([...prev, areaId, ...ancestorsOf(areaId)]));
+    });
   };
 
   const fulfilledReqIds = userReqs.filter(ur => ur.status === 'fulfilled').map(ur => ur.requirement_id);
@@ -158,11 +190,17 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
           {facilityId && areas.length > 0 && (
             <div className="space-y-2">
               <Label>Områden (valfritt)</Label>
+              <p className="text-xs text-muted-foreground">Väljer du ett underområde inkluderas överordnade områden automatiskt.</p>
               <div className="space-y-2 rounded-lg border border-border p-3">
-                {areas.map(area => (
-                  <div key={area.id} className="flex items-center gap-2">
-                    <Checkbox checked={selectedAreas.includes(area.id)} onCheckedChange={() => toggleArea(area.id)} />
+                {areaTree.map(({ area, depth }) => (
+                  <div key={area.id} className="flex items-center gap-2" style={{ paddingLeft: depth * 16 }}>
+                    <Checkbox
+                      checked={selectedAreas.includes(area.id)}
+                      disabled={lockedAreaIds.has(area.id)}
+                      onCheckedChange={() => toggleArea(area.id)}
+                    />
                     <span className="text-sm">{area.name}</span>
+                    {lockedAreaIds.has(area.id) && <span className="text-xs text-muted-foreground">(krävs)</span>}
                     <Badge variant="outline" className="text-xs ml-auto">{SECURITY_LABELS[area.security_level]}</Badge>
                   </div>
                 ))}

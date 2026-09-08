@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ROLE_LABELS, type AppRole, type User } from '@/types/rbac';
+import { flattenOrgUnits, ORG_UNIT_LABELS } from '@/types/organization';
 import * as store from '@/services/dataStore';
 import * as api from '@/services/api';
 import { toast } from 'sonner';
@@ -37,6 +38,7 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
   const [department, setDepartment] = useState('');
   const [managerId, setManagerId] = useState('');
   const [contactPersonId, setContactPersonId] = useState('');
+  const [orgUnitId, setOrgUnitId] = useState('');
   const [policy, setPolicy] = useState<api.PasswordPolicy>(DEFAULT_POLICY);
 
   useEffect(() => {
@@ -58,10 +60,11 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
         setDepartment(editUser.department || '');
         setManagerId(editUser.manager_id || '');
         setContactPersonId(editUser.contact_person_id || '');
+        setOrgUnitId(editUser.org_unit_id || '');
       } else {
         setFirstName(''); setLastName(''); setEmail(''); setPhone('');
         setPassword(''); setRoles(['employee']); setTitle('');
-        setCompany(''); setDepartment(''); setManagerId(''); setContactPersonId('');
+        setCompany(''); setDepartment(''); setManagerId(''); setContactPersonId(''); setOrgUnitId('');
       }
     }
   }, [open, editUser]);
@@ -101,6 +104,7 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
         department: department || undefined,
         manager_id: managerId || undefined,
         contact_person_id: isContractor ? contactPersonId || undefined : undefined,
+        org_unit_id: orgUnitId || null,
       };
       if (password.trim()) { updateData.password = password; updateData.must_change_password = true; }
       await store.updateUser(editUser.id, updateData);
@@ -119,6 +123,7 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
         department: department || undefined,
         manager_id: managerId || undefined,
         contact_person_id: isContractor ? contactPersonId || undefined : undefined,
+        org_unit_id: orgUnitId || undefined,
         is_active: true,
         password,
       });
@@ -130,6 +135,7 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
   };
 
   const managers = users.filter(u => u.roles.includes('line_manager'));
+  const orgOptions = flattenOrgUnits(store.getOrgUnits());
   const internalContacts = users.filter(u => !u.roles.includes('contractor') && u.id !== editUser?.id);
 
   return (
@@ -190,6 +196,24 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Placering i organisationen</Label>
+            <Select value={orgUnitId || '__none__'} onValueChange={v => setOrgUnitId(v === '__none__' ? '' : v)}>
+              <SelectTrigger><SelectValue placeholder="Välj enhet" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Ingen placering</SelectItem>
+                {orgOptions.map(({ unit, depth }) => (
+                  <SelectItem key={unit.id} value={unit.id}>
+                    {'\u00A0'.repeat(depth * 3)}{unit.name} ({ORG_UNIT_LABELS[unit.type]})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {orgOptions.length === 0 && (
+              <p className="text-xs text-muted-foreground">Skapa organisationsstrukturen under Organisation först.</p>
+            )}
           </div>
 
           {/* Contact person for contractors */}

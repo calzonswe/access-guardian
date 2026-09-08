@@ -116,12 +116,18 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Only system administrators or the facility OWNER may appoint/remove facility admins.
+async function canManageAdmins(req, facilityId) {
+  if (req.user.roles.includes('administrator')) return true;
+  const { rows } = await pool.query('SELECT 1 FROM facilities WHERE id = $1 AND owner_id = $2', [facilityId, req.user.id]);
+  return rows.length > 0;
+}
+
 router.post('/:id/admins', async (req, res) => {
   try {
     const facilityId = req.params.id;
-    if (!req.user.roles.includes('administrator')) {
-      const hasAccess = await isFacilityAdminOrOwner(req.user.id, facilityId);
-      if (!hasAccess) return res.status(403).json({ error: 'Ingen åtkomst till denna anläggning' });
+    if (!(await canManageAdmins(req, facilityId))) {
+      return res.status(403).json({ error: 'Endast anläggningsägare eller systemadministratör kan utse administratörer' });
     }
     const { user_id } = req.body;
     await pool.query(
@@ -138,9 +144,8 @@ router.post('/:id/admins', async (req, res) => {
 router.delete('/:id/admins/:userId', async (req, res) => {
   try {
     const facilityId = req.params.id;
-    if (!req.user.roles.includes('administrator')) {
-      const hasAccess = await isFacilityAdminOrOwner(req.user.id, facilityId);
-      if (!hasAccess) return res.status(403).json({ error: 'Ingen åtkomst till denna anläggning' });
+    if (!(await canManageAdmins(req, facilityId))) {
+      return res.status(403).json({ error: 'Endast anläggningsägare eller systemadministratör kan ta bort administratörer' });
     }
     await pool.query(
       'DELETE FROM facility_admins WHERE facility_id = $1 AND user_id = $2',

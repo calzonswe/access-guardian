@@ -9,6 +9,7 @@ import path from 'path';
 import { randomUUID, randomBytes } from 'crypto';
 import { pool } from '../db.js';
 import { issueCaptcha, verifyCaptcha } from '../services/captcha.js';
+import { expandAreaAncestors } from '../services/areaTree.js';
 
 const router = Router();
 
@@ -134,12 +135,9 @@ router.post('/apply', async (req, res) => {
     let contractorId;
     let tempPassword = null;
     if (existing.length > 0) {
+      // Known address: leave the existing account completely untouched.
+      // The application is simply queued for sponsor approval.
       contractorId = existing[0].id;
-      // Refresh sponsor link + company + phone
-      await client.query(
-        `UPDATE users SET contact_person_id = $1, company = $2, phone = COALESCE($3, phone), is_active = true WHERE id = $4`,
-        [sponsor.id, String(company).slice(0, 255), phone ? String(phone).slice(0, 50) : null, contractorId]
-      );
     } else {
       tempPassword = generateTempPassword();
       const hash = await bcrypt.hash(tempPassword, 12);
@@ -165,7 +163,7 @@ router.post('/apply', async (req, res) => {
       [contractorId, facility_id, start_date, end_date || null, hasException, hasException ? String(justification).slice(0, 2000) : null]
     );
     const appId = appRows[0].id;
-    for (const areaId of area_ids) {
+    for (const areaId of await expandAreaAncestors(client, area_ids)) {
       await client.query(
         `INSERT INTO application_areas (application_id, area_id) VALUES ($1,$2)`,
         [appId, areaId]
