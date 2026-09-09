@@ -186,9 +186,31 @@ Kopplingstabell: facility_id ↔ user_id (UNIQUE)
 |--------|-----|-------------|
 | id | UUID PK | |
 | facility_id | UUID FK → facilities | Tillhörande anläggning |
+| parent_id | UUID FK → areas | Överordnat område (samma anläggning), NULL = toppnivå |
 | name | VARCHAR(255) | Områdesnamn |
 | description | TEXT | Beskrivning |
 | security_level | security_level | Säkerhetsnivå (low/medium/high/critical) |
+
+Områden är hierarkiska. Tillträde till ett underområde kräver alltid tillträde till
+samtliga överordnade områden — servern expanderar därför `area_ids` uppåt via
+`expandAreaAncestors()` (`backend/src/services/areaTree.js`) vid både skapande och
+uppdatering av ansökningar, inklusive det publika entreprenörsformuläret.
+
+#### `organization_units`
+| Kolumn | Typ | Beskrivning |
+|--------|-----|-------------|
+| id | UUID PK | |
+| name | VARCHAR(255) | Enhetens namn |
+| type | VARCHAR(20) | company / department / unit / group |
+| parent_id | UUID FK → organization_units | Överordnad enhet |
+| manager_id | UUID FK → users | Chef för enheten |
+| sort_order | INTEGER | Sorteringsordning |
+
+Tillåten placering: `company` endast toppnivå, `department` toppnivå eller under
+`company`, `unit` under `department`, `group` under `unit`. Cirklar blockeras.
+Användare knyts till en enhet via `users.org_unit_id`; saknar en användare
+`manager_id` används närmaste chef uppåt i organisationsträdet som godkännare.
+
 
 #### `requirements`
 | Kolumn | Typ | Beskrivning |
@@ -361,17 +383,27 @@ Alla skyddade endpoints kräver headern `Authorization: Bearer <JWT-token>`.
 | POST | `/api/facilities` | Skapa anläggning | administrator |
 | PUT | `/api/facilities/:id` | Uppdatera anläggning | Ägare/admin |
 | DELETE | `/api/facilities/:id` | Radera anläggning | administrator |
-| POST | `/api/facilities/:id/admins` | Lägg till admin | administrator |
-| DELETE | `/api/facilities/:id/admins/:userId` | Ta bort admin | administrator |
+| POST | `/api/facilities/:id/admins` | Lägg till admin | administrator eller anläggningsägare |
+| DELETE | `/api/facilities/:id/admins/:userId` | Ta bort admin | administrator eller anläggningsägare |
 
 ### Områden
 
 | Metod | Endpoint | Beskrivning |
 |-------|----------|-------------|
-| GET | `/api/areas?facility_id=:id` | Lista områden (filtrerat) |
-| POST | `/api/areas` | Skapa område |
+| GET | `/api/areas?facility_id=:id` | Lista områden (filtrerat, inkl. `parent_id`) |
+| POST | `/api/areas` | Skapa område (valfritt `parent_id` inom samma anläggning) |
 | PUT | `/api/areas/:id` | Uppdatera område |
-| DELETE | `/api/areas/:id` | Radera område |
+| DELETE | `/api/areas/:id` | Radera område (underområden raderas med) |
+
+### Organisation
+
+| Metod | Endpoint | Beskrivning |
+|-------|----------|-------------|
+| GET | `/api/org` | Hämta organisationsträdet |
+| POST | `/api/org` | Skapa enhet (administrator) |
+| PUT | `/api/org/:id` | Uppdatera enhet (administrator) |
+| DELETE | `/api/org/:id` | Radera enhet (administrator) |
+
 
 ### Krav
 
