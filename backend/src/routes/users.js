@@ -93,8 +93,28 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+/**
+ * Guards against circular manager chains: the proposed manager must not be
+ * the user themselves nor anywhere below them in the reporting tree.
+ */
+async function managerChainError(client, userId, managerId) {
+  if (!managerId) return null;
+  if (userId && managerId === userId) return 'En användare kan inte vara sin egen chef';
+  if (!userId) return null;
+  const { rows } = await client.query(
+    `WITH RECURSIVE chain AS (
+       SELECT id, manager_id FROM users WHERE id = $1
+       UNION
+       SELECT u.id, u.manager_id FROM users u JOIN chain c ON u.id = c.manager_id
+     ) SELECT 1 FROM chain WHERE id = $2`,
+    [managerId, userId]
+  );
+  return rows.length > 0 ? 'Cirkulär chefskedja är inte tillåten' : null;
+}
+
 // POST, PUT, DELETE require administrator
 router.post('/', requireRole('administrator'), async (req, res) => {
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
