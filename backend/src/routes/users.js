@@ -127,6 +127,8 @@ router.post('/', requireRole('administrator'), async (req, res) => {
     const policy = await getPasswordPolicy();
     const policyErr = validatePassword(password, policy);
     if (policyErr) { await client.query('ROLLBACK'); return res.status(400).json({ error: policyErr }); }
+    const chainErr = await managerChainError(client, null, manager_id || null);
+    if (chainErr) { await client.query('ROLLBACK'); return res.status(400).json({ error: chainErr }); }
 
 
     const hash = await bcrypt.hash(password, 12);
@@ -206,6 +208,10 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
     addField('department', department !== undefined ? (department || '').slice(0, 100) : undefined);
     addField('title', title !== undefined ? (title || '').slice(0, 255) : undefined);
     addField('phone', phone !== undefined ? (phone || '').slice(0, 50) : undefined);
+    if (manager_id !== undefined) {
+      const chainErr = await managerChainError(client, targetId, manager_id || null);
+      if (chainErr) { await client.query('ROLLBACK'); return res.status(400).json({ error: chainErr }); }
+    }
     addField('manager_id', manager_id || null);
     addField('contact_person_id', contact_person_id || null);
     addField('company', company !== undefined ? (company || '').slice(0, 255) : undefined);
