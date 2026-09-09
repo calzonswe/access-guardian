@@ -127,7 +127,8 @@ paths:
 
   /applications:
     get: { summary: List applications (RBAC-filtered), responses: { '200': { description: OK } } }
-    post: { summary: Create application, responses: { '201': { description: Created } } }
+    post: { summary: "Create application. Parent areas of any selected sub-area are added automatically.", responses: { '201': { description: Created } } }
+
   /applications/{id}/approve:
     post:
       summary: Approve at current step
