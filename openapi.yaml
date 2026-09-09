@@ -113,9 +113,18 @@ paths:
     get: { summary: List facilities, responses: { '200': { description: OK } } }
     post: { summary: Create facility (admin), responses: { '201': { description: Created } } }
   /areas:
-    get: { summary: List areas, responses: { '200': { description: OK } } }
+    get: { summary: "List areas (hierarchical: each area may have parent_id within the same facility)", responses: { '200': { description: OK } } }
+    post: { summary: Create area (optional parent_id within same facility), responses: { '201': { description: Created } } }
+  /org:
+    get: { summary: Organization tree (company/department/unit/group), responses: { '200': { description: OK } } }
+    post: { summary: Create organization unit (admin), responses: { '201': { description: Created } } }
+  /org/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+    put: { summary: Update organization unit (admin), responses: { '200': { description: OK } } }
+    delete: { summary: Delete organization unit (admin), responses: { '200': { description: OK } } }
   /requirements:
     get: { summary: List requirement templates, responses: { '200': { description: OK } } }
+
   /applications:
     get: { summary: List applications (RBAC-filtered), responses: { '200': { description: OK } } }
     post: { summary: Create application, responses: { '201': { description: Created } } }
