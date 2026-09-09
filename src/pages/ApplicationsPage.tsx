@@ -90,14 +90,19 @@ export default function ApplicationsPage() {
 
   const canCreateApplication = roles.includes('employee') || roles.includes('contractor');
 
-  const handleDelete = (app: Application) => {
-    if (confirm('Är du säker på att du vill ta bort denna ansökan?')) {
-      store.deleteApplication(app.id);
-      store.addLog({ action: 'application_denied', actor_id: currentUser.id, target_id: app.id, target_type: 'application', details: 'Ansökan borttagen' });
+  const handleDelete = async (app: Application) => {
+    if (!confirm('Är du säker på att du vill ta bort denna ansökan?')) return;
+    try {
+      await store.deleteApplication(app.id);
+      await store.addLog({ action: 'application_denied', actor_id: currentUser.id, target_id: app.id, target_type: 'application', details: 'Ansökan borttagen' });
+      toast.success('Ansökan borttagen');
       setSelectedApp(null);
       reload();
+    } catch (err: any) {
+      toast.error(err?.message || 'Kunde inte ta bort ansökan');
     }
   };
+
 
   return (
     <div className="space-y-6">

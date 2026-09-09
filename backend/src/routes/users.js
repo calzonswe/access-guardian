@@ -93,8 +93,28 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+/**
+ * Guards against circular manager chains: the proposed manager must not be
+ * the user themselves nor anywhere below them in the reporting tree.
+ */
+async function managerChainError(client, userId, managerId) {
+  if (!managerId) return null;
+  if (userId && managerId === userId) return 'En användare kan inte vara sin egen chef';
+  if (!userId) return null;
+  const { rows } = await client.query(
+    `WITH RECURSIVE chain AS (
+       SELECT id, manager_id FROM users WHERE id = $1
+       UNION
+       SELECT u.id, u.manager_id FROM users u JOIN chain c ON u.id = c.manager_id
+     ) SELECT 1 FROM chain WHERE id = $2`,
+    [managerId, userId]
+  );
+  return rows.length > 0 ? 'Cirkulär chefskedja är inte tillåten' : null;
+}
+
 // POST, PUT, DELETE require administrator
 router.post('/', requireRole('administrator'), async (req, res) => {
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -107,6 +127,8 @@ router.post('/', requireRole('administrator'), async (req, res) => {
     const policy = await getPasswordPolicy();
     const policyErr = validatePassword(password, policy);
     if (policyErr) { await client.query('ROLLBACK'); return res.status(400).json({ error: policyErr }); }
+    const chainErr = await managerChainError(client, null, manager_id || null);
+    if (chainErr) { await client.query('ROLLBACK'); return res.status(400).json({ error: chainErr }); }
 
 
     const hash = await bcrypt.hash(password, 12);
@@ -186,6 +208,10 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
     addField('department', department !== undefined ? (department || '').slice(0, 100) : undefined);
     addField('title', title !== undefined ? (title || '').slice(0, 255) : undefined);
     addField('phone', phone !== undefined ? (phone || '').slice(0, 50) : undefined);
+    if (manager_id !== undefined) {
+      const chainErr = await managerChainError(client, targetId, manager_id || null);
+      if (chainErr) { await client.query('ROLLBACK'); return res.status(400).json({ error: chainErr }); }
+    }
     addField('manager_id', manager_id || null);
     addField('contact_person_id', contact_person_id || null);
     addField('company', company !== undefined ? (company || '').slice(0, 255) : undefined);
