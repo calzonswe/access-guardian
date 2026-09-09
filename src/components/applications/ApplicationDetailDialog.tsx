@@ -58,7 +58,7 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
     roles.includes('facility_admin')
   );
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     let newStatus: ApplicationStatus = application.status;
     const updates: Partial<Application> = {};
     if (application.status === 'pending_manager') {
@@ -72,28 +72,41 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
       if (application.has_exception) { updates.exception_approved_at = new Date().toISOString(); updates.exception_approved_by = currentUser.id; }
     }
     updates.status = newStatus;
-    store.updateApplication(application.id, updates);
-    store.addLog({ action: newStatus === 'approved' ? 'application_approved_facility' : 'application_approved_manager', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: 'Ansökan godkänd' });
-    notifyApplicationStatusChange(application, newStatus, currentUser.id);
-    toast.success('Ansökan godkänd');
-    onUpdated?.(); onOpenChange(false);
+    try {
+      await store.updateApplication(application.id, updates);
+      await store.addLog({ action: newStatus === 'approved' ? 'application_approved_facility' : 'application_approved_manager', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: 'Ansökan godkänd' });
+      await notifyApplicationStatusChange(application, newStatus, currentUser.id);
+      toast.success('Ansökan godkänd');
+      onUpdated?.(); onOpenChange(false);
+    } catch (err: any) {
+      toast.error(err?.message || 'Kunde inte godkänna ansökan');
+    }
   };
 
-  const handleDeny = () => {
-    store.updateApplication(application.id, { status: 'denied', denied_reason: denyReason });
-    store.addLog({ action: 'application_denied', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: `Ansökan nekad: ${denyReason}` });
-    notifyApplicationStatusChange(application, 'denied', currentUser.id);
-    toast.success('Ansökan nekad'); setDenyReason(''); onUpdated?.(); onOpenChange(false);
+  const handleDeny = async () => {
+    try {
+      await store.updateApplication(application.id, { status: 'denied', denied_reason: denyReason });
+      await store.addLog({ action: 'application_denied', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: `Ansökan nekad: ${denyReason}` });
+      await notifyApplicationStatusChange(application, 'denied', currentUser.id);
+      toast.success('Ansökan nekad'); setDenyReason(''); onUpdated?.(); onOpenChange(false);
+    } catch (err: any) {
+      toast.error(err?.message || 'Kunde inte neka ansökan');
+    }
   };
 
-  const handleRevoke = () => {
+  const handleRevoke = async () => {
     if (!confirm('Är du säker på att du vill återkalla detta tillträde?')) return;
-    store.updateApplication(application.id, { status: 'expired' });
-    store.addLog({ action: 'access_revoked', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: `Tillträde återkallat för ${applicant?.full_name ?? 'okänd'} till ${facility?.name ?? 'okänd'}` });
-    notifyApplicationStatusChange({ ...application, status: 'approved' }, 'expired', currentUser.id);
-    toast.success('Tillträde återkallat');
-    onUpdated?.(); onOpenChange(false);
+    try {
+      await store.updateApplication(application.id, { status: 'expired' });
+      await store.addLog({ action: 'access_revoked', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: `Tillträde återkallat för ${applicant?.full_name ?? 'okänd'} till ${facility?.name ?? 'okänd'}` });
+      await notifyApplicationStatusChange({ ...application, status: 'approved' }, 'expired', currentUser.id);
+      toast.success('Tillträde återkallat');
+      onUpdated?.(); onOpenChange(false);
+    } catch (err: any) {
+      toast.error(err?.message || 'Kunde inte återkalla tillträdet');
+    }
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

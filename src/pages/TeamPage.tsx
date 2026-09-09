@@ -46,14 +46,18 @@ export default function TeamPage() {
   const openCreate = () => { setEditUser(null); setDialogOpen(true); };
   const openEdit = (u: User) => { setEditUser(u); setDialogOpen(true); };
 
-  const handleDelete = (u: User) => {
-    if (confirm(`Ta bort "${u.full_name}"?`)) {
-      store.deleteUser(u.id);
-      store.addLog({ action: 'user_updated', actor_id: currentUser.id, target_id: u.id, target_type: 'user', details: `Användare borttagen: ${u.full_name}` });
+  const handleDelete = async (u: User) => {
+    if (!confirm(`Ta bort "${u.full_name}"?`)) return;
+    try {
+      await store.deleteUser(u.id);
+      await store.addLog({ action: 'user_updated', actor_id: currentUser.id, target_id: u.id, target_type: 'user', details: `Användare borttagen: ${u.full_name}` });
       toast.success('Användare borttagen');
       reload();
+    } catch (err: any) {
+      toast.error(err?.message || 'Kunde inte ta bort användaren');
     }
   };
+
 
   return (
     <div className="space-y-6">
