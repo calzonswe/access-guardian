@@ -15,10 +15,9 @@ router.get('/', async (_req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    if (!req.user.roles.includes('administrator') &&
-        !req.user.roles.includes('facility_owner') &&
-        !req.user.roles.includes('facility_admin')) {
-      return res.status(403).json({ error: 'Otillräckliga rättigheter' });
+    // The requirement catalogue is global: only system administrators may change it.
+    if (!req.user.roles.includes('administrator')) {
+      return res.status(403).json({ error: 'Endast systemadministratör kan ändra kravkatalogen' });
     }
     const { name, description, type, has_expiry, validity_days } = req.body;
     const { rows } = await pool.query(
@@ -35,10 +34,9 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    if (!req.user.roles.includes('administrator') &&
-        !req.user.roles.includes('facility_owner') &&
-        !req.user.roles.includes('facility_admin')) {
-      return res.status(403).json({ error: 'Otillräckliga rättigheter' });
+    // The requirement catalogue is global: only system administrators may change it.
+    if (!req.user.roles.includes('administrator')) {
+      return res.status(403).json({ error: 'Endast systemadministratör kan ändra kravkatalogen' });
     }
     const { name, description, type, has_expiry, validity_days } = req.body;
     const { rows } = await pool.query(
