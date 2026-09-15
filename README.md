@@ -318,6 +318,32 @@ Testa återställningsproceduren minst en gång per kvartal på en staging-milj�
 
 ---
 
+## Databaskonto med begränsade rättigheter (rekommenderas)
+
+Som standard kör backend med databasägaren `rbac_user`. För produktion kan du
+i stället köra applikationen med ett konto som bara får läsa och skriva data,
+aldrig ändra tabellstrukturen:
+
+```bash
+docker compose cp db/least-privilege.sql db:/tmp/least-privilege.sql
+docker compose exec -T db psql -U rbac_user rbac_access \
+  -v app_password="'<starkt-losenord>'" -f /tmp/least-privilege.sql
+```
+
+Sätt sedan i `.env`:
+
+```env
+DB_USER=rbac_app
+DB_PASSWORD=<starkt-losenord>
+```
+
+Vid uppgraderingar som innehåller nya migrationer: kör backend en gång med
+`DB_USER=rbac_user` så att migrationerna kan appliceras, och växla tillbaka
+till `rbac_app` därefter.
+
+---
+
+
 ## Kända begränsningar (v1.0)
 
 Följande funktioner är medvetet inte med i 1.0-släppet och ligger i backloggen:
