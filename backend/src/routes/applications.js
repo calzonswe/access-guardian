@@ -338,7 +338,7 @@ router.put('/:id', async (req, res) => {
       if (tm) {
         await notifyUser(pool, scope.applicantId, {
           title: tm[0], message: tm[1],
-          type: newStatus === 'approved' ? 'success' : (newStatus === 'denied' ? 'warning' : 'info'),
+          type: newStatus === 'denied' ? 'warning' : 'info',
           link: `/applications/${appId}`,
         });
       }
