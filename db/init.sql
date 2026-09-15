@@ -219,7 +219,7 @@ CREATE TABLE attachments (
 CREATE TABLE system_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   action log_action NOT NULL,
-  actor_id UUID NOT NULL REFERENCES users(id),
+  actor_id UUID REFERENCES users(id), -- NULL = okänd aktör (t.ex. misslyckad inloggning)
   target_id UUID,
   target_type VARCHAR(50),
   details TEXT,

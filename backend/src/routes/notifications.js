@@ -67,16 +67,21 @@ async function canNotify(user, recipientId) {
   return false;
 }
 
+const VALID_NOTIFICATION_TYPES = ['info', 'warning', 'action_required'];
+
 router.post('/', async (req, res) => {
   try {
     const { user_id, title, message, type, link } = req.body;
     if (!title || !String(title).trim()) return res.status(400).json({ error: 'Rubrik krävs' });
+    if (type && !VALID_NOTIFICATION_TYPES.includes(type)) {
+      return res.status(400).json({ error: 'Ogiltig notistyp' });
+    }
     if (!(await canNotify(req.user, user_id))) {
       return res.status(403).json({ error: 'Du kan inte skicka notiser till denna användare' });
     }
     const { rows } = await pool.query(
       'INSERT INTO notifications (user_id, title, message, type, read, link) VALUES ($1,$2,$3,$4,false,$5) RETURNING *',
-      [user_id, String(title).slice(0, 255), message || '', type || 'info', link]
+      [user_id, String(title).slice(0, 255), message || '', type || 'info', link || null]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
