@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, MapPin, Plus, Pencil, Trash2, Shield, ChevronDown, ChevronUp, Users } from 'lucide-react';
+import { Building2, MapPin, Plus, Pencil, Trash2, Shield, ChevronDown, ChevronUp, Users, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,8 @@ export default function FacilitiesPage() {
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
   const [adminFacilityId, setAdminFacilityId] = useState<string | null>(null);
   const [expandedReqs, setExpandedReqs] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
+
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -34,7 +36,15 @@ export default function FacilitiesPage() {
 
   if (!currentUser) return null;
 
-  const facilities = store.getFacilities();
+  const allFacilities = store.getFacilities();
+  const q = search.trim().toLowerCase();
+  const facilities = q
+    ? allFacilities.filter(f =>
+        (f.name || '').toLowerCase().includes(q) ||
+        (f.description || '').toLowerCase().includes(q) ||
+        (f.address || '').toLowerCase().includes(q))
+    : allFacilities;
+
   const users = store.getUsers();
   const areas = store.getAreas();
   const allRequirements = store.getRequirements();
@@ -131,15 +141,30 @@ export default function FacilitiesPage() {
         )}
       </div>
 
+      {allFacilities.length > 0 && (
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Sök anläggning, adress..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      )}
+
       {facilities.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Building2 className="h-12 w-12 text-muted-foreground/40 mb-4" />
-            <p className="text-lg font-medium text-muted-foreground">Inga anläggningar</p>
-            <p className="text-sm text-muted-foreground/70 mt-1">Skapa din första anläggning för att komma igång</p>
+            <p className="text-lg font-medium text-muted-foreground">
+              {q ? 'Inga anläggningar matchar sökningen' : 'Inga anläggningar'}
+            </p>
+            {!q && <p className="text-sm text-muted-foreground/70 mt-1">Skapa din första anläggning för att komma igång</p>}
           </CardContent>
         </Card>
       ) : (
+
         <div className="grid gap-4 md:grid-cols-2">
           {facilities.map(facility => {
             const facilityAreas = areas.filter(a => a.facility_id === facility.id);
