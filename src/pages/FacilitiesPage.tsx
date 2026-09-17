@@ -26,6 +26,8 @@ export default function FacilitiesPage() {
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
   const [adminFacilityId, setAdminFacilityId] = useState<string | null>(null);
   const [expandedReqs, setExpandedReqs] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
+
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
