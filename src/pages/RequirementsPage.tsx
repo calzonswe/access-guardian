@@ -36,7 +36,13 @@ export default function RequirementsPage() {
 
   if (!currentUser) return null;
 
-  const requirements = store.getRequirements();
+  const allRequirements = store.getRequirements();
+  const q = search.trim().toLowerCase();
+  const requirements = allRequirements.filter(r =>
+    (typeFilter === 'all' || r.type === typeFilter) &&
+    (!q || (r.name || '').toLowerCase().includes(q) || (r.description || '').toLowerCase().includes(q))
+  );
+
 
   const openCreate = () => {
     setEditReq(null); setName(''); setDescription(''); setType('training'); setHasExpiry(false); setValidityDays(365);
