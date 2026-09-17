@@ -36,7 +36,15 @@ export default function FacilitiesPage() {
 
   if (!currentUser) return null;
 
-  const facilities = store.getFacilities();
+  const allFacilities = store.getFacilities();
+  const q = search.trim().toLowerCase();
+  const facilities = q
+    ? allFacilities.filter(f =>
+        (f.name || '').toLowerCase().includes(q) ||
+        (f.description || '').toLowerCase().includes(q) ||
+        (f.address || '').toLowerCase().includes(q))
+    : allFacilities;
+
   const users = store.getUsers();
   const areas = store.getAreas();
   const allRequirements = store.getRequirements();
