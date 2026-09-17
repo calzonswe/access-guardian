@@ -86,14 +86,35 @@ export default function RequirementsPage() {
         {canEdit && <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Nytt krav</Button>}
       </div>
 
+      {allRequirements.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Sök krav..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alla typer</SelectItem>
+              <SelectItem value="training">Utbildning</SelectItem>
+              <SelectItem value="certification">Certifiering</SelectItem>
+              <SelectItem value="clearance">Säkerhetsprövning</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       <Card>
         <CardContent className="p-0">
           {requirements.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Shield className="h-12 w-12 text-muted-foreground/40 mb-4" />
-              <p className="text-lg font-medium text-muted-foreground">Inga krav definierade</p>
-              <p className="text-sm text-muted-foreground/70 mt-1">Skapa krav som utbildningar och certifieringar</p>
+              <p className="text-lg font-medium text-muted-foreground">
+                {allRequirements.length > 0 ? 'Inga krav matchar filtret' : 'Inga krav definierade'}
+              </p>
+              {allRequirements.length === 0 && <p className="text-sm text-muted-foreground/70 mt-1">Skapa krav som utbildningar och certifieringar</p>}
             </div>
+
           ) : (
             <Table>
               <TableHeader>
