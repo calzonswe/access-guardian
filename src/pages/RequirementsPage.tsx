@@ -24,6 +24,9 @@ export default function RequirementsPage() {
   const { loading, reload } = useDataRefresh();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editReq, setEditReq] = useState<Requirement | null>(null);
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
