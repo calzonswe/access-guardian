@@ -34,6 +34,8 @@ services:
       DB_USER: rbac_user
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
+      LOVABLE_API_KEY: ${LOVABLE_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-openai/gpt-6-astra}
       UPLOAD_DIR: /app/uploads
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
       API_RATE_LIMIT_MAX: ${API_RATE_LIMIT_MAX:-600}
