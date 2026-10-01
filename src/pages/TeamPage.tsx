@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Shield, CheckCircle, AlertTriangle, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Search, Users, Shield, CheckCircle, AlertTriangle, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { ROLE_LABELS } from '@/types/rbac';
 import type { User } from '@/types/rbac';
 import UserFormDialog from '@/components/users/UserFormDialog';
 import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 function getSubordinates(managerId: string, allUsers: User[]): User[] {
@@ -30,6 +31,7 @@ export default function TeamPage() {
   const { loading, reload } = useDataRefresh();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
+  const [search, setSearch] = useState('');
 
   if (!currentUser) return null;
 
@@ -41,6 +43,8 @@ export default function TeamPage() {
   const teamMembers = getSubordinates(currentUser.id, users);
   const teamIds = teamMembers.map(u => u.id);
   const teamApps = applications.filter(a => teamIds.includes(a.applicant_id));
+  const sq = search.trim().toLowerCase();
+  const shownMembers = teamMembers.filter(u => !sq || (u.full_name || '').toLowerCase().includes(sq) || (u.email || '').toLowerCase().includes(sq));
   const pendingApps = teamApps.filter(a => a.status === 'pending_manager');
 
   const openCreate = () => { setEditUser(null); setDialogOpen(true); };
@@ -74,7 +78,7 @@ export default function TeamPage() {
         <StatCard title="Aktiva tillträden" value={teamApps.filter(a => a.status === 'approved').length} icon={CheckCircle} variant="success" />
       </div>
       <Card>
-        <CardHeader><CardTitle className="text-lg">Teammedlemmar</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-4"><CardTitle className="text-lg">Teammedlemmar</CardTitle><div className="relative w-64"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Sök medarbetare..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" /></div></CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -88,10 +92,10 @@ export default function TeamPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {teamMembers.length === 0 ? (
+              {shownMembers.length === 0 ? (
                 <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Inga teammedlemmar</TableCell></TableRow>
               ) : (
-                teamMembers.map(member => {
+                shownMembers.map(member => {
                   const memberReqs = userRequirements.filter(ur => ur.user_id === member.id && ur.status === 'fulfilled');
                   const memberApps = applications.filter(a => a.applicant_id === member.id);
                   return (
