@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import * as store from '@/services/dataStore';
 import { exportLogs } from '@/services/exportService';
 import { toast } from 'sonner';
+import LogAnalysisPanel from '@/components/logs/LogAnalysisPanel';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 const ACTION_OPTIONS = [
@@ -60,6 +61,8 @@ export default function LogsPage() {
           </Button>
         )}
       </div>
+
+      <LogAnalysisPanel />
 
       <Card>
         <CardContent className="p-4 space-y-3">
