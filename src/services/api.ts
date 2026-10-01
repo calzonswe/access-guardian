@@ -325,6 +325,19 @@ export function removeAreaRequirement(areaId: string, requirementId: string): Pr
 
 // ============= LOGS =============
 
+export interface LogAnalysisResult {
+  summary: string;
+  gaps: string;
+  timeline: { log_id: string; description: string; event: { action: string; created_at: string; actor_name?: string; actor_id?: string; target_type?: string; target_id?: string; details?: string } }[];
+  rejectedReferences: number;
+  eventsAnalyzed: number;
+  truncated: boolean;
+}
+
+export function analyzeLogs(body: { question: string; from?: string; to?: string }): Promise<LogAnalysisResult> {
+  return post('/logs/analyze', body);
+}
+
 export function getLogs(): Promise<SystemLog[]> {
   return get('/logs');
 }
