@@ -19,9 +19,13 @@ export default function NotificationsPage() {
   const { reload } = useDataRefresh();
   const [notifications, setNotifications] = useState(() => store.getNotifications(currentUser?.id || ''));
 
+  const [onlyUnread, setOnlyUnread] = useState(false);
+  const [typeFilter, setTypeFilter] = useState('all');
+
   if (!currentUser) return null;
 
   const unread = notifications.filter(n => !n.read);
+  const shown = notifications.filter(n => (!onlyUnread || !n.read) && (typeFilter === 'all' || n.type === typeFilter));
 
   const markAllRead = async () => {
     await store.markAllNotificationsRead(currentUser.id);
@@ -49,8 +53,14 @@ export default function NotificationsPage() {
         </div>
         {unread.length > 0 && <Button variant="outline" size="sm" onClick={markAllRead}>Markera alla som lästa</Button>}
       </div>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant={onlyUnread ? 'default' : 'outline'} onClick={() => setOnlyUnread(v => !v)}>Endast olästa</Button>
+        {['all', 'info', 'warning', 'action_required'].map(t => (
+          <Button key={t} size="sm" variant={typeFilter === t ? 'default' : 'outline'} onClick={() => setTypeFilter(t)}>{t === 'all' ? 'Alla typer' : TYPE_CONFIG[t].label}</Button>
+        ))}
+      </div>
       <div className="space-y-3">
-        {notifications.length === 0 ? (
+        {shown.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <CheckCircle className="h-12 w-12 text-muted-foreground/40 mb-4" />
@@ -58,7 +68,7 @@ export default function NotificationsPage() {
             </CardContent>
           </Card>
         ) : (
-          notifications.map(notif => {
+          shown.map(notif => {
             const config = TYPE_CONFIG[notif.type] || TYPE_CONFIG.info;
             const Icon = config.icon;
             return (
