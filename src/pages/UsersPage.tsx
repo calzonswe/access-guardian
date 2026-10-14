@@ -182,7 +182,7 @@ export default function UsersPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Visar {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} av {filtered.length}
+            Visar {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, total)} av {total}
           </p>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" className="h-8 w-8" disabled={safePage <= 1} onClick={() => setPage(p => p - 1)}>
@@ -196,8 +196,8 @@ export default function UsersPage() {
         </div>
       )}
 
-      <UserFormDialog open={dialogOpen} onOpenChange={setDialogOpen} editUser={editUser} users={users} currentUserId={currentUser.id} onSaved={reload} />
-      <UserRequirementDialog open={reqDialogOpen} onOpenChange={setReqDialogOpen} targetUser={reqTargetUser} onUpdated={reload} />
+      <UserFormDialog open={dialogOpen} onOpenChange={setDialogOpen} editUser={editUser} users={users} currentUserId={currentUser.id} onSaved={reloadPaged} />
+      <UserRequirementDialog open={reqDialogOpen} onOpenChange={setReqDialogOpen} targetUser={reqTargetUser} onUpdated={reloadPaged} />
     </div>
   );
 }
