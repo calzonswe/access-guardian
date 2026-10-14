@@ -102,7 +102,15 @@ paths:
       responses:
         '200': { description: OK }
   /users:
-    get: { summary: List users (filtered by hierarchy), responses: { '200': { description: OK } } }
+    get:
+      summary: List users (filtered by hierarchy). With ?page&limit returns { data, total, page, pageSize }; optional &search&role&status filters.
+      parameters:
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: search, in: query, required: false, schema: { type: string }, description: Matches name, email, company }
+        - { name: role, in: query, required: false, schema: { type: string } }
+        - { name: status, in: query, required: false, schema: { type: string, enum: [active, inactive] } }
+      responses: { '200': { description: OK } }
     post: { summary: Create user (admin), responses: { '201': { description: Created } } }
   /users/{id}:
     parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
@@ -126,7 +134,14 @@ paths:
     get: { summary: List requirement templates, responses: { '200': { description: OK } } }
 
   /applications:
-    get: { summary: List applications (RBAC-filtered), responses: { '200': { description: OK } } }
+    get:
+      summary: List applications (RBAC-filtered). With ?page&limit returns { data, total, page, pageSize }; optional &search&status filters.
+      parameters:
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: search, in: query, required: false, schema: { type: string }, description: Matches applicant name or facility name }
+        - { name: status, in: query, required: false, schema: { type: string, enum: [draft, pending_manager, pending_facility, pending_exception, approved, denied, expired] } }
+      responses: { '200': { description: OK } }
     post: { summary: "Create application. Parent areas of any selected sub-area are added automatically.", responses: { '201': { description: Created } } }
 
   /applications/{id}/approve:
