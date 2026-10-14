@@ -169,7 +169,7 @@ export default function ApplicationsPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Visar {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} av {filtered.length}
+            Visar {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, displayTotal)} av {displayTotal}
           </p>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" className="h-8 w-8" disabled={safePage <= 1} onClick={() => setPage(p => p - 1)}>
@@ -183,12 +183,12 @@ export default function ApplicationsPage() {
         </div>
       )}
 
-      <ApplicationFormDialog open={formOpen} onOpenChange={setFormOpen} editApplication={editApp} onSaved={reload} />
+      <ApplicationFormDialog open={formOpen} onOpenChange={setFormOpen} editApplication={editApp} onSaved={reloadPaged} />
       <ApplicationDetailDialog
         application={selectedApp}
         open={!!selectedApp}
         onOpenChange={(open) => { if (!open) setSelectedApp(null); }}
-        onUpdated={reload}
+        onUpdated={reloadPaged}
         onEdit={(app) => { setSelectedApp(null); setEditApp(app); setFormOpen(true); }}
         onDelete={handleDelete}
       />
