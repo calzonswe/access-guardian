@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Pencil, Trash2, Shield, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,30 +33,29 @@ export default function UsersPage() {
 
   const users = currentUser ? store.getUsers() : [];
 
-  const filtered = useMemo(() => {
-    let result = users;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(u =>
-        u.full_name.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q) ||
-        (u.company || '').toLowerCase().includes(q)
-      );
-    }
-    if (roleFilter !== 'all') {
-      result = result.filter(u => u.roles.includes(roleFilter as AppRole));
-    }
-    if (statusFilter !== 'all') {
-      result = result.filter(u => statusFilter === 'active' ? u.is_active : !u.is_active);
-    }
-    return result;
-  }, [users, search, roleFilter, statusFilter]);
+  // Server-side pagination (API mode) with local fallback via dataStore
+  const [paged, setPaged] = useState<User[]>([]);
+  const [total, setTotal] = useState(0);
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  useEffect(() => {
+    if (loading || !currentUser) return;
+    let cancelled = false;
+    store.fetchUsersPage({ page, limit: PAGE_SIZE, search, role: roleFilter, status: statusFilter })
+      .then(r => { if (!cancelled) { setPaged(r.data); setTotal(r.total); } })
+      .catch(() => { if (!cancelled) toast.error('Kunde inte hämta användare'); });
+    return () => { cancelled = true; };
+  }, [loading, currentUser, page, search, roleFilter, statusFilter, refreshTick]);
+
+  const reloadPaged = useCallback(async () => {
+    await reload();
+    setRefreshTick(t => t + 1);
+  }, [reload]);
 
   if (!currentUser) return null;
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const openCreate = () => { setEditUser(null); setDialogOpen(true); };
   const openEdit = (u: User) => { setEditUser(u); setDialogOpen(true); };
