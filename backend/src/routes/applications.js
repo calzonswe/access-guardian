@@ -79,22 +79,76 @@ export async function getApplicationScope(appId) {
   return { applicantId, facilityId, status: app.status, areaIds: app.area_ids, managerId, contactPersonId, teamIds, facilityAreaIds };
 }
 
+const APP_SELECT = `SELECT a.*,
+        COALESCE(array_agg(DISTINCT aa.area_id) FILTER (WHERE aa.area_id IS NOT NULL), '{}') AS area_ids,
+        COALESCE(
+          json_agg(DISTINCT jsonb_build_object('id', att.id, 'application_id', att.application_id, 'file_name', att.file_name, 'file_url', att.file_url, 'uploaded_at', att.uploaded_at))
+          FILTER (WHERE att.id IS NOT NULL), '[]'
+        ) AS attachments
+ FROM applications a
+ LEFT JOIN application_areas aa ON aa.application_id = a.id
+ LEFT JOIN attachments att ON att.application_id = a.id`;
+
+// Optional pagination: ?page&limit&search&status. Without page/limit the legacy array is returned.
+function parsePaging(req) {
+  if (req.query.page === undefined && req.query.limit === undefined) return null;
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const pageSize = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
+  return { page, pageSize, offset: (page - 1) * pageSize };
+}
+
+// Extra filters (search on applicant/facility name, status) appended to the scope conditions.
+function buildAppFilters(req, params) {
+  const conditions = [];
+  const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+  if (search) {
+    params.push(`%${search}%`);
+    conditions.push(`(au.full_name ILIKE $${params.length} OR f.name ILIKE $${params.length})`);
+  }
+  if (req.query.status && req.query.status !== 'all' && STATUS_ORDER.includes(req.query.status)) {
+    params.push(req.query.status);
+    conditions.push(`a.status = $${params.length}`);
+  }
+  return conditions;
+}
+
+async function pagedAppQuery(req, res, scopeConditions) {
+  const paging = parsePaging(req);
+  const params = [];
+  const scope = scopeConditions(params);
+  const filters = buildAppFilters(req, params);
+  const all = [...scope, ...filters];
+  const where = all.length ? `WHERE ${all.join(scope.length > 1 ? ' OR ' : ' AND ')}` : '';
+  // Scope alternatives are OR-ed; filters must apply to all of them, so wrap scope in parens.
+  const whereFinal = scope.length > 1 && filters.length
+    ? `WHERE (${scope.join(' OR ')}) AND ${filters.join(' AND ')}`
+    : where;
+  const joinNames = filters.length
+    ? ' LEFT JOIN users au ON au.id = a.applicant_id LEFT JOIN facilities f ON f.id = a.facility_id'
+    : '';
+  if (!paging) {
+    const { rows } = await pool.query(
+      `${APP_SELECT}${joinNames} ${whereFinal} GROUP BY a.id ORDER BY a.created_at DESC`,
+      params
+    );
+    return res.json(rows.map(mapApp));
+  }
+  const { rows: countRows } = await pool.query(
+    `SELECT COUNT(DISTINCT a.id) AS n FROM applications a${joinNames} ${whereFinal}`,
+    params
+  );
+  const total = parseInt(countRows[0].n, 10);
+  const { rows } = await pool.query(
+    `${APP_SELECT}${joinNames} ${whereFinal} GROUP BY a.id ORDER BY a.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+    [...params, paging.pageSize, paging.offset]
+  );
+  res.json({ data: rows.map(mapApp), total, page: paging.page, pageSize: paging.pageSize });
+}
+
 router.get('/', async (req, res) => {
   try {
     if (req.user.roles.includes('administrator')) {
-      const { rows } = await pool.query(
-        `SELECT a.*,
-                COALESCE(array_agg(aa.area_id) FILTER (WHERE aa.area_id IS NOT NULL), '{}') AS area_ids,
-                COALESCE(
-                  json_agg(json_build_object('id', att.id, 'application_id', att.application_id, 'file_name', att.file_name, 'file_url', att.file_url, 'uploaded_at', att.uploaded_at))
-                  FILTER (WHERE att.id IS NOT NULL), '[]'
-                ) AS attachments
-         FROM applications a
-         LEFT JOIN application_areas aa ON aa.application_id = a.id
-         LEFT JOIN attachments att ON att.application_id = a.id
-         GROUP BY a.id ORDER BY a.created_at DESC`
-      );
-      return res.json(rows.map(mapApp));
+      return pagedAppQuery(req, res, () => []);
     }
     const userId = req.user.id;
     // Collect applicant user IDs (for WHERE a.applicant_id = ANY)
