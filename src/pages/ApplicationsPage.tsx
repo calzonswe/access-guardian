@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import * as store from '@/services/dataStore';
@@ -83,10 +83,31 @@ export default function ApplicationsPage() {
     return result;
   }, [applications, search, statusFilter, allUsers, allFacilities]);
 
+  // Server-side pagination in API mode; local mode keeps client-side filtering
+  const apiMode = store.isApiMode();
+  const [pagedApps, setPagedApps] = useState<Application[]>([]);
+  const [serverTotal, setServerTotal] = useState(0);
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  useEffect(() => {
+    if (!apiMode || loading || !currentUser) return;
+    let cancelled = false;
+    store.fetchApplicationsPage({ page, limit: PAGE_SIZE, search, status: statusFilter })
+      .then(r => { if (!cancelled) { setPagedApps(r.data); setServerTotal(r.total); } })
+      .catch(() => { if (!cancelled) toast.error('Kunde inte hämta ansökningar'); });
+    return () => { cancelled = true; };
+  }, [apiMode, loading, currentUser, page, search, statusFilter, refreshTick]);
+
+  const reloadPaged = useCallback(async () => {
+    await reload();
+    setRefreshTick(t => t + 1);
+  }, [reload]);
+
   if (!currentUser) return null;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const displayTotal = apiMode ? serverTotal : filtered.length;
+  const totalPages = Math.max(1, Math.ceil(displayTotal / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const paged = apiMode ? pagedApps : filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const canCreateApplication = roles.includes('employee') || roles.includes('contractor');
 
