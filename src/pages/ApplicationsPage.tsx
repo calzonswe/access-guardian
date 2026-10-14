@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import * as store from '@/services/dataStore';
@@ -83,10 +83,31 @@ export default function ApplicationsPage() {
     return result;
   }, [applications, search, statusFilter, allUsers, allFacilities]);
 
+  // Server-side pagination in API mode; local mode keeps client-side filtering
+  const apiMode = store.isApiMode();
+  const [pagedApps, setPagedApps] = useState<Application[]>([]);
+  const [serverTotal, setServerTotal] = useState(0);
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  useEffect(() => {
+    if (!apiMode || loading || !currentUser) return;
+    let cancelled = false;
+    store.fetchApplicationsPage({ page, limit: PAGE_SIZE, search, status: statusFilter })
+      .then(r => { if (!cancelled) { setPagedApps(r.data); setServerTotal(r.total); } })
+      .catch(() => { if (!cancelled) toast.error('Kunde inte hämta ansökningar'); });
+    return () => { cancelled = true; };
+  }, [apiMode, loading, currentUser, page, search, statusFilter, refreshTick]);
+
+  const reloadPaged = useCallback(async () => {
+    await reload();
+    setRefreshTick(t => t + 1);
+  }, [reload]);
+
   if (!currentUser) return null;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const displayTotal = apiMode ? serverTotal : filtered.length;
+  const totalPages = Math.max(1, Math.ceil(displayTotal / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const paged = apiMode ? pagedApps : filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const canCreateApplication = roles.includes('employee') || roles.includes('contractor');
 
@@ -97,7 +118,7 @@ export default function ApplicationsPage() {
       await store.addLog({ action: 'application_denied', actor_id: currentUser.id, target_id: app.id, target_type: 'application', details: 'Ansökan borttagen' });
       toast.success('Ansökan borttagen');
       setSelectedApp(null);
-      reload();
+      reloadPaged();
     } catch (err: any) {
       toast.error(err?.message || 'Kunde inte ta bort ansökan');
     }
@@ -109,7 +130,7 @@ export default function ApplicationsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Ansökningar</h1>
-          <p className="text-sm text-muted-foreground mt-1">Hantera tillträdesansökningar ({filtered.length} st)</p>
+          <p className="text-sm text-muted-foreground mt-1">Hantera tillträdesansökningar ({displayTotal} st)</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => { exportApplications(); toast.success('Ansökningar exporterade'); }}>
@@ -148,7 +169,7 @@ export default function ApplicationsPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Visar {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} av {filtered.length}
+            Visar {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, displayTotal)} av {displayTotal}
           </p>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" className="h-8 w-8" disabled={safePage <= 1} onClick={() => setPage(p => p - 1)}>
@@ -162,12 +183,12 @@ export default function ApplicationsPage() {
         </div>
       )}
 
-      <ApplicationFormDialog open={formOpen} onOpenChange={setFormOpen} editApplication={editApp} onSaved={reload} />
+      <ApplicationFormDialog open={formOpen} onOpenChange={setFormOpen} editApplication={editApp} onSaved={reloadPaged} />
       <ApplicationDetailDialog
         application={selectedApp}
         open={!!selectedApp}
         onOpenChange={(open) => { if (!open) setSelectedApp(null); }}
-        onUpdated={reload}
+        onUpdated={reloadPaged}
         onEdit={(app) => { setSelectedApp(null); setEditApp(app); setFormOpen(true); }}
         onDelete={handleDelete}
       />

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Pencil, Trash2, Shield, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,30 +33,29 @@ export default function UsersPage() {
 
   const users = currentUser ? store.getUsers() : [];
 
-  const filtered = useMemo(() => {
-    let result = users;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(u =>
-        u.full_name.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q) ||
-        (u.company || '').toLowerCase().includes(q)
-      );
-    }
-    if (roleFilter !== 'all') {
-      result = result.filter(u => u.roles.includes(roleFilter as AppRole));
-    }
-    if (statusFilter !== 'all') {
-      result = result.filter(u => statusFilter === 'active' ? u.is_active : !u.is_active);
-    }
-    return result;
-  }, [users, search, roleFilter, statusFilter]);
+  // Server-side pagination (API mode) with local fallback via dataStore
+  const [paged, setPaged] = useState<User[]>([]);
+  const [total, setTotal] = useState(0);
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  useEffect(() => {
+    if (loading || !currentUser) return;
+    let cancelled = false;
+    store.fetchUsersPage({ page, limit: PAGE_SIZE, search, role: roleFilter, status: statusFilter })
+      .then(r => { if (!cancelled) { setPaged(r.data); setTotal(r.total); } })
+      .catch(() => { if (!cancelled) toast.error('Kunde inte hämta användare'); });
+    return () => { cancelled = true; };
+  }, [loading, currentUser, page, search, roleFilter, statusFilter, refreshTick]);
+
+  const reloadPaged = useCallback(async () => {
+    await reload();
+    setRefreshTick(t => t + 1);
+  }, [reload]);
 
   if (!currentUser) return null;
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const openCreate = () => { setEditUser(null); setDialogOpen(true); };
   const openEdit = (u: User) => { setEditUser(u); setDialogOpen(true); };
@@ -66,14 +65,14 @@ export default function UsersPage() {
     if (u.id === currentUser.id) { toast.error('Du kan inte ta bort dig själv'); return; }
     if (confirm(`Ta bort "${u.full_name}"?`)) {
       await store.deleteUser(u.id);
-      toast.success('Användare borttagen'); reload();
+      toast.success('Användare borttagen'); reloadPaged();
     }
   };
 
   const handleToggleActive = async (u: User) => {
     await store.updateUser(u.id, { is_active: !u.is_active });
     toast.success(u.is_active ? 'Användare inaktiverad' : 'Användare aktiverad');
-    reload();
+    reloadPaged();
   };
 
   const canManageRequirements = currentUser.roles.includes('administrator') ||
@@ -85,7 +84,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Användare</h1>
-          <p className="text-sm text-muted-foreground mt-1">Hantera användare och roller ({filtered.length} st)</p>
+          <p className="text-sm text-muted-foreground mt-1">Hantera användare och roller ({total} st)</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => { exportUsers(); toast.success('Användare exporterade'); }}>
@@ -183,7 +182,7 @@ export default function UsersPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Visar {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} av {filtered.length}
+            Visar {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, total)} av {total}
           </p>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" className="h-8 w-8" disabled={safePage <= 1} onClick={() => setPage(p => p - 1)}>
@@ -197,8 +196,8 @@ export default function UsersPage() {
         </div>
       )}
 
-      <UserFormDialog open={dialogOpen} onOpenChange={setDialogOpen} editUser={editUser} users={users} currentUserId={currentUser.id} onSaved={reload} />
-      <UserRequirementDialog open={reqDialogOpen} onOpenChange={setReqDialogOpen} targetUser={reqTargetUser} onUpdated={reload} />
+      <UserFormDialog open={dialogOpen} onOpenChange={setDialogOpen} editUser={editUser} users={users} currentUserId={currentUser.id} onSaved={reloadPaged} />
+      <UserRequirementDialog open={reqDialogOpen} onOpenChange={setReqDialogOpen} targetUser={reqTargetUser} onUpdated={reloadPaged} />
     </div>
   );
 }

@@ -773,3 +773,67 @@ export async function deleteOrgUnit(id: string): Promise<void> {
   }
   localSet(KEYS.ORG_UNITS, items.filter(u => !removed.has(u.id)));
 }
+
+// ============= Server-side pagination (API mode) with local fallback =============
+
+export interface PagedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface UserPageParams {
+  page: number;
+  limit: number;
+  search?: string;
+  role?: string;
+  status?: string;
+}
+
+export async function fetchUsersPage(params: UserPageParams): Promise<PagedResult<User>> {
+  if (_apiMode) return api.getUsersPaged(params);
+  let result = getUsers();
+  const q = (params.search || '').trim().toLowerCase();
+  if (q) {
+    result = result.filter(u =>
+      u.full_name.toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q) ||
+      (u.company || '').toLowerCase().includes(q)
+    );
+  }
+  if (params.role && params.role !== 'all') {
+    result = result.filter(u => u.roles.includes(params.role as User['roles'][number]));
+  }
+  if (params.status === 'active') result = result.filter(u => u.is_active);
+  else if (params.status === 'inactive') result = result.filter(u => !u.is_active);
+  const total = result.length;
+  const start = (params.page - 1) * params.limit;
+  return { data: result.slice(start, start + params.limit), total, page: params.page, pageSize: params.limit };
+}
+
+export interface ApplicationPageParams {
+  page: number;
+  limit: number;
+  search?: string;
+  status?: string;
+}
+
+export async function fetchApplicationsPage(params: ApplicationPageParams): Promise<PagedResult<Application>> {
+  if (_apiMode) return api.getApplicationsPaged(params);
+  let result = getApplications();
+  const q = (params.search || '').trim().toLowerCase();
+  if (q) {
+    result = result.filter(a => {
+      const user = getUser(a.applicant_id);
+      const fac = getFacility(a.facility_id);
+      return (user?.full_name || '').toLowerCase().includes(q) || (fac?.name || '').toLowerCase().includes(q);
+    });
+  }
+  if (params.status && params.status !== 'all') {
+    result = result.filter(a => a.status === params.status);
+  }
+  const total = result.length;
+  const start = (params.page - 1) * params.limit;
+  return { data: result.slice(start, start + params.limit), total, page: params.page, pageSize: params.limit };
+}
