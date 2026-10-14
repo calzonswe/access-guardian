@@ -65,14 +65,14 @@ export default function UsersPage() {
     if (u.id === currentUser.id) { toast.error('Du kan inte ta bort dig själv'); return; }
     if (confirm(`Ta bort "${u.full_name}"?`)) {
       await store.deleteUser(u.id);
-      toast.success('Användare borttagen'); reload();
+      toast.success('Användare borttagen'); reloadPaged();
     }
   };
 
   const handleToggleActive = async (u: User) => {
     await store.updateUser(u.id, { is_active: !u.is_active });
     toast.success(u.is_active ? 'Användare inaktiverad' : 'Användare aktiverad');
-    reload();
+    reloadPaged();
   };
 
   const canManageRequirements = currentUser.roles.includes('administrator') ||
@@ -84,7 +84,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Användare</h1>
-          <p className="text-sm text-muted-foreground mt-1">Hantera användare och roller ({filtered.length} st)</p>
+          <p className="text-sm text-muted-foreground mt-1">Hantera användare och roller ({total} st)</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => { exportUsers(); toast.success('Användare exporterade'); }}>
