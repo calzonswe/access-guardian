@@ -88,14 +88,27 @@ router.get('/', async (req, res) => {
     }
 
     if (visibleIds.size === 0) {
-      return res.json([]);
+      return res.json(paging ? { data: [], total: 0, page: paging.page, pageSize: paging.pageSize } : []);
     }
 
+    const { conditions, params } = buildUserFilters(req);
+    params.push([...visibleIds]);
+    const scopeCond = `u.id = ANY($${params.length})`;
+    const where = ` WHERE ${[scopeCond, ...conditions].join(' AND ')}`;
+    if (!paging) {
+      const { rows } = await pool.query(
+        `${USER_SELECT}${where} GROUP BY u.id ORDER BY u.full_name`,
+        params
+      );
+      return res.json(rows.map(r => ({ ...r, roles: r.roles || [] })));
+    }
+    const { rows: countRows } = await pool.query(`SELECT COUNT(DISTINCT u.id) AS n FROM users u${where}`, params);
+    const total = parseInt(countRows[0].n, 10);
     const { rows } = await pool.query(
-      `${USER_SELECT} WHERE u.id = ANY($1) GROUP BY u.id ORDER BY u.full_name`,
-      [[...visibleIds]]
+      `${USER_SELECT}${where} GROUP BY u.id ORDER BY u.full_name LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, paging.pageSize, paging.offset]
     );
-    res.json(rows.map(r => ({ ...r, roles: r.roles || [] })));
+    res.json({ data: rows.map(r => ({ ...r, roles: r.roles || [] })), total, page: paging.page, pageSize: paging.pageSize });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internt serverfel' });
