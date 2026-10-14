@@ -118,7 +118,7 @@ export default function ApplicationsPage() {
       await store.addLog({ action: 'application_denied', actor_id: currentUser.id, target_id: app.id, target_type: 'application', details: 'Ansökan borttagen' });
       toast.success('Ansökan borttagen');
       setSelectedApp(null);
-      reload();
+      reloadPaged();
     } catch (err: any) {
       toast.error(err?.message || 'Kunde inte ta bort ansökan');
     }
@@ -130,7 +130,7 @@ export default function ApplicationsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Ansökningar</h1>
-          <p className="text-sm text-muted-foreground mt-1">Hantera tillträdesansökningar ({filtered.length} st)</p>
+          <p className="text-sm text-muted-foreground mt-1">Hantera tillträdesansökningar ({displayTotal} st)</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => { exportApplications(); toast.success('Ansökningar exporterade'); }}>
