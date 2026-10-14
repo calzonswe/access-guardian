@@ -173,33 +173,25 @@ router.get('/', async (req, res) => {
       [userId]
     );
     sponsored.forEach(r => applicantIds.add(r.id));
-    // Build query with OR conditions
-    const conditions = [];
-    const params = [];
-    if (applicantIds.size > 0) {
-      params.push([...applicantIds]);
-      conditions.push(`a.applicant_id = ANY($${params.length})`);
+    // Build scope conditions (OR-ed): own/team applications OR applications to own facilities
+    const paging = parsePaging(req);
+    const scopeConditions = (params) => {
+      const conditions = [];
+      if (applicantIds.size > 0) {
+        params.push([...applicantIds]);
+        conditions.push(`a.applicant_id = ANY($${params.length})`);
+      }
+      if (facilityIds.length > 0) {
+        params.push(facilityIds);
+        conditions.push(`a.facility_id = ANY($${params.length})`);
+      }
+      return conditions;
+    };
+    // Detect empty scope cheaply
+    if (applicantIds.size === 0 && facilityIds.length === 0) {
+      return res.json(paging ? { data: [], total: 0, page: paging.page, pageSize: paging.pageSize } : []);
     }
-    if (facilityIds.length > 0) {
-      params.push(facilityIds);
-      conditions.push(`a.facility_id = ANY($${params.length})`);
-    }
-    if (conditions.length === 0) return res.json([]);
-    const { rows } = await pool.query(
-      `SELECT a.*,
-              COALESCE(array_agg(aa.area_id) FILTER (WHERE aa.area_id IS NOT NULL), '{}') AS area_ids,
-              COALESCE(
-                json_agg(json_build_object('id', att.id, 'application_id', att.application_id, 'file_name', att.file_name, 'file_url', att.file_url, 'uploaded_at', att.uploaded_at))
-                FILTER (WHERE att.id IS NOT NULL), '[]'
-              ) AS attachments
-       FROM applications a
-       LEFT JOIN application_areas aa ON aa.application_id = a.id
-       LEFT JOIN attachments att ON att.application_id = a.id
-       WHERE ${conditions.join(' OR ')}
-       GROUP BY a.id ORDER BY a.created_at DESC`,
-      params
-    );
-    res.json(rows.map(mapApp));
+    return pagedAppQuery(req, res, scopeConditions);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internt serverfel' });
