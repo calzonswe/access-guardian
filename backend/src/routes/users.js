@@ -14,17 +14,53 @@ const USER_SELECT = `SELECT u.id, u.email, u.full_name, u.first_name, u.last_nam
               array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL) AS roles
        FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id`;
 
-// GET /api/users — role-based filtering
+// Parse optional pagination params. Returns null when not requested (legacy array response).
+function parsePaging(req) {
+  if (req.query.page === undefined && req.query.limit === undefined) return null;
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const pageSize = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
+  return { page, pageSize, offset: (page - 1) * pageSize };
+}
+
+// Build optional search/role/status filters shared by count and data queries.
+function buildUserFilters(req) {
+  const conditions = [];
+  const params = [];
+  const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+  if (search) {
+    params.push(`%${search}%`);
+    conditions.push(`(u.full_name ILIKE $${params.length} OR u.email ILIKE $${params.length} OR COALESCE(u.company,'') ILIKE $${params.length})`);
+  }
+  if (req.query.role && req.query.role !== 'all') {
+    params.push(req.query.role);
+    conditions.push(`EXISTS (SELECT 1 FROM user_roles rf WHERE rf.user_id = u.id AND rf.role = $${params.length})`);
+  }
+  if (req.query.status === 'active') conditions.push('u.is_active = true');
+  else if (req.query.status === 'inactive') conditions.push('u.is_active = false');
+  return { conditions, params };
+}
+
+// GET /api/users — role-based filtering. With ?page/&limit/&search/&role/&status returns { data, total, page, pageSize }.
 router.get('/', async (req, res) => {
   try {
     const roles = req.user.roles;
+    const paging = parsePaging(req);
 
     // Admins see all users
     if (roles.includes('administrator')) {
+      const { conditions, params } = buildUserFilters(req);
+      const where = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '';
+      if (!paging) {
+        const { rows } = await pool.query(`${USER_SELECT}${where} GROUP BY u.id ORDER BY u.full_name`, params);
+        return res.json(rows.map(r => ({ ...r, roles: r.roles || [] })));
+      }
+      const { rows: countRows } = await pool.query(`SELECT COUNT(DISTINCT u.id) AS n FROM users u${where}`, params);
+      const total = parseInt(countRows[0].n, 10);
       const { rows } = await pool.query(
-        `${USER_SELECT} GROUP BY u.id ORDER BY u.full_name`
+        `${USER_SELECT}${where} GROUP BY u.id ORDER BY u.full_name LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, paging.pageSize, paging.offset]
       );
-      return res.json(rows.map(r => ({ ...r, roles: r.roles || [] })));
+      return res.json({ data: rows.map(r => ({ ...r, roles: r.roles || [] })), total, page: paging.page, pageSize: paging.pageSize });
     }
 
     // Collect user IDs this user is allowed to see
