@@ -115,6 +115,29 @@ export function getUsers(): Promise<User[]> {
   return get('/users');
 }
 
+export interface PagedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface UserPageParams {
+  page: number;
+  limit: number;
+  search?: string;
+  role?: string;
+  status?: string;
+}
+
+export function getUsersPaged(params: UserPageParams): Promise<PagedResult<User>> {
+  const q = new URLSearchParams({ page: String(params.page), limit: String(params.limit) });
+  if (params.search) q.set('search', params.search);
+  if (params.role && params.role !== 'all') q.set('role', params.role);
+  if (params.status && params.status !== 'all') q.set('status', params.status);
+  return get<PagedResult<User>>(`/users?${q.toString()}`);
+}
+
 export function getUser(id: string): Promise<User> {
   return get(`/users/${id}`);
 }
@@ -202,6 +225,20 @@ export function deleteRequirement(id: string): Promise<void> {
 
 export function getApplications(): Promise<Application[]> {
   return get('/applications');
+}
+
+export interface ApplicationPageParams {
+  page: number;
+  limit: number;
+  search?: string;
+  status?: string;
+}
+
+export function getApplicationsPaged(params: ApplicationPageParams): Promise<PagedResult<Application>> {
+  const q = new URLSearchParams({ page: String(params.page), limit: String(params.limit) });
+  if (params.search) q.set('search', params.search);
+  if (params.status && params.status !== 'all') q.set('status', params.status);
+  return get<PagedResult<Application>>(`/applications?${q.toString()}`);
 }
 
 export function getApplication(id: string): Promise<Application> {
