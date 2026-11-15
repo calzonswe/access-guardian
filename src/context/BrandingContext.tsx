@@ -59,13 +59,13 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   const load = useCallback(async () => {
     try {
       await store.initPromise;
-      const s = await store.getSettings();
-      if (s.branding) {
+      const b = await store.getBranding();
+      if (b) {
         const newBranding = {
-          appName: s.branding.appName || defaults.appName,
-          subtitle: s.branding.subtitle || defaults.subtitle,
-          logoUrl: s.branding.logoUrl || defaults.logoUrl,
-          primaryColor: s.branding.primaryColor || defaults.primaryColor,
+          appName: b.appName || defaults.appName,
+          subtitle: b.subtitle || defaults.subtitle,
+          logoUrl: b.logoUrl || defaults.logoUrl,
+          primaryColor: b.primaryColor || defaults.primaryColor,
         };
         setBranding(newBranding);
         applyPrimaryColor(newBranding.primaryColor);

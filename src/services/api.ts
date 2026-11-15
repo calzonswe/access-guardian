@@ -25,6 +25,22 @@ export function getToken(): string | null {
   return token;
 }
 
+/** Seconds since the current token was issued (null if unknown). */
+export function getTokenAgeSeconds(): number | null {
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return typeof payload.iat === 'number' ? Date.now() / 1000 - payload.iat : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function refreshToken(): Promise<void> {
+  const res = await post<{ token: string }>('/auth/refresh', {});
+  setToken(res.token);
+}
+
 /** Roles embedded in the current JWT payload (used only for UI decisions, not security). */
 export function getTokenRoles(): string[] {
   if (!token) return [];
@@ -62,7 +78,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `HTTP ${res.status}`);
+    throw new Error(body.error || (res.status >= 500 ? 'Servern svarar inte just nu. Försök igen om en stund.' : `HTTP ${res.status}`));
   }
 
   return res.json();
@@ -457,6 +473,10 @@ export interface SystemSettings {
   security?: { sessionTimeoutMinutes?: number; maxLoginAttempts?: number; twoFactorRequired?: boolean };
   general?: { organizationName?: string; language?: string; selfRegistration?: boolean };
   auth?: { localEnabled?: boolean; entraEnabled?: boolean; entraTenantId?: string; entraClientId?: string; samlEnabled?: boolean };
+}
+
+export function getBranding(): Promise<NonNullable<SystemSettings['branding']>> {
+  return get('/settings/branding');
 }
 
 export function getSettings(): Promise<SystemSettings> {

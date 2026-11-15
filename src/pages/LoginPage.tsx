@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
 import { useBranding } from '@/context/BrandingContext';
+import { isBackendUnavailable } from '@/services/dataStore';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -70,6 +71,9 @@ export default function LoginPage() {
                 required
               />
             </div>
+            {isBackendUnavailable() && !error && (
+              <p className="text-sm text-warning">Servern svarar inte just nu. Försök igen om en stund.</p>
+            )}
             {error && (
               <p className="text-sm text-destructive">{error}</p>
             )}

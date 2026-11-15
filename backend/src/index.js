@@ -21,8 +21,9 @@ import contractorRoutes from './routes/contractor.js';
 import { authMiddleware } from './middleware/auth.js';
 import { createRateLimit } from './middleware/rateLimit.js';
 import { startExpiryScheduler, runExpiryJob, getExpiryStats } from './jobs/expiryJob.js';
-import { getEmailStatus } from './services/email.js';
+import { getEmailStatus, isEmailEnabled } from './services/email.js';
 import { logger } from './services/logger.js';
+import { getAllSettings } from './services/settings.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -62,6 +63,20 @@ app.use('/api/contractor',
   createRateLimit({ windowMs: 60 * 60 * 1000, max: 20 }),
   contractorRoutes
 );
+
+// Public, read-only branding (app name, logo, colour) for the login page and
+// non-admin users. The full settings API stays admin-only.
+app.get('/api/settings/branding', async (_req, res) => {
+  try {
+    const s = await getAllSettings();
+    const b = (s && s.branding) || {};
+    res.json({
+      appName: b.appName, subtitle: b.subtitle, logoUrl: b.logoUrl, primaryColor: b.primaryColor,
+    });
+  } catch {
+    res.status(500).json({ error: 'Internt serverfel' });
+  }
+});
 
 // Protected routes
 app.use('/api/users', authMiddleware, usersRoutes);
@@ -126,6 +141,9 @@ initDb().then(async () => {
     process.exit(1);
   }
   const server = app.listen(PORT, () => logger.info('Backend listening', { port: PORT }));
+  if (isEmailEnabled() && !process.env.APP_BASE_URL) {
+    logger.warn('SMTP is enabled but APP_BASE_URL is not set: links in e-mails (password reset, notifications) will be relative and not clickable');
+  }
   startExpiryScheduler();
 
   // Graceful shutdown

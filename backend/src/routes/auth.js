@@ -257,6 +257,22 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 });
 
+// Sliding session: an active client exchanges its (still valid) token for a
+// fresh one. Inactive clients are logged out by the idle timeout instead.
+router.post('/refresh', authMiddleware, async (req, res) => {
+  try {
+    const { sessionTimeoutMinutes } = await getSecuritySettings();
+    const token = signToken(
+      { id: req.user.id, email: req.user.email, roles: req.user.roles },
+      `${sessionTimeoutMinutes}m`
+    );
+    res.json({ token, sessionTimeoutMinutes });
+  } catch (err) {
+    console.error('refresh error:', err);
+    res.status(500).json({ error: 'Internt serverfel' });
+  }
+});
+
 // Self-service profile update — only harmless profile fields.
 router.put('/me', authMiddleware, async (req, res) => {
   try {

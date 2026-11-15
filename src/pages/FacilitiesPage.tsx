@@ -136,7 +136,7 @@ export default function FacilitiesPage() {
           <h1 className="text-2xl font-semibold text-foreground">Anläggningar</h1>
           <p className="text-sm text-muted-foreground mt-1">Hantera anläggningar, områden och krav</p>
         </div>
-        {(currentUser.roles.includes('administrator') || currentUser.roles.includes('facility_owner')) && (
+        {currentUser.roles.includes('administrator') && (
           <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Ny anläggning</Button>
         )}
       </div>
@@ -197,9 +197,11 @@ export default function FacilitiesPage() {
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(facility)}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(facility)}>
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
+                        {currentUser.roles.includes('administrator') && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(facility)}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -253,7 +255,7 @@ export default function FacilitiesPage() {
                             </Badge>
                           ))
                         )}
-                        {(currentUser.roles.includes('administrator') || currentUser.roles.includes('facility_owner') || currentUser.roles.includes('facility_admin')) && (
+                        {currentUser.roles.includes('administrator') && (
                           <Button variant="ghost" size="sm" className="text-xs h-7 mt-1" onClick={() => openReqDialog(facility.id)}>
                             <Pencil className="h-3 w-3 mr-1" />Hantera krav
                           </Button>

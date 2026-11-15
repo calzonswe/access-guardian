@@ -74,7 +74,8 @@ export default function RequirementsPage() {
     }
   };
 
-  const canEdit = currentUser.roles.includes('administrator') || currentUser.roles.includes('facility_owner') || currentUser.roles.includes('facility_admin');
+  // Requirement management is administrator-only on the backend.
+  const canEdit = currentUser.roles.includes('administrator');
 
   return (
     <div className="space-y-6">

@@ -99,6 +99,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSessionTimeoutMinutes(0);
   }, []);
 
+  // Sliding session: while the user is active, renew the token before it
+  // expires (its lifetime equals the idle timeout).
+  useEffect(() => {
+    if (!currentUser || !store.isApiMode() || sessionTimeoutMinutes <= 0) return;
+    const lifetimeSec = sessionTimeoutMinutes * 60;
+    let lastActivity = Date.now();
+    const markActive = () => { lastActivity = Date.now(); };
+    const events = ['mousedown', 'keydown', 'touchstart', 'scroll'];
+    for (const ev of events) window.addEventListener(ev, markActive, { passive: true } as AddEventListenerOptions);
+    const checkEvery = Math.min(5 * 60, Math.max(30, lifetimeSec / 4)) * 1000;
+    const timer = setInterval(() => {
+      const age = api.getTokenAgeSeconds();
+      const recentlyActive = Date.now() - lastActivity < checkEvery * 2;
+      if (recentlyActive && age !== null && age > lifetimeSec / 3) {
+        api.refreshToken().catch(() => { /* a 401 is handled by the unauthorized handler */ });
+      }
+    }, checkEvery);
+    return () => {
+      clearInterval(timer);
+      for (const ev of events) window.removeEventListener(ev, markActive);
+    };
+  }, [currentUser, sessionTimeoutMinutes]);
+
   // Auto-logout on idle when a server-driven session timeout is known.
   useIdleTimeout(!!currentUser && sessionTimeoutMinutes > 0, sessionTimeoutMinutes, () => {
     toast.info('Du har loggats ut på grund av inaktivitet');

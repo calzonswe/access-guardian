@@ -66,6 +66,7 @@ const App = () => (
                     <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/applications" element={<ApplicationsPage />} />
+                  <Route path="/applications/:applicationId" element={<ApplicationsPage />} />
                   <Route path="/facilities" element={<RoleGuard roles={['administrator', 'facility_owner', 'facility_admin']}><FacilitiesPage /></RoleGuard>} />
                   <Route path="/facilities/:facilityId/areas" element={<RoleGuard roles={['administrator', 'facility_owner', 'facility_admin']}><AreasPage /></RoleGuard>} />
                   <Route path="/areas" element={<Navigate to="/facilities" replace />} />

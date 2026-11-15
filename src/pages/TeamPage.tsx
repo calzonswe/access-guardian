@@ -47,6 +47,8 @@ export default function TeamPage() {
   const shownMembers = teamMembers.filter(u => !sq || (u.full_name || '').toLowerCase().includes(sq) || (u.email || '').toLowerCase().includes(sq));
   const pendingApps = teamApps.filter(a => a.status === 'pending_manager');
 
+  // Creating, editing and deleting users is administrator-only on the backend.
+  const isAdmin = currentUser.roles.includes('administrator');
   const openCreate = () => { setEditUser(null); setDialogOpen(true); };
   const openEdit = (u: User) => { setEditUser(u); setDialogOpen(true); };
 
@@ -70,7 +72,7 @@ export default function TeamPage() {
           <h1 className="text-2xl font-semibold text-foreground">Mitt team</h1>
           <p className="text-sm text-muted-foreground mt-1">Översikt av ditt teams tillträdesrättigheter</p>
         </div>
-        <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Ny anställd</Button>
+        {isAdmin && <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Ny anställd</Button>}
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard title="Teammedlemmar" value={teamMembers.length} icon={Users} variant="primary" />
@@ -106,10 +108,12 @@ export default function TeamPage() {
                       <TableCell><Badge variant="outline" className={memberApps.filter(a => a.status === 'approved').length > 0 ? 'status-badge-approved' : ''}>{memberApps.filter(a => a.status === 'approved').length}</Badge></TableCell>
                       <TableCell>{memberApps.filter(a => a.status.startsWith('pending')).length > 0 ? <Badge variant="outline" className="status-badge-pending">{memberApps.filter(a => a.status.startsWith('pending')).length}</Badge> : <span className="text-muted-foreground text-sm">0</span>}</TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(member)}><Pencil className="h-3 w-3" /></Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(member)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
-                        </div>
+                        {isAdmin && (
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(member)}><Pencil className="h-3 w-3" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(member)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   );

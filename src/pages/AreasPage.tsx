@@ -47,6 +47,8 @@ export default function AreasPage() {
   const allAreas = store.getAreas();
   const allRequirements = store.getRequirements();
   const canEdit = currentUser.roles.includes('administrator') || currentUser.roles.includes('facility_owner') || currentUser.roles.includes('facility_admin');
+  // Linking requirements to areas is administrator-only on the backend.
+  const canManageReqs = currentUser.roles.includes('administrator');
 
   /** Areas of a facility ordered as a tree, with depth for indentation. */
   const treeFor = (fid: string) => {
@@ -189,7 +191,7 @@ export default function AreasPage() {
                             <TableCell className="text-muted-foreground text-sm">{new Date(area.created_at).toLocaleDateString('sv-SE')}</TableCell>
                             <TableCell>
                               <div className="flex gap-1">
-                                {canEdit && (
+                                {canManageReqs && (
                                   <Button variant="ghost" size="icon" className="h-7 w-7" title="Hantera krav" onClick={() => openReqDialog(area.id)}>
                                     <Shield className="h-3 w-3 text-primary" />
                                   </Button>

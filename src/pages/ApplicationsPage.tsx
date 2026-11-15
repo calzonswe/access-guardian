@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import * as store from '@/services/dataStore';
@@ -45,7 +46,27 @@ export default function ApplicationsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
+  const { applicationId } = useParams();
+  const navigate = useNavigate();
   const roles = currentUser?.roles ?? [];
+
+  // Deep link from notifications: /applications/:applicationId opens the detail dialog.
+  useEffect(() => {
+    if (!applicationId || loading) return;
+    const cached = store.getApplication(applicationId);
+    if (cached) { setSelectedApp(cached); return; }
+    if (!store.isApiMode()) { toast.error('Ansökan hittades inte'); return; }
+    let cancelled = false;
+    store.fetchApplication(applicationId)
+      .then(app => { if (!cancelled) setSelectedApp(app); })
+      .catch(err => { if (!cancelled) toast.error(err instanceof Error ? err.message : 'Ansökan hittades inte'); });
+    return () => { cancelled = true; };
+  }, [applicationId, loading]);
+
+  const closeDetail = () => {
+    setSelectedApp(null);
+    if (applicationId) navigate('/applications', { replace: true });
+  };
   const allUsers = currentUser ? store.getUsers() : [];
   const allFacilities = currentUser ? store.getFacilities() : [];
 
@@ -117,7 +138,7 @@ export default function ApplicationsPage() {
       await store.deleteApplication(app.id);
       await store.addLog({ action: 'application_denied', actor_id: currentUser.id, target_id: app.id, target_type: 'application', details: 'Ansökan borttagen' });
       toast.success('Ansökan borttagen');
-      setSelectedApp(null);
+      closeDetail();
       reloadPaged();
     } catch (err: any) {
       toast.error(err?.message || 'Kunde inte ta bort ansökan');
@@ -187,9 +208,9 @@ export default function ApplicationsPage() {
       <ApplicationDetailDialog
         application={selectedApp}
         open={!!selectedApp}
-        onOpenChange={(open) => { if (!open) setSelectedApp(null); }}
+        onOpenChange={(open) => { if (!open) closeDetail(); }}
         onUpdated={reloadPaged}
-        onEdit={(app) => { setSelectedApp(null); setEditApp(app); setFormOpen(true); }}
+        onEdit={(app) => { closeDetail(); setEditApp(app); setFormOpen(true); }}
         onDelete={handleDelete}
       />
     </div>

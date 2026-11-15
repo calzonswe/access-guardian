@@ -34,18 +34,38 @@ let _initialized = false;
 
 // ============= Initialization =============
 
+let _backendUnavailable = false;
+
+/**
+ * Decide between API mode and localStorage mode.
+ * - JSON {status:'ok'} from /api/health            -> API mode
+ * - 5xx (backend or DB down, nginx 502/503/504)     -> API mode, flagged unavailable
+ *   (never silently fall back to a local admin account in production)
+ * - HTML or 404 (static hosting / Lovable preview)  -> localStorage mode
+ * - network error                                   -> localStorage only in dev
+ */
 async function detectMode(): Promise<boolean> {
-  // Check if API is available by verifying we get a JSON response with { status: 'ok' }
+  if (import.meta.env.VITE_LOCAL_MODE === 'true') return false;
   try {
-    const res = await fetch('/api/health', { signal: AbortSignal.timeout(2000) });
+    const res = await fetch('/api/health', { signal: AbortSignal.timeout(4000) });
+    if (res.status >= 500) { _backendUnavailable = true; return true; }
     if (!res.ok) return false;
     const contentType = res.headers.get('content-type') || '';
     if (!contentType.includes('application/json')) return false;
     const body = await res.json();
-    return body?.status === 'ok';
+    if (body?.status === 'ok') return true;
+    _backendUnavailable = true;
+    return true;
   } catch {
-    return false;
+    if (import.meta.env.DEV) return false;
+    _backendUnavailable = true;
+    return true;
   }
+}
+
+/** True when a backend exists but did not answer healthily at startup. */
+export function isBackendUnavailable(): boolean {
+  return _backendUnavailable;
 }
 
 async function loadFromApi(): Promise<void> {
@@ -546,6 +566,11 @@ export function getApplication(id: string): Application | undefined {
   return getApplications().find(a => a.id === id);
 }
 
+/** Fetch a single application from the server (API mode). */
+export async function fetchApplication(id: string): Promise<Application> {
+  return api.getApplication(id);
+}
+
 export async function createApplication(data: Omit<Application, 'id' | 'created_at' | 'updated_at'>): Promise<Application> {
   if (_apiMode) {
     const app = await api.createApplication(data);
@@ -690,6 +715,12 @@ export interface SystemSettings {
   security?: { sessionTimeoutMinutes?: number; maxLoginAttempts?: number; twoFactorRequired?: boolean };
   general?: { organizationName?: string; language?: string; selfRegistration?: boolean };
   auth?: { localEnabled?: boolean; entraEnabled?: boolean; entraTenantId?: string; entraClientId?: string; samlEnabled?: boolean };
+}
+
+/** Branding is public in API mode (also needed before login). */
+export async function getBranding(): Promise<SystemSettings['branding']> {
+  if (_apiMode) return api.getBranding();
+  return (await getSettings()).branding;
 }
 
 export async function getSettings(): Promise<SystemSettings> {
