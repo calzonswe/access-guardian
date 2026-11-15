@@ -15,6 +15,9 @@ export function notifyApplicationStatusChange(
   newStatus: ApplicationStatus,
   actorId: string
 ): void {
+  // The backend creates notifications (and sends real e-mail) for every status
+  // change; this client-side simulation is only for localStorage mode.
+  if (store.isApiMode()) return;
   const applicant = store.getUser(application.applicant_id);
   const facility = store.getFacility(application.facility_id);
   const actor = store.getUser(actorId);

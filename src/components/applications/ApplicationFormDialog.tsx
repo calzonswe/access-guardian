@@ -129,30 +129,39 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
     if (hasMissingReqs && !justification.trim()) { toast.error('Motivering krävs vid saknade krav'); return; }
 
     let appId: string;
-    if (editApplication) {
-      store.updateApplication(editApplication.id, {
-        facility_id: facilityId, area_ids: selectedAreas, start_date: startDate,
-        end_date: endDate || undefined, has_exception: hasMissingReqs,
-        exception_justification: hasMissingReqs ? justification : undefined,
-      });
-      appId = editApplication.id;
-      toast.success('Ansökan uppdaterad');
-    } else {
-      const app = await store.createApplication({
-        applicant_id: currentUser.id, facility_id: facilityId, area_ids: selectedAreas,
-        status: 'pending_manager', start_date: startDate, end_date: endDate || undefined,
-        has_exception: hasMissingReqs, exception_justification: hasMissingReqs ? justification : undefined,
-        attachments: [],
-      });
-      appId = app.id;
-      store.addLog({ action: 'application_created', actor_id: currentUser.id, target_id: app.id, target_type: 'application', details: `Ny ansökan skapad för ${store.getFacility(facilityId)?.name}` });
-      notifyApplicationStatusChange(app, 'pending_manager', currentUser.id);
-      toast.success('Ansökan skapad');
+    try {
+      if (editApplication) {
+        await store.updateApplication(editApplication.id, {
+          facility_id: facilityId, area_ids: selectedAreas, start_date: startDate,
+          end_date: endDate || undefined, has_exception: hasMissingReqs,
+          exception_justification: hasMissingReqs ? justification : undefined,
+        });
+        appId = editApplication.id;
+        toast.success('Ansökan uppdaterad');
+      } else {
+        const app = await store.createApplication({
+          applicant_id: currentUser.id, facility_id: facilityId, area_ids: selectedAreas,
+          status: 'pending_manager', start_date: startDate, end_date: endDate || undefined,
+          has_exception: hasMissingReqs, exception_justification: hasMissingReqs ? justification : undefined,
+          attachments: [],
+        });
+        appId = app.id;
+        store.addLog({ action: 'application_created', actor_id: currentUser.id, target_id: app.id, target_type: 'application', details: `Ny ansökan skapad för ${store.getFacility(facilityId)?.name}` });
+        notifyApplicationStatusChange(app, 'pending_manager', currentUser.id);
+        toast.success('Ansökan skapad och inskickad');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Kunde inte spara ansökan');
+      return;
     }
 
+    if (!store.isApiMode() && pendingFiles.length > 0) {
+      toast.info('Bilagor kan bara laddas upp när servern används');
+      setPendingFiles([]);
+    }
     setUploading(true);
     const newAttachments: Attachment[] = [];
-    for (const pf of pendingFiles) {
+    for (const pf of store.isApiMode() ? pendingFiles : []) {
       try {
         const att = await api.uploadAttachmentMultipart(appId, pf);
         newAttachments.push(att);

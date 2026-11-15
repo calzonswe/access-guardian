@@ -50,13 +50,13 @@ export default function ProfilePage() {
       const parts = editFullName.trim().split(/\s+/);
       const first_name = parts[0] || '';
       const last_name = parts.slice(1).join(' ') || '';
-      await store.updateUser(currentUser.id, {
+      await store.updateOwnProfile(currentUser.id, {
         full_name: editFullName.trim(),
         first_name,
         last_name,
-        phone: editPhone.trim() || undefined,
-        title: editTitle.trim() || undefined,
-        department: editDepartment.trim() || undefined,
+        phone: editPhone.trim(),
+        title: editTitle.trim(),
+        department: editDepartment.trim(),
       });
       refreshUser();
       setEditing(false);

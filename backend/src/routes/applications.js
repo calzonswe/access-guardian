@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
-import { isFacilityAdminOrOwner, isManagerOf, getManagedUserIds, getFacilityIdForArea } from '../middleware/rbac.js';
-import { sendMailToUser, isEmailEnabled } from '../services/email.js';
+import { isFacilityAdminOrOwner, getManagedUserIds } from '../middleware/rbac.js';
+import { sendMailToUser, isEmailEnabled, htmlEscape } from '../services/email.js';
 import { getOrgManagerForUser } from './org.js';
 import { audit } from '../services/audit.js';
 import { expandAreaAncestors } from '../services/areaTree.js';
@@ -22,7 +22,7 @@ async function notifyUser(client, userId, { title, message, type, link }) {
     sendMailToUser(userId, {
       subject: title,
       title,
-      body: `<p>${message}</p>`,
+      body: `<p>${htmlEscape(message)}</p>`,
       ctaLabel: link ? 'Öppna ansökan' : undefined,
       ctaUrl: link,
     }).catch(() => {});
@@ -74,9 +74,119 @@ export async function getApplicationScope(appId) {
   );
   const managerId = managerRows[0]?.manager_id || await getOrgManagerForUser(applicantId);
   const contactPersonId = managerRows[0]?.contact_person_id;
-  const managedIds = managerId ? await getManagedUserIds(managerId) : [];
-  const teamIds = new Set([...managedIds, applicantId]);
-  return { applicantId, facilityId, status: app.status, areaIds: app.area_ids, managerId, contactPersonId, teamIds, facilityAreaIds };
+  return { applicantId, facilityId, status: app.status, areaIds: app.area_ids, managerId, contactPersonId, facilityAreaIds };
+}
+
+/**
+ * Who is the current user in relation to an application?
+ * The applicant is never treated as their own approver.
+ */
+export async function getApplicationAccess(user, scope) {
+  const roles = user.roles || [];
+  const isAdmin = roles.includes('administrator');
+  const isApplicant = scope.applicantId === user.id;
+  let isApprovingManager = false;
+  if (!isApplicant) {
+    if (scope.managerId === user.id || scope.contactPersonId === user.id) {
+      isApprovingManager = true;
+    } else if (roles.includes('line_manager')) {
+      const managed = await getManagedUserIds(user.id);
+      isApprovingManager = managed.includes(scope.applicantId);
+    }
+  }
+  const isFacilityStaff = (roles.includes('facility_owner') || roles.includes('facility_admin')) &&
+    await isFacilityAdminOrOwner(user.id, scope.facilityId);
+  let isFacilityOwner = false;
+  if (isFacilityStaff && roles.includes('facility_owner')) {
+    const { rows } = await pool.query('SELECT 1 FROM facilities WHERE id = $1 AND owner_id = $2', [scope.facilityId, user.id]);
+    isFacilityOwner = rows.length > 0;
+  }
+  return {
+    isAdmin, isApplicant, isApprovingManager, isFacilityStaff, isFacilityOwner,
+    canView: isAdmin || isApplicant || isApprovingManager || isFacilityStaff,
+  };
+}
+
+/**
+ * Allowed status transitions: from -> to -> predicate(access, app).
+ * Administrators may perform every listed transition.
+ */
+const TRANSITIONS = {
+  draft: {
+    pending_manager: (a) => a.isApplicant,
+  },
+  pending_manager: {
+    draft: (a) => a.isApplicant,
+    pending_facility: (a, app) => a.isApprovingManager && !app.has_exception,
+    pending_exception: (a, app) => a.isApprovingManager && app.has_exception,
+    denied: (a) => a.isApprovingManager,
+  },
+  pending_facility: {
+    approved: (a) => a.isFacilityStaff,
+    denied: (a) => a.isFacilityStaff,
+    pending_exception: (a) => a.isApplicant,
+  },
+  pending_exception: {
+    // Exceptions (avsteg) are decided by the owner of the facility.
+    approved: (a) => a.isFacilityOwner,
+    denied: (a) => a.isFacilityOwner,
+  },
+  approved: {
+    expired: (a) => a.isFacilityStaff, // revocation
+  },
+};
+
+export function isTransitionAllowed(from, to, access, app) {
+  const rule = TRANSITIONS[from]?.[to];
+  if (!rule) return false;
+  return access.isAdmin || rule(access, app);
+}
+
+async function validateAreas(client, facilityId, areaIds) {
+  if (!Array.isArray(areaIds)) return 'Områden ogiltigt format';
+  if (areaIds.length === 0) return null;
+  const { rows } = await client.query(
+    'SELECT id FROM areas WHERE facility_id = $1 AND id = ANY($2::uuid[])',
+    [facilityId, areaIds]
+  );
+  return rows.length === new Set(areaIds).size ? null : 'Ogiltigt område för anläggningen';
+}
+
+function validateDates(start, end) {
+  if (start && isNaN(new Date(start).getTime())) return 'Ogiltigt startdatum';
+  if (end && isNaN(new Date(end).getTime())) return 'Ogiltigt slutdatum';
+  if (start && end && new Date(end) < new Date(start)) return 'Slutdatum kan inte vara före startdatum';
+  return null;
+}
+
+// Notify the people who must act on an application in its new status.
+async function notifyApprovers(appId, scope, newStatus, actorId) {
+  let recipients = [];
+  let title = '';
+  let message = '';
+  if (newStatus === 'pending_manager') {
+    recipients = [scope.managerId, scope.contactPersonId];
+    title = 'Ny ansökan att attestera';
+    message = 'En tillträdesansökan väntar på ditt godkännande.';
+  } else if (newStatus === 'pending_facility') {
+    const { rows } = await pool.query(
+      `SELECT owner_id AS uid FROM facilities WHERE id = $1 AND owner_id IS NOT NULL
+       UNION SELECT user_id AS uid FROM facility_admins WHERE facility_id = $1`,
+      [scope.facilityId]
+    );
+    recipients = rows.map(r => r.uid);
+    title = 'Ansökan väntar på anläggningens godkännande';
+    message = 'En tillträdesansökan har godkänts av närmaste chef och väntar på din granskning.';
+  } else if (newStatus === 'pending_exception') {
+    const { rows } = await pool.query('SELECT owner_id AS uid FROM facilities WHERE id = $1', [scope.facilityId]);
+    recipients = rows.map(r => r.uid);
+    title = 'Undantagsbegäran att granska';
+    message = 'En ansökan med avsteg från kraven väntar på ditt beslut som anläggningsägare.';
+  }
+  for (const uid of new Set(recipients.filter(Boolean))) {
+    if (uid === actorId) continue;
+    await notifyUser(pool, uid, { title, message, type: 'action_required', link: `/applications/${appId}` });
+  }
 }
 
 const APP_SELECT = `SELECT a.*,
@@ -202,49 +312,42 @@ router.get('/:id', async (req, res) => {
   try {
     const scope = await getApplicationScope(req.params.id);
     if (!scope) return res.status(404).json({ error: 'Ej hittad' });
-    const canView = req.user.roles.includes('administrator') ||
-      scope.applicantId === req.user.id ||
-      scope.teamIds.has(req.user.id) ||
-      (scope.managerId === req.user.id) ||
-      (scope.contactPersonId === req.user.id) ||
-      (req.user.roles.includes('facility_owner') || req.user.roles.includes('facility_admin')) && await isFacilityAdminOrOwner(req.user.id, scope.facilityId);
-    if (!canView) return res.status(403).json({ error: 'Otillräckliga rättigheter' });
-    const { rows } = await pool.query(
-      `SELECT a.*,
-              COALESCE(array_agg(aa.area_id) FILTER (WHERE aa.area_id IS NOT NULL), '{}') AS area_ids,
-              COALESCE(
-                json_agg(json_build_object('id', att.id, 'application_id', att.application_id, 'file_name', att.file_name, 'file_url', att.file_url, 'uploaded_at', att.uploaded_at))
-                FILTER (WHERE att.id IS NOT NULL), '[]'
-              ) AS attachments
-       FROM applications a
-       LEFT JOIN application_areas aa ON aa.application_id = a.id
-       LEFT JOIN attachments att ON att.application_id = a.id
-       WHERE a.id = $1 GROUP BY a.id`,
-      [req.params.id]
-    );
-    res.json(mapApp(rows[0]));
+    const access = await getApplicationAccess(req.user, scope);
+    if (!access.canView) return res.status(403).json({ error: 'Otillräckliga rättigheter' });
+    res.json(await fetchApplication(pool, req.params.id));
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Internt serverfel' });
   }
 });
 
+async function fetchApplication(db, appId) {
+  const { rows } = await db.query(`${APP_SELECT} WHERE a.id = $1 GROUP BY a.id`, [appId]);
+  return rows[0] ? mapApp(rows[0]) : null;
+}
+
 router.post('/', async (req, res) => {
   const client = await pool.connect();
   try {
+    let { applicant_id, facility_id, area_ids, status, start_date, end_date, has_exception, exception_justification } = req.body || {};
+    const isPrivileged = req.user.roles.includes('administrator');
+    if (!isPrivileged || !applicant_id) applicant_id = req.user.id;
+    // New applications start as a draft or are submitted directly to the manager.
+    if (status !== 'pending_manager') status = 'draft';
+    if (!facility_id) return res.status(400).json({ error: 'Anläggning krävs' });
+    if (!start_date) return res.status(400).json({ error: 'Startdatum krävs' });
+    const dateErr = validateDates(start_date, end_date);
+    if (dateErr) return res.status(400).json({ error: dateErr });
+    const { rows: fac } = await client.query('SELECT id FROM facilities WHERE id = $1', [facility_id]);
+    if (fac.length === 0) return res.status(400).json({ error: 'Ogiltig anläggning' });
+    const areaErr = await validateAreas(client, facility_id, area_ids || []);
+    if (areaErr) return res.status(400).json({ error: areaErr });
+
     await client.query('BEGIN');
-    let { applicant_id, facility_id, area_ids, status, start_date, end_date, has_exception, exception_justification } = req.body;
-    if (!req.user.roles.includes('administrator') &&
-        !req.user.roles.includes('facility_owner') &&
-        !req.user.roles.includes('facility_admin')) {
-      applicant_id = req.user.id;
-    }
-    if (status === 'pending_manager' || status === 'pending_facility' || status === 'pending_exception' || status === 'approved') {
-      status = 'draft';
-    }
     const { rows } = await client.query(
       `INSERT INTO applications (applicant_id, facility_id, status, start_date, end_date, has_exception, exception_justification)
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [applicant_id, facility_id, status || 'draft', start_date, end_date || null, has_exception ?? false, exception_justification]
+      [applicant_id, facility_id, status, start_date, end_date || null, !!has_exception, has_exception ? exception_justification || null : null]
     );
     const app = rows[0];
     const expandedAreaIds = await expandAreaAncestors(client, area_ids || []);
@@ -252,10 +355,14 @@ router.post('/', async (req, res) => {
       await client.query('INSERT INTO application_areas (application_id, area_id) VALUES ($1,$2)', [app.id, areaId]);
     }
     await client.query('COMMIT');
-    await audit({ req, action: 'application_created', targetId: app.id, targetType: 'application', details: `Anläggning: ${facility_id}` });
+    await audit({ req, action: 'application_created', targetId: app.id, targetType: 'application', details: `Anläggning: ${facility_id}, status: ${status}` });
+    if (status === 'pending_manager') {
+      const scope = await getApplicationScope(app.id);
+      await notifyApprovers(app.id, scope, 'pending_manager', req.user.id);
+    }
     res.status(201).json({ ...app, area_ids: expandedAreaIds, attachments: [] });
   } catch (err) {
-    await client.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(() => {});
     console.error(err);
     res.status(500).json({ error: 'Internt serverfel' });
   } finally {
@@ -263,107 +370,100 @@ router.post('/', async (req, res) => {
   }
 });
 
+const EDITABLE_STATUSES = ['draft', 'pending_manager'];
+
 router.put('/:id', async (req, res) => {
   const client = await pool.connect();
   try {
-    await client.query('BEGIN');
     const appId = req.params.id;
-    const scope = await getApplicationScope(appId);
-    if (!scope) {
+    const body = req.body || {};
+    await client.query('BEGIN');
+    // Lock the row so concurrent approvals can't both pass the checks.
+    const { rows: locked } = await client.query(
+      'SELECT id, status, facility_id, has_exception FROM applications WHERE id = $1 FOR UPDATE',
+      [appId]
+    );
+    if (locked.length === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Ej hittad' });
     }
-    const body = req.body;
-    const now = new Date().toISOString();
-    const newStatus = body.status;
-    if (newStatus) {
-      if (newStatus === 'pending_manager' && scope.status !== 'draft') {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ error: 'Kan inte skicka in ansökan i detta stadium' });
-      }
-      if (newStatus === 'pending_facility') {
-        const isManager = req.user.roles.includes('line_manager') &&
-          (scope.applicantId === req.user.id || scope.managerId === req.user.id || scope.teamIds.has(req.user.id));
-        const isSponsor = scope.contactPersonId === req.user.id;
-        const canApprove = isManager || isSponsor;
-        if (!canApprove && !req.user.roles.includes('administrator')) {
-          await client.query('ROLLBACK');
-          return res.status(403).json({ error: 'Endast chef eller kontaktperson kan godkänna ansökan' });
-        }
-        if (scope.status !== 'draft' && scope.status !== 'pending_manager') {
-          await client.query('ROLLBACK');
-          return res.status(400).json({ error: 'Fel ansökningsstatus för godkännande' });
-        }
-      }
-      if (newStatus === 'approved') {
-        if (scope.status === 'pending_facility') {
-          const hasFacilityAccess = (req.user.roles.includes('facility_owner') || req.user.roles.includes('facility_admin')) &&
-            await isFacilityAdminOrOwner(req.user.id, scope.facilityId);
-          if (!hasFacilityAccess && !req.user.roles.includes('administrator')) {
-            await client.query('ROLLBACK');
-            return res.status(403).json({ error: 'Endast anläggningsägare/administratör kan godkänna ansökan' });
-          }
-        } else if (scope.status === 'pending_exception') {
-          if (!req.user.roles.includes('administrator')) {
-            await client.query('ROLLBACK');
-            return res.status(403).json({ error: 'Endast administratör kan godkänna undantag' });
-          }
-        } else {
-          await client.query('ROLLBACK');
-          return res.status(400).json({ error: 'Fel ansökningsstatus för godkännande' });
-        }
-      }
-      if (newStatus === 'denied') {
-        const canDeny = req.user.roles.includes('administrator') ||
-          (scope.status === 'pending_manager' && (
-            (req.user.roles.includes('line_manager') && (scope.managerId === req.user.id || scope.teamIds.has(req.user.id) || scope.applicantId === req.user.id)) ||
-            scope.contactPersonId === req.user.id
-          )) ||
-          (scope.status === 'pending_facility' && (req.user.roles.includes('facility_owner') || req.user.roles.includes('facility_admin'))) ||
-          (scope.status === 'pending_exception' && req.user.roles.includes('administrator'));
-        if (!canDeny) {
-          await client.query('ROLLBACK');
-          return res.status(403).json({ error: 'Otillräckliga rättigheter för att neka ansökan' });
-        }
-      }
-      if (newStatus === 'pending_exception') {
-        if (!req.user.roles.includes('administrator') && !(scope.status === 'pending_facility' && scope.applicantId === req.user.id)) {
-          await client.query('ROLLBACK');
-          return res.status(403).json({ error: 'Endast sökande kan begära undantag' });
-        }
-      }
-      if (newStatus === 'draft' && scope.status !== 'draft' && scope.status !== 'pending_manager' && !req.user.roles.includes('administrator')) {
-        await client.query('ROLLBACK');
-        return res.status(403).json({ error: 'Kan inte återställa ansökan' });
+    const current = locked[0];
+    const scope = await getApplicationScope(appId);
+    const access = await getApplicationAccess(req.user, scope);
+    if (!access.canView) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Otillräckliga rättigheter' });
+    }
+
+    const fail = async (status, error) => {
+      await client.query('ROLLBACK');
+      return res.status(status).json({ error });
+    };
+
+    // ---- Field edits: only the applicant while the application is still editable, or an admin.
+    const fieldKeys = ['facility_id', 'start_date', 'end_date', 'area_ids', 'has_exception', 'exception_justification'];
+    const editsFields = fieldKeys.some(k => body[k] !== undefined);
+    if (editsFields) {
+      const canEdit = access.isAdmin || (access.isApplicant && EDITABLE_STATUSES.includes(current.status));
+      if (!canEdit) return fail(403, 'Ansökan kan inte ändras i detta stadium');
+    }
+    const facilityId = body.facility_id || current.facility_id;
+    if (body.facility_id !== undefined) {
+      const { rows: fac } = await client.query('SELECT id FROM facilities WHERE id = $1', [body.facility_id]);
+      if (fac.length === 0) return fail(400, 'Ogiltig anläggning');
+    }
+    const dateErr = validateDates(body.start_date, body.end_date);
+    if (dateErr) return fail(400, dateErr);
+    if (body.area_ids !== undefined) {
+      const areaErr = await validateAreas(client, facilityId, body.area_ids || []);
+      if (areaErr) return fail(400, areaErr);
+    }
+    const hasException = body.has_exception !== undefined ? !!body.has_exception : current.has_exception;
+
+    // ---- Status transition
+    let newStatus = body.status;
+    if (newStatus === current.status) newStatus = undefined;
+    if (newStatus !== undefined) {
+      if (!STATUS_ORDER.includes(newStatus)) return fail(400, 'Ogiltig status');
+      if (!isTransitionAllowed(current.status, newStatus, access, { has_exception: hasException })) {
+        return fail(403, 'Otillåten statusändring för din roll');
       }
     }
+    if (body.denied_reason !== undefined && newStatus !== 'denied') {
+      return fail(400, 'Avslagsanledning kan bara anges vid avslag');
+    }
+
+    const now = new Date().toISOString();
     const updates = [];
     const vals = [];
     let idx = 1;
     const addField = (name, val) => { if (val !== undefined) { updates.push(`${name} = $${idx++}`); vals.push(val); } };
     addField('status', newStatus);
+    addField('facility_id', body.facility_id);
     addField('start_date', body.start_date);
-    addField('end_date', body.end_date);
+    addField('end_date', body.end_date === '' ? null : body.end_date);
     addField('has_exception', body.has_exception);
     addField('exception_justification', body.exception_justification);
-    if (newStatus === 'pending_facility') {
+    if (current.status === 'pending_manager' && (newStatus === 'pending_facility' || newStatus === 'pending_exception')) {
       addField('manager_approved_at', now);
       addField('manager_approved_by', req.user.id);
     }
-    if (newStatus === 'approved' && scope.status === 'pending_facility') {
+    if (newStatus === 'approved' && current.status === 'pending_facility') {
       addField('facility_approved_at', now);
       addField('facility_approved_by', req.user.id);
     }
-    if (newStatus === 'approved' && scope.status === 'pending_exception') {
+    if (newStatus === 'approved' && current.status === 'pending_exception') {
       addField('exception_approved_at', now);
       addField('exception_approved_by', req.user.id);
+      addField('facility_approved_at', now);
+      addField('facility_approved_by', req.user.id);
     }
-    addField('denied_reason', body.denied_reason);
+    if (newStatus === 'denied') addField('denied_reason', body.denied_reason ? String(body.denied_reason).slice(0, 2000) : null);
     if (updates.length > 0) {
       vals.push(appId);
       await client.query(`UPDATE applications SET ${updates.join(', ')} WHERE id = $${idx}`, vals);
     }
-    if (body.area_ids !== undefined) {
+    if (body.area_ids !== undefined || body.facility_id !== undefined) {
       await client.query('DELETE FROM application_areas WHERE application_id = $1', [appId]);
       for (const areaId of await expandAreaAncestors(client, body.area_ids || [])) {
         await client.query('INSERT INTO application_areas (application_id, area_id) VALUES ($1,$2)', [appId, areaId]);
@@ -372,77 +472,38 @@ router.put('/:id', async (req, res) => {
     await client.query('COMMIT');
 
     // ----- Post-commit: audit log + status-change notifications -----
-    if (newStatus && newStatus !== scope.status) {
+    if (newStatus) {
       const titleMap = {
         pending_manager: ['Ansökan inskickad', 'Din ansökan har skickats in för granskning.'],
         pending_facility: ['Ansökan vidarebefordrad', 'Din ansökan har godkänts av närmaste chef och väntar på anläggningens godkännande.'],
-        pending_exception: ['Undantagsbegäran skickad', 'Din ansökan har skickats vidare för undantagsbedömning.'],
+        pending_exception: ['Undantagsbegäran skickad', 'Din ansökan har skickats vidare för undantagsbedömning hos anläggningsägaren.'],
         approved: ['Ansökan godkänd', 'Din tillträdesansökan har godkänts.'],
         denied: ['Ansökan nekad', `Din tillträdesansökan har nekats.${body.denied_reason ? ` Anledning: ${String(body.denied_reason).slice(0, 500)}` : ''}`],
+        expired: ['Tillträde återkallat', 'Ditt tillträde har återkallats.'],
       };
       const tm = titleMap[newStatus];
-      if (tm) {
+      if (tm && scope.applicantId !== req.user.id) {
         await notifyUser(pool, scope.applicantId, {
           title: tm[0], message: tm[1],
-          type: newStatus === 'denied' ? 'warning' : 'info',
+          type: newStatus === 'denied' || newStatus === 'expired' ? 'warning' : 'info',
           link: `/applications/${appId}`,
         });
       }
-      // Notify next-step approvers
-      if (newStatus === 'pending_facility') {
-        const { rows: approvers } = await pool.query(
-          `SELECT owner_id AS uid FROM facilities WHERE id = $1 AND owner_id IS NOT NULL
-           UNION SELECT user_id AS uid FROM facility_admins WHERE facility_id = $1`,
-          [scope.facilityId]
-        );
-        for (const a of approvers) {
-          await notifyUser(pool, a.uid, {
-            title: 'Ansökan väntar på anläggningens godkännande',
-            message: 'En tillträdesansökan har godkänts av närmaste chef och väntar på din granskning.',
-            type: 'action_required',
-            link: `/applications/${appId}`,
-          });
-        }
-      }
-      if (newStatus === 'pending_exception') {
-        const { rows: admins } = await pool.query(
-          `SELECT user_id AS uid FROM user_roles WHERE role = 'administrator'`
-        );
-        for (const a of admins) {
-          await notifyUser(pool, a.uid, {
-            title: 'Undantagsbegäran att granska',
-            message: 'En ansökan har eskalerats för undantagsbedömning.',
-            type: 'action_required',
-            link: `/applications/${appId}`,
-          });
-        }
-      }
+      await notifyApprovers(appId, { ...scope, facilityId }, newStatus, req.user.id);
       await audit({
         req,
-        action: `application_${newStatus}`,
+        action: newStatus === 'expired' ? 'access_revoked' : `application_${newStatus}`,
         targetId: appId,
         targetType: 'application',
-        details: `Status: ${scope.status} → ${newStatus}${body.denied_reason ? ` (${String(body.denied_reason).slice(0, 200)})` : ''}`,
+        details: `Status: ${current.status} → ${newStatus}${body.denied_reason ? ` (${String(body.denied_reason).slice(0, 200)})` : ''}`,
       });
     } else {
       await audit({ req, action: 'application_updated', targetId: appId, targetType: 'application' });
     }
 
-    const { rows } = await pool.query(
-      `SELECT a.*,
-              COALESCE(array_agg(aa.area_id) FILTER (WHERE aa.area_id IS NOT NULL), '{}') AS area_ids,
-              COALESCE(
-                json_agg(json_build_object('id', att.id, 'application_id', att.application_id, 'file_name', att.file_name, 'file_url', att.file_url, 'uploaded_at', att.uploaded_at))
-                FILTER (WHERE att.id IS NOT NULL), '[]'
-              ) AS attachments
-       FROM applications a LEFT JOIN application_areas aa ON aa.application_id = a.id
-       LEFT JOIN attachments att ON att.application_id = a.id
-       WHERE a.id = $1 GROUP BY a.id`,
-      [appId]
-    );
-    res.json(mapApp(rows[0]));
+    res.json(await fetchApplication(pool, appId));
   } catch (err) {
-    await client.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(() => {});
     console.error(err);
     res.status(500).json({ error: 'Internt serverfel' });
   } finally {

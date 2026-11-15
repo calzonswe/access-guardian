@@ -4,37 +4,16 @@ import { isFacilityAdminOrOwner } from '../middleware/rbac.js';
 
 const router = Router();
 
+// Read access for every authenticated user: applicants need to see which
+// requirements apply to an area. Writes remain administrator-only.
 router.get('/', async (req, res) => {
   try {
     const areaId = req.query.area_id;
-    if (req.user.roles.includes('administrator')) {
-      let query = 'SELECT * FROM area_requirements';
-      const params = [];
-      if (areaId) { query += ' WHERE area_id = $1'; params.push(areaId); }
-      const { rows } = await pool.query(query, params);
-      return res.json(rows);
-    }
-    if (req.user.roles.includes('facility_owner') || req.user.roles.includes('facility_admin')) {
-      const { rows: userFacilities } = await pool.query(
-        `SELECT id FROM facilities WHERE owner_id = $1 OR id IN (SELECT facility_id FROM facility_admins WHERE user_id = $1)`,
-        [req.user.id]
-      );
-      const facilityIds = userFacilities.map(r => r.id);
-      if (facilityIds.length === 0) return res.json([]);
-      let query = `SELECT ar.* FROM area_requirements ar JOIN areas a ON ar.area_id = a.id WHERE a.facility_id = ANY($1)`;
-      const params = [facilityIds];
-      if (areaId) {
-        const { rows: areaRows } = await pool.query('SELECT facility_id FROM areas WHERE id = $1', [areaId]);
-        if (areaRows.length === 0 || !facilityIds.includes(areaRows[0].facility_id)) {
-          return res.json([]);
-        }
-        query += ' AND ar.area_id = $2';
-        params.push(areaId);
-      }
-      const { rows } = await pool.query(query, params);
-      return res.json(rows);
-    }
-    res.json([]);
+    let query = 'SELECT * FROM area_requirements';
+    const params = [];
+    if (areaId) { query += ' WHERE area_id = $1'; params.push(areaId); }
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });
   }

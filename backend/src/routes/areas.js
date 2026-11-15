@@ -26,42 +26,17 @@ async function validateParent(parentId, facilityId, selfId = null) {
 }
 
 
+// Read access for every authenticated user: applicants choose areas in the
+// application form. Writes are limited to administrators and facility staff.
 router.get('/', async (req, res) => {
   try {
     const facilityId = req.query.facility_id;
-    if (req.user.roles.includes('administrator')) {
-      let query = 'SELECT * FROM areas';
-      const params = [];
-      if (facilityId) {
-        query += ' WHERE facility_id = $1';
-        params.push(facilityId);
-      }
-      query += ' ORDER BY name';
-      const { rows } = await pool.query(query, params);
-      return res.json(rows);
-    }
-    if (req.user.roles.includes('facility_owner') || req.user.roles.includes('facility_admin')) {
-      const { rows: userFacilities } = await pool.query(
-        `SELECT id FROM facilities WHERE owner_id = $1 OR id IN (SELECT facility_id FROM facility_admins WHERE user_id = $1)`,
-        [req.user.id]
-      );
-      const facilityIds = userFacilities.map(r => r.id);
-      if (facilityIds.length === 0) return res.json([]);
-      let query = `SELECT * FROM areas WHERE facility_id = ANY($1)`;
-      const params = [facilityIds];
-      if (facilityId) {
-        if (facilityIds.includes(facilityId)) {
-          query += ' AND facility_id = $2';
-          params.push(facilityId);
-        } else {
-          return res.json([]);
-        }
-      }
-      query += ' ORDER BY name';
-      const { rows } = await pool.query(query, params);
-      return res.json(rows);
-    }
-    res.json([]);
+    let query = 'SELECT * FROM areas';
+    const params = [];
+    if (facilityId) { query += ' WHERE facility_id = $1'; params.push(facilityId); }
+    query += ' ORDER BY name';
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });
   }
@@ -71,12 +46,7 @@ router.get('/:id', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM areas WHERE id = $1', [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Ej hittad' });
-    const area = rows[0];
-    if (!req.user.roles.includes('administrator')) {
-      const hasAccess = await isFacilityAdminOrOwner(req.user.id, area.facility_id);
-      if (!hasAccess) return res.status(403).json({ error: 'Ingen åtkomst till detta område' });
-    }
-    res.json(area);
+    res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });
   }

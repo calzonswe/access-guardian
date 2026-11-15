@@ -52,34 +52,40 @@ async function loadFromApi(): Promise<void> {
   const token = api.getToken();
   if (!token) return; // No token = can't load yet, will load after login
 
-  try {
-    const [users, facilities, areas, requirements, applications, logs, notifications, orgUnits, userRequirements, facilityRequirements, areaRequirements] = await Promise.all([
-      api.getUsers(),
-      api.getFacilities(),
-      api.getAreas(),
-      api.getRequirements(),
-      api.getApplications(),
-      api.getLogs(),
-      api.getNotifications(),
-      api.getOrgUnits(),
-      api.getUserRequirements(),
-      api.getFacilityRequirements(),
-      api.getAreaRequirements(),
-    ]);
-    _users = users;
-    _facilities = facilities;
-    _areas = areas;
-    _requirements = requirements;
-    _applications = applications;
-    _logs = logs;
-    _notifications = notifications;
-    _orgUnits = orgUnits;
-    _userRequirements = userRequirements;
-    _facilityRequirements = facilityRequirements;
-    _areaRequirements = areaRequirements;
-  } catch (err) {
-    console.error('Failed to load data from API:', err);
-  }
+  // Logs are admin-only on the backend; skip them for everyone else.
+  const isAdmin = api.getTokenRoles().includes('administrator');
+
+  // allSettled: one failing collection must not wipe all the others.
+  const results = await Promise.allSettled([
+    api.getUsers(),
+    api.getFacilities(),
+    api.getAreas(),
+    api.getRequirements(),
+    api.getApplications(),
+    isAdmin ? api.getLogs() : Promise.resolve([] as SystemLog[]),
+    api.getNotifications(),
+    api.getOrgUnits(),
+    api.getUserRequirements(),
+    api.getFacilityRequirements(),
+    api.getAreaRequirements(),
+  ]);
+  const val = <T,>(i: number, fallback: T): T => {
+    const r = results[i];
+    if (r.status === 'fulfilled') return r.value as T;
+    console.error('Failed to load data from API:', r.reason);
+    return fallback;
+  };
+  _users = val(0, _users);
+  _facilities = val(1, _facilities);
+  _areas = val(2, _areas);
+  _requirements = val(3, _requirements);
+  _applications = val(4, _applications);
+  _logs = val(5, _logs);
+  _notifications = val(6, _notifications);
+  _orgUnits = val(7, _orgUnits);
+  _userRequirements = val(8, _userRequirements);
+  _facilityRequirements = val(9, _facilityRequirements);
+  _areaRequirements = val(10, _areaRequirements);
 }
 
 // localStorage fallback helpers
@@ -288,6 +294,15 @@ export async function updateUser(id: string, data: Partial<Omit<StoredUser, 'id'
   users[idx] = { ...users[idx], ...update };
   localSet(KEYS.USERS, users);
   return toPublicUser(users[idx]);
+}
+
+/** Update the logged-in user's own profile (self-service, not admin user management). */
+export async function updateOwnProfile(id: string, data: Partial<Pick<User, 'full_name' | 'first_name' | 'last_name' | 'phone' | 'title' | 'department'>>): Promise<void> {
+  if (_apiMode) {
+    await api.updateMe(data);
+    return;
+  }
+  await updateUser(id, data);
 }
 
 export async function deleteUser(id: string): Promise<void> {
@@ -606,12 +621,10 @@ export function getLogs(): SystemLog[] {
   return localGet<SystemLog>(KEYS.LOGS).sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
-export async function addLog(data: Omit<SystemLog, 'id' | 'created_at'>): Promise<SystemLog> {
-  if (_apiMode) {
-    const log = await api.addLog(data);
-    _logs = await api.getLogs();
-    return log;
-  }
+export async function addLog(data: Omit<SystemLog, 'id' | 'created_at'>): Promise<SystemLog | null> {
+  // In API mode the backend writes the audit log itself for every mutation,
+  // so client-side logging would only duplicate entries (and 403 for non-admins).
+  if (_apiMode) return null;
   const items = localGet<SystemLog>(KEYS.LOGS);
   const item: SystemLog = { ...data, id: uid(), created_at: now() };
   items.push(item);

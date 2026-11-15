@@ -25,6 +25,18 @@ export function getToken(): string | null {
   return token;
 }
 
+/** Roles embedded in the current JWT payload (used only for UI decisions, not security). */
+export function getTokenRoles(): string[] {
+  if (!token) return [];
+  try {
+    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = JSON.parse(atob(payload));
+    return Array.isArray(json.roles) ? json.roles : [];
+  } catch {
+    return [];
+  }
+}
+
 // Callback that AuthContext can subscribe to so a 401 clears auth state
 // without a full page reload.
 type UnauthorizedHandler = () => void;
@@ -148,6 +160,10 @@ export function createUser(data: Omit<User, 'id' | 'created_at'> & { password: s
 
 export function updateUser(id: string, data: Partial<User & { password?: string }>): Promise<User> {
   return put(`/users/${id}`, data);
+}
+
+export function updateMe(data: Partial<Pick<User, 'full_name' | 'first_name' | 'last_name' | 'phone' | 'title' | 'department'>>): Promise<{ user: User }> {
+  return put('/auth/me', data);
 }
 
 export function deleteUser(id: string): Promise<void> {

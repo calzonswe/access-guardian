@@ -238,6 +238,40 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 });
 
+// Self-service profile update — only harmless profile fields.
+router.put('/me', authMiddleware, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const fields = { full_name: 255, first_name: 128, last_name: 128, phone: 50, title: 255, department: 100 };
+    const updates = [];
+    const vals = [];
+    for (const [name, max] of Object.entries(fields)) {
+      if (body[name] === undefined) continue;
+      if (body[name] !== null && typeof body[name] !== 'string') {
+        return res.status(400).json({ error: `Ogiltigt värde för ${name}` });
+      }
+      const v = (body[name] || '').trim().slice(0, max);
+      if (name === 'full_name' && !v) return res.status(400).json({ error: 'Namn krävs' });
+      vals.push(v);
+      updates.push(`${name} = $${vals.length}`);
+    }
+    if (updates.length > 0) {
+      vals.push(req.user.id);
+      await pool.query(`UPDATE users SET ${updates.join(', ')} WHERE id = $${vals.length}`, vals);
+      await audit({ req, action: 'user_updated', targetId: req.user.id, targetType: 'user', details: 'Egen profil uppdaterad' });
+    }
+    const { rows } = await pool.query(
+      `SELECT u.*, array_agg(ur.role) AS roles FROM users u
+       LEFT JOIN user_roles ur ON ur.user_id = u.id WHERE u.id = $1 GROUP BY u.id`,
+      [req.user.id]
+    );
+    res.json({ user: mapUser(rows[0]) });
+  } catch (err) {
+    console.error('update profile error:', err);
+    res.status(500).json({ error: 'Internt serverfel' });
+  }
+});
+
 function mapUser(row) {
   let roles = [];
   if (Array.isArray(row.roles)) {
@@ -251,7 +285,7 @@ function mapUser(row) {
     full_name: row.full_name,
     first_name: row.first_name || '',
     last_name: row.last_name || '',
-    roles: roles,
+    roles: roles.filter(Boolean),
     department: row.department,
     title: row.title,
     phone: row.phone,

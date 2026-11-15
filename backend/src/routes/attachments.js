@@ -4,7 +4,7 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import multer from 'multer';
 import { pool } from '../db.js';
-import { getApplicationScope } from './applications.js';
+import { getApplicationScope, getApplicationAccess } from './applications.js';
 import { audit } from '../services/audit.js';
 
 const router = Router();
@@ -34,12 +34,8 @@ function sanitizeFileName(name) {
 async function canAccessApp(req, applicationId) {
   const scope = await getApplicationScope(applicationId);
   if (!scope) return { ok: false, status: 404, error: 'Ansökan ej funnen' };
-  const isAdmin = req.user.roles.includes('administrator');
-  const isApplicant = scope.applicantId === req.user.id;
-  const isManager = scope.managerId === req.user.id || scope.teamIds.has(req.user.id);
-  const isSponsor = scope.contactPersonId === req.user.id;
-  const isFacilityStaff = req.user.roles.includes('facility_owner') || req.user.roles.includes('facility_admin');
-  return { ok: true, scope, isAdmin, isApplicant, isManager, isSponsor, isFacilityStaff };
+  const access = await getApplicationAccess(req.user, scope);
+  return { ok: true, scope, ...access };
 }
 
 // ---------- Multipart upload (preferred) ----------
@@ -156,7 +152,7 @@ router.get('/:id/download', async (req, res) => {
 
     const access = await canAccessApp(req, att.application_id);
     if (!access.ok) return res.status(access.status).json({ error: access.error });
-    if (!(access.isAdmin || access.isApplicant || access.isManager || access.isSponsor || access.isFacilityStaff)) {
+    if (!access.canView) {
       return res.status(403).json({ error: 'Otillräckliga rättigheter' });
     }
 

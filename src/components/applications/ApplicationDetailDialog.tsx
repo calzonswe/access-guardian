@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, XCircle, FileText, Trash2, Pencil, Ban, Download } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, Trash2, Pencil, Ban, Download, Send } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import * as store from '@/services/dataStore';
 import { downloadAttachment } from '@/services/api';
@@ -43,20 +43,38 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
   const status = STATUS_MAP[application.status];
 
   const roles = currentUser.roles;
-  const canApprove =
-    (roles.includes('line_manager') && application.status === 'pending_manager') ||
-    ((roles.includes('facility_owner') || roles.includes('facility_admin')) && application.status === 'pending_facility') ||
-    (roles.includes('facility_owner') && application.status === 'pending_exception') ||
-    (roles.includes('administrator'));
-
-  const canEditDelete = application.applicant_id === currentUser.id && (application.status === 'draft' || application.status === 'pending_manager');
-
-  // Revocation: facility_owner, facility_admin, or administrator can revoke approved access
-  const canRevoke = application.status === 'approved' && (
-    roles.includes('administrator') ||
-    roles.includes('facility_owner') ||
-    roles.includes('facility_admin')
+  const isAdmin = roles.includes('administrator');
+  const isApplicant = application.applicant_id === currentUser.id;
+  const isFacilityOwner = facility?.owner_id === currentUser.id;
+  const isFacilityStaff = isFacilityOwner || !!facility?.admin_ids?.includes(currentUser.id);
+  const isApprovingManager = !isApplicant && (
+    roles.includes('line_manager') ||
+    applicant?.manager_id === currentUser.id ||
+    applicant?.contact_person_id === currentUser.id
   );
+  // Mirrors the backend transition rules; the backend makes the final decision.
+  const canApprove =
+    (application.status === 'pending_manager' && (isApprovingManager || isAdmin)) ||
+    (application.status === 'pending_facility' && (isFacilityStaff || isAdmin)) ||
+    (application.status === 'pending_exception' && (isFacilityOwner || isAdmin));
+
+  const canEdit = isApplicant && (application.status === 'draft' || application.status === 'pending_manager');
+  const canDelete = (isApplicant || isAdmin) && (application.status === 'draft' || application.status === 'denied');
+  const canSubmit = (isApplicant || isAdmin) && application.status === 'draft';
+
+  // Revocation: staff of this facility or an administrator
+  const canRevoke = application.status === 'approved' && (isAdmin || isFacilityStaff);
+
+  const handleSubmitDraft = async () => {
+    try {
+      await store.updateApplication(application.id, { status: 'pending_manager' });
+      await notifyApplicationStatusChange(application, 'pending_manager', currentUser.id);
+      toast.success('Ansökan inskickad');
+      onUpdated?.(); onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Kunde inte skicka in ansökan');
+    }
+  };
 
   const handleApprove = async () => {
     let newStatus: ApplicationStatus = application.status;
@@ -118,11 +136,14 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
           <div className="flex items-center justify-between">
             <Badge variant="outline" className={status.className}>{status.label}</Badge>
             <div className="flex gap-1">
-              {canEditDelete && (
-                <>
-                  <Button variant="ghost" size="icon" onClick={() => onEdit?.(application)}><Pencil className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" onClick={() => onDelete?.(application)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                </>
+              {canSubmit && (
+                <Button size="sm" onClick={handleSubmitDraft}><Send className="mr-1 h-4 w-4" />Skicka in</Button>
+              )}
+              {canEdit && (
+                <Button variant="ghost" size="icon" onClick={() => onEdit?.(application)}><Pencil className="h-4 w-4" /></Button>
+              )}
+              {canDelete && (
+                <Button variant="ghost" size="icon" onClick={() => onDelete?.(application)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
               )}
               {canRevoke && (
                 <Button variant="destructive" size="sm" onClick={handleRevoke}>
@@ -171,7 +192,7 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
             {application.manager_approved_at && <p className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-success" />Chef godkänd: {new Date(application.manager_approved_at).toLocaleString('sv-SE')}</p>}
             {application.facility_approved_at && <p className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-success" />Anläggning godkänd: {new Date(application.facility_approved_at).toLocaleString('sv-SE')}</p>}
           </div>
-          {canApprove && application.status !== 'approved' && (
+          {canApprove && (
             <>
               <Separator />
               <div className="space-y-3">
