@@ -5,6 +5,7 @@ import { sendMailToUser, isEmailEnabled, htmlEscape } from '../services/email.js
 import { getOrgManagerForUser } from './org.js';
 import { audit } from '../services/audit.js';
 import { expandAreaAncestors } from '../services/areaTree.js';
+import { notificationEmailsEnabled } from '../services/settings.js';
 
 // Notify a user both in-app and via email (best-effort)
 async function notifyUser(client, userId, { title, message, type, link }) {
@@ -18,7 +19,7 @@ async function notifyUser(client, userId, { title, message, type, link }) {
   } catch (err) {
     console.warn('[applications] notify insert failed:', err.message);
   }
-  if (isEmailEnabled()) {
+  if (isEmailEnabled() && await notificationEmailsEnabled()) {
     sendMailToUser(userId, {
       subject: title,
       title,

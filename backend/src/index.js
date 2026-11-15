@@ -78,6 +78,8 @@ app.get('/api/settings/branding', async (_req, res) => {
     const b = (s && s.branding) || {};
     res.json({
       appName: b.appName, subtitle: b.subtitle, logoUrl: b.logoUrl, primaryColor: b.primaryColor,
+      // lets the login page hide the contractor link when the form is off
+      selfRegistration: s?.general?.selfRegistration !== false,
     });
   } catch {
     res.status(500).json({ error: 'Internt serverfel' });

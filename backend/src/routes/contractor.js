@@ -10,8 +10,21 @@ import { randomUUID, randomBytes } from 'crypto';
 import { pool } from '../db.js';
 import { issueCaptcha, verifyCaptcha } from '../services/captcha.js';
 import { expandAreaAncestors } from '../services/areaTree.js';
+import { isSelfRegistrationEnabled } from '../services/settings.js';
 
 const router = Router();
+
+// The whole public flow is off when self-registration is disabled in settings.
+router.use(async (_req, res, next) => {
+  try {
+    if (!(await isSelfRegistrationEnabled())) {
+      return res.status(403).json({ error: 'Självregistrering för entreprenörer är avstängd. Kontakta din kontaktperson.' });
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 // GET /api/contractor/captcha — issue a one-time math captcha for the public form
 router.get('/captcha', (_req, res) => {

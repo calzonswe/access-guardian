@@ -11,7 +11,7 @@ import { isBackendUnavailable } from '@/services/dataStore';
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const { appName, logoUrl } = useBranding();
+  const { appName, logoUrl, selfRegistration } = useBranding();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -85,12 +85,14 @@ export default function LoginPage() {
                 Glömt lösenord?
               </Link>
             </div>
-            <div className="text-center text-sm pt-2 border-t border-border">
-              <span className="text-muted-foreground">Är du extern entreprenör? </span>
-              <a href="/contractor-apply" className="text-primary hover:underline font-medium">
-                Ansök om tillträde
-              </a>
-            </div>
+            {selfRegistration && (
+              <div className="text-center text-sm pt-2 border-t border-border">
+                <span className="text-muted-foreground">Är du extern entreprenör? </span>
+                <a href="/contractor-apply" className="text-primary hover:underline font-medium">
+                  Ansök om tillträde
+                </a>
+              </div>
+            )}
           </form>
         </CardContent>
       </Card>

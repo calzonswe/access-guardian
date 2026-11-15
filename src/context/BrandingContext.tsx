@@ -6,6 +6,13 @@ interface BrandingState {
   subtitle: string;
   logoUrl: string;
   primaryColor: string;
+  selfRegistration: boolean;
+}
+
+/** Only real image locations count as a logo; anything else falls back to the icon. */
+export function isValidLogoUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  return /^https?:\/\/\S+$/i.test(url) || /^\/\S*$/.test(url) || /^data:image\//i.test(url);
 }
 
 interface BrandingContextType extends BrandingState {
@@ -17,6 +24,7 @@ const defaults: BrandingState = {
   subtitle: 'Tillträdeshantering',
   logoUrl: '',
   primaryColor: '#2563eb',
+  selfRegistration: true,
 };
 
 const BrandingContext = createContext<BrandingContextType>({ ...defaults, refresh: async () => {} });
@@ -64,8 +72,9 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
         const newBranding = {
           appName: b.appName || defaults.appName,
           subtitle: b.subtitle || defaults.subtitle,
-          logoUrl: b.logoUrl || defaults.logoUrl,
+          logoUrl: isValidLogoUrl(b.logoUrl) ? b.logoUrl : defaults.logoUrl,
           primaryColor: b.primaryColor || defaults.primaryColor,
+          selfRegistration: b.selfRegistration !== false,
         };
         setBranding(newBranding);
         applyPrimaryColor(newBranding.primaryColor);

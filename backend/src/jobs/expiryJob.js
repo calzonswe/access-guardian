@@ -17,6 +17,7 @@
 import { pool } from '../db.js';
 import { sendMailToUser, isEmailEnabled, htmlEscape } from '../services/email.js';
 import { logger } from '../services/logger.js';
+import { notificationEmailsEnabled } from '../services/settings.js';
 
 const DEFAULT_WARNING_DAYS = [30, 7, 1];
 
@@ -41,7 +42,8 @@ async function getWarningDays() {
       `SELECT value FROM system_settings WHERE key = 'notifications'`
     );
     const days = rows[0]?.value?.expiryWarningDays;
-    if (Array.isArray(days) && days.length > 0) {
+    // An empty list means "no warnings" (all toggles off), not "use defaults".
+    if (Array.isArray(days)) {
       return days.map(Number).filter(n => Number.isFinite(n) && n > 0);
     }
   } catch {
@@ -66,7 +68,7 @@ async function notifyOnce(client, { userId, title, message, type, link, email = 
     [userId, title, message, type, link || null]
   );
   // Fire-and-forget email (no await on commit path)
-  if (email && isEmailEnabled()) {
+  if (email && isEmailEnabled() && await notificationEmailsEnabled()) {
     sendMailToUser(userId, {
       subject: title,
       title,

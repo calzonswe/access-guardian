@@ -744,9 +744,10 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
 // ============= SETTINGS =============
 
 export interface SystemSettings {
-  branding?: { appName?: string; subtitle?: string; primaryColor?: string; logoUrl?: string };
+  branding?: { appName?: string; subtitle?: string; primaryColor?: string; logoUrl?: string; selfRegistration?: boolean };
   notifications?: { expiryWarningDays?: number[]; emailEnabled?: boolean; warning30?: boolean; warning7?: boolean; warning1?: boolean };
-  security?: { sessionTimeoutMinutes?: number; maxLoginAttempts?: number; twoFactorRequired?: boolean };
+  security?: { sessionTimeoutMinutes?: number; maxLoginAttempts?: number; lockoutMinutes?: number; twoFactorRequired?: boolean };
+  passwordPolicy?: { minLength?: number; requireUpper?: boolean; requireLower?: boolean; requireDigit?: boolean; requireSymbol?: boolean };
   general?: { organizationName?: string; language?: string; selfRegistration?: boolean };
   auth?: { localEnabled?: boolean; entraEnabled?: boolean; entraTenantId?: string; entraClientId?: string; samlEnabled?: boolean };
 }

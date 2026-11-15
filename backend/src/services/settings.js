@@ -59,6 +59,18 @@ export async function getSecuritySettings() {
   };
 }
 
+/** E-mail for notifications (not for password reset/onboarding). Default on. */
+export async function notificationEmailsEnabled() {
+  const s = await getAllSettings();
+  return s?.notifications?.emailEnabled !== false;
+}
+
+/** Public contractor self-registration form. Default on. */
+export async function isSelfRegistrationEnabled() {
+  const s = await getAllSettings();
+  return s?.general?.selfRegistration !== false;
+}
+
 export async function getPasswordPolicy() {
   const s = await getAllSettings();
   const p = (s && s.passwordPolicy) || {};

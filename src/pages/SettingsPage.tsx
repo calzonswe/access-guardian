@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/context/AuthContext';
-import { useBranding } from '@/context/BrandingContext';
+import { useBranding, isValidLogoUrl } from '@/context/BrandingContext';
 import { toast } from 'sonner';
 import type { Requirement } from '@/types/rbac';
 import * as store from '@/services/dataStore';
@@ -26,16 +26,18 @@ const TYPE_ICONS: Record<string, typeof Award> = { certification: Award, clearan
 interface SystemSettings {
   branding?: { appName?: string; subtitle?: string; primaryColor?: string; logoUrl?: string };
   notifications?: { expiryWarningDays?: number[]; emailEnabled?: boolean; warning30?: boolean; warning7?: boolean; warning1?: boolean };
-  security?: { sessionTimeoutMinutes?: number; maxLoginAttempts?: number; twoFactorRequired?: boolean };
+  security?: { sessionTimeoutMinutes?: number; maxLoginAttempts?: number; lockoutMinutes?: number; twoFactorRequired?: boolean };
+  passwordPolicy?: { minLength?: number; requireUpper?: boolean; requireLower?: boolean; requireDigit?: boolean; requireSymbol?: boolean };
   general?: { organizationName?: string; language?: string; selfRegistration?: boolean };
   auth?: { localEnabled?: boolean; entraEnabled?: boolean; entraTenantId?: string; entraClientId?: string; samlEnabled?: boolean };
 }
 
 const DEFAULT_SETTINGS: SystemSettings = {
   branding: { appName: 'RBAC Access', subtitle: 'Tillträdeshantering', primaryColor: '#2563eb', logoUrl: '' },
-  notifications: { emailEnabled: false, warning30: true, warning7: true, warning1: true, expiryWarningDays: [30, 7, 1] },
-  security: { sessionTimeoutMinutes: 30, maxLoginAttempts: 5, twoFactorRequired: false },
-  general: { organizationName: 'Företaget AB', language: 'Svenska', selfRegistration: false },
+  notifications: { emailEnabled: true, warning30: true, warning7: true, warning1: true, expiryWarningDays: [30, 7, 1] },
+  security: { sessionTimeoutMinutes: 30, maxLoginAttempts: 5, lockoutMinutes: 15, twoFactorRequired: false },
+  passwordPolicy: { minLength: 8, requireUpper: true, requireLower: true, requireDigit: true, requireSymbol: true },
+  general: { organizationName: 'Företaget AB', language: 'Svenska', selfRegistration: true },
   auth: { localEnabled: true, entraEnabled: false, entraTenantId: '', entraClientId: '', samlEnabled: false },
 };
 
@@ -71,6 +73,7 @@ export default function SettingsPage() {
         };
       }
       if (s.security) merged.security = { ...DEFAULT_SETTINGS.security!, ...s.security };
+      if (s.passwordPolicy) merged.passwordPolicy = { ...DEFAULT_SETTINGS.passwordPolicy!, ...s.passwordPolicy };
       if (s.general) merged.general = { ...DEFAULT_SETTINGS.general!, ...s.general };
       if (s.auth) merged.auth = { ...DEFAULT_SETTINGS.auth!, ...s.auth };
       setSettings(merged);
@@ -81,6 +84,11 @@ export default function SettingsPage() {
   }, []);
 
   const handleSaveSettings = async () => {
+    const logo = settings.branding?.logoUrl?.trim();
+    if (logo && !isValidLogoUrl(logo)) {
+      toast.error('Logotypen måste vara en bild-URL som börjar med https:// (eller en sökväg som börjar med /)');
+      return;
+    }
     setSaving(true);
     try {
       const toSave: Record<string, unknown> = {};
@@ -93,6 +101,7 @@ export default function SettingsPage() {
         toSave.notifications = { ...settings.notifications, expiryWarningDays: days };
       }
       if (settings.security) toSave.security = settings.security;
+      if (settings.passwordPolicy) toSave.passwordPolicy = settings.passwordPolicy;
       if (settings.general) toSave.general = settings.general;
       if (settings.auth) toSave.auth = settings.auth;
       await store.saveSettings(toSave as store.SystemSettings);
@@ -198,7 +207,7 @@ export default function SettingsPage() {
                   <p className="text-xs text-muted-foreground">Entreprenörer kan registrera sig via ett publikt formulär</p>
                 </div>
                 <Switch
-                  checked={settings.general?.selfRegistration || false}
+                  checked={settings.general?.selfRegistration !== false}
                   onCheckedChange={v => updateSetting('general', { selfRegistration: v })}
                 />
               </div>
@@ -335,10 +344,10 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-foreground">E-postnotifieringar</p>
-                  <p className="text-xs text-muted-foreground">Skicka aviseringar via e-post utöver i appen</p>
+                  <p className="text-xs text-muted-foreground">Skicka aviseringar via e-post utöver i appen. Kräver att SMTP är konfigurerat (se fliken System). Lösenordsåterställning skickas alltid.</p>
                 </div>
                 <Switch
-                  checked={settings.notifications?.emailEnabled || false}
+                  checked={settings.notifications?.emailEnabled !== false}
                   onCheckedChange={v => updateSetting('notifications', { emailEnabled: v })}
                 />
               </div>
@@ -359,12 +368,9 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-foreground">Lokala inloggningsuppgifter</p>
-                  <p className="text-xs text-muted-foreground">Användarnamn och lösenord</p>
+                  <p className="text-xs text-muted-foreground">Användarnamn och lösenord. Enda inloggningsmetoden just nu och kan därför inte stängas av.</p>
                 </div>
-                <Switch
-                  checked={settings.auth?.localEnabled !== false}
-                  onCheckedChange={v => updateSetting('auth', { localEnabled: v })}
-                />
+                <Switch checked disabled />
               </div>
               <Separator />
               <div className="flex items-center justify-between opacity-60">
@@ -381,6 +387,70 @@ export default function SettingsPage() {
                   <p className="text-xs text-muted-foreground">SAML-baserad federerad inloggning — kommer i en framtida version</p>
                 </div>
                 <Switch checked={false} disabled />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Lock className="h-4 w-4 text-primary" />
+                Säkerhet och lösenordspolicy
+              </CardTitle>
+              <CardDescription>Gäller vid nästa inloggning respektive nästa lösenordsbyte</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-2 sm:grid-cols-[1fr_8rem] sm:items-center">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Sessionstid (minuter)</p>
+                  <p className="text-xs text-muted-foreground">Utloggning efter så här lång inaktivitet</p>
+                </div>
+                <Input type="number" min={5} max={1440}
+                  value={settings.security?.sessionTimeoutMinutes ?? ''}
+                  onChange={e => updateSetting('security', { sessionTimeoutMinutes: e.target.value === '' ? undefined : Number(e.target.value) })} />
+              </div>
+              <div className="grid gap-2 sm:grid-cols-[1fr_8rem] sm:items-center">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Max misslyckade inloggningar</p>
+                  <p className="text-xs text-muted-foreground">Därefter låses kontot tillfälligt</p>
+                </div>
+                <Input type="number" min={3} max={50}
+                  value={settings.security?.maxLoginAttempts ?? ''}
+                  onChange={e => updateSetting('security', { maxLoginAttempts: e.target.value === '' ? undefined : Number(e.target.value) })} />
+              </div>
+              <div className="grid gap-2 sm:grid-cols-[1fr_8rem] sm:items-center">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Spärrtid (minuter)</p>
+                  <p className="text-xs text-muted-foreground">Hur länge kontot är låst</p>
+                </div>
+                <Input type="number" min={1} max={1440}
+                  value={settings.security?.lockoutMinutes ?? ''}
+                  onChange={e => updateSetting('security', { lockoutMinutes: e.target.value === '' ? undefined : Number(e.target.value) })} />
+              </div>
+              <Separator />
+              <div className="grid gap-2 sm:grid-cols-[1fr_8rem] sm:items-center">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Minsta lösenordslängd</p>
+                  <p className="text-xs text-muted-foreground">Mellan 6 och 128 tecken</p>
+                </div>
+                <Input type="number" min={6} max={128}
+                  value={settings.passwordPolicy?.minLength ?? ''}
+                  onChange={e => updateSetting('passwordPolicy', { minLength: e.target.value === '' ? undefined : Number(e.target.value) })} />
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-foreground">Kräv versal (A–Z)</p>
+                <Switch checked={settings.passwordPolicy?.requireUpper !== false} onCheckedChange={v => updateSetting('passwordPolicy', { requireUpper: v })} />
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-foreground">Kräv gemen (a–z)</p>
+                <Switch checked={settings.passwordPolicy?.requireLower !== false} onCheckedChange={v => updateSetting('passwordPolicy', { requireLower: v })} />
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-foreground">Kräv siffra</p>
+                <Switch checked={settings.passwordPolicy?.requireDigit !== false} onCheckedChange={v => updateSetting('passwordPolicy', { requireDigit: v })} />
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-foreground">Kräv specialtecken</p>
+                <Switch checked={settings.passwordPolicy?.requireSymbol !== false} onCheckedChange={v => updateSetting('passwordPolicy', { requireSymbol: v })} />
               </div>
             </CardContent>
           </Card>
