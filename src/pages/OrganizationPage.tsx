@@ -54,7 +54,7 @@ function OrgUnitCard({ node, depth, memberCount, canEdit, onEdit, onAddChild, on
     <div className={depth > 0 ? 'ml-6 border-l border-border pl-4' : ''}>
       <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 mb-2 hover:shadow-sm transition-shadow">
         {hasChildren ? (
-          <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setExpanded(!expanded)}>
+          <Button variant="ghost" size="icon" aria-label="Visa eller dölj underenheter" title="Visa eller dölj underenheter" className="h-6 w-6 shrink-0" onClick={() => setExpanded(!expanded)}>
             {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
           </Button>
         ) : <div className="w-6" />}
@@ -74,12 +74,12 @@ function OrgUnitCard({ node, depth, memberCount, canEdit, onEdit, onAddChild, on
         {canEdit && (
           <div className="flex gap-1 shrink-0">
             {allowedChildren.length > 0 && (
-              <Button variant="ghost" size="icon" className="h-7 w-7" title="Lägg till underenhet" onClick={() => onAddChild(node)}>
+              <Button variant="ghost" size="icon" aria-label="Lägg till underenhet" className="h-7 w-7" title="Lägg till underenhet" onClick={() => onAddChild(node)}>
                 <Plus className="h-3 w-3" />
               </Button>
             )}
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(node)}><Pencil className="h-3 w-3" /></Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onDelete(node)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+            <Button variant="ghost" size="icon" aria-label="Redigera" title="Redigera" className="h-7 w-7" onClick={() => onEdit(node)}><Pencil className="h-3 w-3" /></Button>
+            <Button variant="ghost" size="icon" aria-label="Ta bort" title="Ta bort" className="h-7 w-7" onClick={() => onDelete(node)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
           </div>
         )}
       </div>
@@ -170,7 +170,7 @@ export default function OrganizationPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Organisation</h1>
           <p className="text-sm text-muted-foreground mt-1">Bygg strukturen: Företag/VD → Avdelning → Enhet → Grupp</p>

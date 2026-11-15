@@ -44,7 +44,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Aviseringar</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -85,7 +85,7 @@ export default function NotificationsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {!notif.read && (
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => markRead(notif.id)} title="Markera som läst">
+                      <Button variant="ghost" size="icon" aria-label="Markera som läst" className="h-7 w-7" onClick={() => markRead(notif.id)} title="Markera som läst">
                         <Check className="h-3 w-3" />
                       </Button>
                     )}

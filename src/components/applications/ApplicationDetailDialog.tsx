@@ -14,13 +14,13 @@ import type { Application, ApplicationStatus } from '@/types/rbac';
 import { errorMessage } from '@/lib/utils';
 
 const STATUS_MAP: Record<ApplicationStatus, { label: string; className: string }> = {
-  draft: { label: 'Utkast', className: 'bg-muted text-muted-foreground' },
+  draft: { label: 'Utkast', className: 'status-badge-neutral' },
   pending_manager: { label: 'Väntar på chef', className: 'status-badge-pending' },
   pending_facility: { label: 'Väntar på anläggning', className: 'status-badge-pending' },
-  pending_exception: { label: 'Avsteg – väntar', className: 'bg-warning/10 text-warning border border-warning/20' },
+  pending_exception: { label: 'Avsteg – väntar', className: 'status-badge-pending' },
   approved: { label: 'Godkänd', className: 'status-badge-approved' },
   denied: { label: 'Nekad', className: 'status-badge-denied' },
-  expired: { label: 'Utgången / Återkallad', className: 'bg-muted text-muted-foreground' },
+  expired: { label: 'Utgången / Återkallad', className: 'status-badge-neutral' },
 };
 
 interface Props {
@@ -155,10 +155,10 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
                 <Button size="sm" onClick={handleSubmitDraft}><Send className="mr-1 h-4 w-4" />Skicka in</Button>
               )}
               {canEdit && (
-                <Button variant="ghost" size="icon" onClick={() => onEdit?.(application)}><Pencil className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" aria-label="Redigera" title="Redigera" onClick={() => onEdit?.(application)}><Pencil className="h-4 w-4" /></Button>
               )}
               {canDelete && (
-                <Button variant="ghost" size="icon" onClick={() => onDelete?.(application)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                <Button variant="ghost" size="icon" aria-label="Ta bort" title="Ta bort" onClick={() => onDelete?.(application)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
               )}
               {canRevoke && (
                 <Button variant="destructive" size="sm" onClick={() => setRevokeOpen(o => !o)}>

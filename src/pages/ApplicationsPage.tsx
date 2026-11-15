@@ -148,13 +148,13 @@ export default function ApplicationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Ansökningar</h1>
           <p className="text-sm text-muted-foreground mt-1">Hantera tillträdesansökningar ({displayTotal} st)</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => { exportApplications(); toast.success('Ansökningar exporterade'); }}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => { exportApplications(); toast.success('Ansökningar exporterade'); }}>
             <Download className="mr-2 h-4 w-4" />Exportera
           </Button>
           {canCreateApplication && (
@@ -193,11 +193,11 @@ export default function ApplicationsPage() {
             Visar {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, displayTotal)} av {displayTotal}
           </p>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled={safePage <= 1} onClick={() => setPage(p => p - 1)}>
+            <Button variant="outline" size="icon" aria-label="Föregående sida" title="Föregående sida" className="h-8 w-8" disabled={safePage <= 1} onClick={() => setPage(p => p - 1)}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="text-sm text-muted-foreground">Sida {safePage} av {totalPages}</span>
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled={safePage >= totalPages} onClick={() => setPage(p => p + 1)}>
+            <Button variant="outline" size="icon" aria-label="Nästa sida" title="Nästa sida" className="h-8 w-8" disabled={safePage >= totalPages} onClick={() => setPage(p => p + 1)}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

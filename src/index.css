@@ -3,98 +3,116 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Design tokens (HSL triplets). Two themes: light (:root) and dark (.dark).
+ * - Text colours are chosen for WCAG AA contrast on their backgrounds in each theme.
+ * - success / warning / destructive / info are usable both as text on a tinted
+ *   background (status badges) and as solid fills with their *-foreground.
+ * - The administrator's brand colour replaces --primary (see BrandingContext);
+ *   sidebar and focus ring follow --primary so a custom colour stays consistent.
+ */
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 220 20% 10%;
+    color-scheme: light;
+
+    --background: 220 20% 97%;
+    --foreground: 222 30% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 10%;
+    --card-foreground: 222 30% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 10%;
+    --popover-foreground: 222 30% 12%;
 
-    --primary: 215 70% 45%;
+    --primary: 221 78% 46%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 15% 93%;
-    --secondary-foreground: 220 20% 20%;
+    --secondary: 220 16% 93%;
+    --secondary-foreground: 222 25% 20%;
 
-    --muted: 210 15% 95%;
-    --muted-foreground: 215 10% 46%;
+    --muted: 220 16% 95%;
+    --muted-foreground: 220 9% 40%;
 
-    --accent: 215 60% 95%;
-    --accent-foreground: 215 70% 35%;
+    --accent: 221 70% 95%;
+    --accent-foreground: 221 78% 36%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 72% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 60% 40%;
+    --success: 152 65% 28%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
+    --warning: 30 92% 34%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 214 20% 88%;
-    --input: 214 20% 88%;
-    --ring: 215 70% 45%;
+    --info: 205 85% 35%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 220 15% 88%;
+    --input: 220 14% 80%;
+    --ring: var(--primary);
 
     --radius: 0.5rem;
 
-    --sidebar-background: 220 20% 12%;
-    --sidebar-foreground: 210 15% 85%;
-    --sidebar-primary: 215 70% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 18% 18%;
-    --sidebar-accent-foreground: 210 15% 90%;
-    --sidebar-border: 220 15% 20%;
-    --sidebar-ring: 215 70% 55%;
-    --sidebar-muted: 220 15% 25%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 20% 28%;
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: 220 16% 95%;
+    --sidebar-accent-foreground: 222 30% 12%;
+    --sidebar-border: 220 15% 90%;
+    --sidebar-ring: var(--primary);
+    --sidebar-muted: 220 16% 93%;
   }
 
   .dark {
-    --background: 222 20% 8%;
-    --foreground: 210 20% 92%;
+    color-scheme: dark;
 
-    --card: 222 18% 12%;
-    --card-foreground: 210 20% 92%;
+    --background: 224 24% 7%;
+    --foreground: 215 20% 92%;
 
-    --popover: 222 18% 12%;
-    --popover-foreground: 210 20% 92%;
+    --card: 224 20% 10.5%;
+    --card-foreground: 215 20% 92%;
 
-    --primary: 215 70% 55%;
-    --primary-foreground: 0 0% 100%;
+    --popover: 224 20% 12%;
+    --popover-foreground: 215 20% 92%;
 
-    --secondary: 220 15% 18%;
-    --secondary-foreground: 210 15% 85%;
+    --primary: 217 90% 66%;
+    --primary-foreground: 224 40% 8%;
 
-    --muted: 220 15% 15%;
-    --muted-foreground: 215 10% 55%;
+    --secondary: 222 16% 17%;
+    --secondary-foreground: 215 18% 88%;
 
-    --accent: 215 40% 20%;
-    --accent-foreground: 215 70% 70%;
+    --muted: 222 16% 14%;
+    --muted-foreground: 218 12% 66%;
 
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 100%;
+    --accent: 217 40% 18%;
+    --accent-foreground: 217 90% 80%;
 
-    --success: 142 50% 45%;
-    --success-foreground: 0 0% 100%;
+    --destructive: 0 80% 66%;
+    --destructive-foreground: 224 40% 8%;
 
-    --warning: 38 80% 55%;
-    --warning-foreground: 0 0% 100%;
+    --success: 152 55% 52%;
+    --success-foreground: 224 40% 8%;
 
-    --border: 220 15% 20%;
-    --input: 220 15% 20%;
-    --ring: 215 70% 55%;
+    --warning: 38 92% 58%;
+    --warning-foreground: 224 40% 8%;
 
-    --sidebar-background: 222 22% 6%;
-    --sidebar-foreground: 210 15% 80%;
-    --sidebar-primary: 215 70% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 18% 12%;
-    --sidebar-accent-foreground: 210 15% 90%;
-    --sidebar-border: 222 15% 14%;
-    --sidebar-ring: 215 70% 55%;
+    --info: 200 90% 62%;
+    --info-foreground: 224 40% 8%;
+
+    --border: 222 14% 19%;
+    --input: 222 14% 26%;
+    --ring: var(--primary);
+
+    --sidebar-background: 224 26% 5.5%;
+    --sidebar-foreground: 215 15% 78%;
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: 222 18% 13%;
+    --sidebar-accent-foreground: 215 20% 94%;
+    --sidebar-border: 222 14% 13%;
+    --sidebar-ring: var(--primary);
     --sidebar-muted: 222 15% 16%;
   }
 }
@@ -110,14 +128,42 @@
   }
 }
 
-@layer components {
+@layer utilities {
+  /* Status badges: tinted background + readable text in both themes.
+     In the utilities layer so they win over the Badge component's default text colour. */
   .status-badge-approved {
-    @apply bg-success/10 text-success border-success/20;
+    @apply bg-success/10 text-success border-success/25;
   }
   .status-badge-pending {
-    @apply bg-warning/10 text-warning border-warning/20;
+    @apply bg-warning/10 text-warning border-warning/25;
   }
   .status-badge-denied {
-    @apply bg-destructive/10 text-destructive border-destructive/20;
+    @apply bg-destructive/10 text-destructive border-destructive/25;
+  }
+  .status-badge-info {
+    @apply bg-info/10 text-info border-info/25;
+  }
+  .status-badge-neutral {
+    @apply bg-muted text-muted-foreground border-border;
+  }
+}
+
+@layer base {
+  /* Visible keyboard focus everywhere, including plain links and rows. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  h1, h2, h3 {
+    letter-spacing: -0.01em;
+  }
+
+  /* Respect reduced-motion preferences. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }

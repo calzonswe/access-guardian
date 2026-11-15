@@ -187,7 +187,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return currentUser?.roles.includes(role) ?? false;
   }, [currentUser]);
 
-  if (!initialized) return null;
+  if (!initialized) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background text-muted-foreground" role="status" aria-live="polite">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
+        <p className="text-sm">Laddar…</p>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={{

@@ -48,7 +48,7 @@ export default function LogsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Systemlogg</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -56,7 +56,7 @@ export default function LogsPage() {
           </p>
         </div>
         {filteredLogs.length > 0 && (
-          <Button variant="outline" size="sm" onClick={() => { exportLogs(); toast.success('Logg exporterad'); }}>
+          <Button variant="outline" onClick={() => { exportLogs(); toast.success('Logg exporterad'); }}>
             <Download className="mr-2 h-4 w-4" />Exportera
           </Button>
         )}

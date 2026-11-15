@@ -170,7 +170,7 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
                           )}
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => handleRemove(ur)}>
+                      <Button variant="ghost" size="icon" aria-label="Ta bort" title="Ta bort" className="h-7 w-7 shrink-0" onClick={() => handleRemove(ur)}>
                         <Trash2 className="h-3 w-3 text-destructive" />
                       </Button>
                     </div>
@@ -192,7 +192,7 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
                     ))}
                   </SelectContent>
                 </Select>
-                <Button onClick={handleAdd} disabled={!addReqId || busy} size="icon">
+                <Button onClick={handleAdd} disabled={!addReqId || busy} size="icon" aria-label="Registrera krav" title="Registrera krav">
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>

@@ -66,6 +66,10 @@ In API mode the backend writes the audit log and sends notifications for every m
 
 `docker-compose.yml`: `db` (postgres:16) → `backend` (migrations bind-mounted read-only at `/app/migrations`) → `frontend` (nginx serving the Vite build, proxying `/api` to backend, CSP from `nginx.conf.template`).
 
+## Theming
+
+Colours are HSL tokens in `src/index.css` (`:root` = light, `.dark` = dark); components only use the token classes (`bg-card`, `text-muted-foreground`, `status-badge-*`), never raw colours. `ThemeContext` holds the choice light / dark / system (default system, saved as `rbac-theme`); the inline script in `index.html` applies it before first paint and must stay in sync with it. The admin's brand colour is injected per theme by `brandColourCss` in `BrandingContext` (lightened for dark), and sidebar/ring follow `--primary`. Status badge classes live in the utilities layer so they override the Badge component's text colour. `ApplicationTable` renders cards below `md` and a table above.
+
 ## Conventions
 
 - Path alias `@/*` → `src/*`.

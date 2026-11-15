@@ -248,7 +248,7 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
           )}
 
           <div className="space-y-2">
-            <Label>Bilagor</Label>
+            <Label className="block">Bilagor</Label>
             {(existingAttachments.length > 0 || pendingFiles.length > 0) && (
               <div className="space-y-1 rounded-lg border border-border p-2">
                 {existingAttachments.map(att => (

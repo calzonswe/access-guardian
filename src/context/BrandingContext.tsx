@@ -50,15 +50,37 @@ function hexToHsl(hex: string): string | null {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
-function applyPrimaryColor(hex: string) {
+const BRAND_STYLE_ID = 'brand-colour';
+
+/**
+ * Per-theme --primary for a brand colour, as CSS text. Exported for tests.
+ * - Light theme: the colour as chosen (capped so white/dark text stays readable).
+ * - Dark theme: same hue, lifted to at least 62% lightness so it reads on dark surfaces.
+ * Returns '' for the default colour or an invalid value, so the theme's own tokens apply.
+ */
+export function brandColourCss(hex: string | undefined): string {
+  if (!hex || hex.toLowerCase() === defaults.primaryColor.toLowerCase()) return '';
   const hsl = hexToHsl(hex);
-  if (!hsl) return;
-  document.documentElement.style.setProperty('--primary', hsl);
-  // Compute a lighter foreground for contrast on the primary bg
-  const parts = hsl.split(' ');
-  const lightness = parseInt(parts[2]);
-  const fgL = lightness > 50 ? '10%' : '98%';
-  document.documentElement.style.setProperty('--primary-foreground', `${parts[0]} ${parts[1]} ${fgL}`);
+  if (!hsl) return '';
+  const [h, sat, lig] = hsl.split(' ');
+  const l = parseInt(lig);
+  const fg = (lightness: number) => (lightness > 55 ? `${h} 40% 8%` : '0 0% 100%');
+  const darkL = Math.max(l, 62);
+  return `:root{--primary:${h} ${sat} ${l}%;--primary-foreground:${fg(l)};}` +
+    `.dark{--primary:${h} ${sat} ${darkL}%;--primary-foreground:${fg(darkL)};}`;
+}
+
+function applyPrimaryColor(hex: string) {
+  // Clean up the old inline override (earlier versions wrote it on <html>).
+  document.documentElement.style.removeProperty('--primary');
+  document.documentElement.style.removeProperty('--primary-foreground');
+  let el = document.getElementById(BRAND_STYLE_ID) as HTMLStyleElement | null;
+  if (!el) {
+    el = document.createElement('style');
+    el.id = BRAND_STYLE_ID;
+    document.head.appendChild(el);
+  }
+  el.textContent = brandColourCss(hex);
 }
 
 export function BrandingProvider({ children }: { children: ReactNode }) {

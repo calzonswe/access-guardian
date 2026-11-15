@@ -85,7 +85,7 @@ export default function RequirementsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Krav</h1>
           <p className="text-sm text-muted-foreground mt-1">Hantera certifieringar, utbildningar och säkerhetsprövningar</p>
@@ -156,8 +156,8 @@ export default function RequirementsPage() {
                       {canEdit && (
                         <TableCell>
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(req)}><Pencil className="h-3 w-3" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(req)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                            <Button variant="ghost" size="icon" aria-label="Redigera" title="Redigera" className="h-7 w-7" onClick={() => openEdit(req)}><Pencil className="h-3 w-3" /></Button>
+                            <Button variant="ghost" size="icon" aria-label="Ta bort" title="Ta bort" className="h-7 w-7" onClick={() => handleDelete(req)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                           </div>
                         </TableCell>
                       )}

@@ -131,7 +131,7 @@ export default function AreasPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Button variant="ghost" size="sm" asChild className="mb-2 -ml-2 text-muted-foreground">
             <Link to="/facilities"><ArrowLeft className="mr-1 h-4 w-4" />Tillbaka till anläggningar</Link>
@@ -199,14 +199,14 @@ export default function AreasPage() {
                             <TableCell>
                               <div className="flex gap-1">
                                 {canManageReqs && (
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Hantera krav" onClick={() => openReqDialog(area.id)}>
+                                  <Button variant="ghost" size="icon" aria-label="Hantera krav" className="h-7 w-7" title="Hantera krav" onClick={() => openReqDialog(area.id)}>
                                     <Shield className="h-3 w-3 text-primary" />
                                   </Button>
                                 )}
                                 {canEditFacility(facility) && (
                                   <>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(area)}><Pencil className="h-3 w-3" /></Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(area)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                                    <Button variant="ghost" size="icon" aria-label="Redigera" title="Redigera" className="h-7 w-7" onClick={() => openEdit(area)}><Pencil className="h-3 w-3" /></Button>
+                                    <Button variant="ghost" size="icon" aria-label="Ta bort" title="Ta bort" className="h-7 w-7" onClick={() => handleDelete(area)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                                   </>
                                 )}
                               </div>

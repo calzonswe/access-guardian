@@ -81,16 +81,16 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Användare</h1>
           <p className="text-sm text-muted-foreground mt-1">Hantera användare och roller ({total} st)</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => { exportUsers(); toast.success('Användare exporterade'); }}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => { exportUsers(); toast.success('Användare exporterade'); }}>
             <Download className="mr-2 h-4 w-4" />Exportera
           </Button>
-          <Button variant="outline" size="sm" onClick={() => { exportRequirementsFulfillment(); toast.success('Kravuppfyllnad exporterad'); }}>
+          <Button variant="outline" onClick={() => { exportRequirementsFulfillment(); toast.success('Kravuppfyllnad exporterad'); }}>
             <Download className="mr-2 h-4 w-4" />Kravrapport
           </Button>
           <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Ny användare</Button>
@@ -162,12 +162,12 @@ export default function UsersPage() {
                     <TableCell>
                       <div className="flex gap-1">
                         {canManageRequirements && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Kravuppfyllnad" onClick={() => openReqDialog(user)}>
+                          <Button variant="ghost" size="icon" aria-label="Kravuppfyllnad" className="h-7 w-7" title="Kravuppfyllnad" onClick={() => openReqDialog(user)}>
                             <Shield className="h-3 w-3 text-primary" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(user)}><Pencil className="h-3 w-3" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(user)} disabled={user.id === currentUser.id}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                        <Button variant="ghost" size="icon" aria-label="Redigera" title="Redigera" className="h-7 w-7" onClick={() => openEdit(user)}><Pencil className="h-3 w-3" /></Button>
+                        <Button variant="ghost" size="icon" aria-label="Ta bort" title="Ta bort" className="h-7 w-7" onClick={() => handleDelete(user)} disabled={user.id === currentUser.id}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -185,11 +185,11 @@ export default function UsersPage() {
             Visar {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, total)} av {total}
           </p>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled={safePage <= 1} onClick={() => setPage(p => p - 1)}>
+            <Button variant="outline" size="icon" aria-label="Föregående sida" title="Föregående sida" className="h-8 w-8" disabled={safePage <= 1} onClick={() => setPage(p => p - 1)}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="text-sm text-muted-foreground">Sida {safePage} av {totalPages}</span>
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled={safePage >= totalPages} onClick={() => setPage(p => p + 1)}>
+            <Button variant="outline" size="icon" aria-label="Nästa sida" title="Nästa sida" className="h-8 w-8" disabled={safePage >= totalPages} onClick={() => setPage(p => p + 1)}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

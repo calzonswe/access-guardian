@@ -110,7 +110,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Inställningar</h1>
           <p className="text-sm text-muted-foreground mt-1">Systemkonfiguration, branding och säkerhet (krav hanteras under Krav i menyn)</p>
