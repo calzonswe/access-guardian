@@ -1,146 +1,156 @@
-# Access Guardian — RBAC Tillträdessystem
+<div align="center">
 
-Ett rollbaserat åtkomstkontrollsystem (RBAC) för hantering av tillträdesansökningar till anläggningar och områden. Byggt med React, Express.js och PostgreSQL.
+# Access Guardian
+
+**Rollbaserat system för tillträdesansökningar till anläggningar och områden**
+
+Anställda och entreprenörer ansöker om tillträde, chefer attesterar, anläggningsägare beslutar
+och allt loggas. Krav som utbildningar och säkerhetsprövningar följs upp automatiskt.
+
+<br>
+
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![shadcn/ui](https://img.shields.io/badge/shadcn%2Fui-komponenter-000000?logo=shadcnui&logoColor=white)](https://ui.shadcn.com)
+<br>
+[![Node.js](https://img.shields.io/badge/Node.js-24_LTS-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
+[![Express](https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white)](https://expressjs.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
+[![Docker](https://img.shields.io/badge/Docker_Compose-3_tjänster-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
+[![Nginx](https://img.shields.io/badge/Nginx-reverse_proxy-009639?logo=nginx&logoColor=white)](https://nginx.org)
+<br>
+[![Senaste commit](https://img.shields.io/github/last-commit/calzonswe/access-guardian?label=senaste%20commit)](https://github.com/calzonswe/access-guardian/commits/main)
+[![Aktivitet](https://img.shields.io/github/commit-activity/m/calzonswe/access-guardian?label=commits%2Fm%C3%A5nad)](https://github.com/calzonswe/access-guardian/commits/main)
+[![Storlek](https://img.shields.io/github/repo-size/calzonswe/access-guardian?label=storlek)](https://github.com/calzonswe/access-guardian)
+[![Språk](https://img.shields.io/github/languages/top/calzonswe/access-guardian)](https://github.com/calzonswe/access-guardian)
+[![API-kontroller](https://img.shields.io/badge/API--kontroller-82_godk%C3%A4nda-2EA44F)](scripts/smoke-test.mjs)
+[![Enhetstester](https://img.shields.io/badge/enhetstester-18_godk%C3%A4nda-2EA44F)](#tester-och-kvalitet)
+
+<br>
+
+![Översikt, ljust tema](docs/images/oversikt-ljust.png#gh-light-mode-only)
+![Översikt, mörkt tema](docs/images/oversikt-morkt.png#gh-dark-mode-only)
+
+</div>
+
+---
 
 ## Innehåll
 
+- [Funktioner](#funktioner)
+- [I siffror](#i-siffror)
+- [Skärmbilder](#skärmbilder)
 - [Snabbstart](#snabbstart)
-- [Systemkrav](#systemkrav)
-- [Installation](#installation)
-  - [Docker (produktion)](#docker-produktion)
-  - [Lokal utveckling](#lokal-utveckling)
 - [Första inloggning](#första-inloggning)
-- [Projektstruktur](#projektstruktur)
+- [Roller](#roller)
+- [Ansökningsflödet](#ansökningsflödet)
+- [Kom igång per roll](#kom-igång-per-roll)
 - [Konfiguration](#konfiguration)
-- [Kommandon](#kommandon)
-- [Dokumentation](#dokumentation)
+- [Teman och utseende](#teman-och-utseende)
+- [Lokal utveckling](#lokal-utveckling)
+- [Tester och kvalitet](#tester-och-kvalitet)
+- [Arkitektur](#arkitektur)
+- [Drift](#drift)
+- [Säkerhet](#säkerhet)
 - [Felsökning](#felsökning)
+- [Kända begränsningar](#kända-begränsningar)
+- [Mer dokumentation](#mer-dokumentation)
+
+---
+
+## Funktioner
+
+| Område | Vad systemet gör |
+|---|---|
+| **Ansökningar** | Ansökan om tillträde till en anläggning och valfria områden (med underområden). Utkast, inskickning, redigering medan ansökan väntar på chef, bilagor (PDF, bilder, Word/Excel, text). |
+| **Attestering i flera steg** | Närmaste chef eller sponsor attesterar, därefter beslutar anläggningen. Ansökningar som saknar krav (avsteg) beslutas av anläggningsägaren. |
+| **Krav** | Utbildningar, certifieringar och säkerhetsprövningar kopplas till anläggningar och områden. Formuläret visar vilka krav som saknas och kräver då en motivering. |
+| **Uppföljning** | Bakgrundsjobb som markerar utgångna tillträden och krav och skickar påminnelser 30, 7 och 1 dag innan (inställbart). |
+| **Återkallelse** | Anläggningens personal kan återkalla ett beviljat tillträde med en anledning som visas för den sökande. |
+| **Entreprenörer** | Publikt ansökningsformulär (med captcha) där externa entreprenörer anger en kontaktperson som attesterar. Kan stängas av i inställningarna. |
+| **Aviseringar** | I appen och via e-post (SMTP) vid varje statusändring och när något väntar på ditt beslut. Länkar öppnar rätt ansökan direkt. |
+| **Granskningslogg** | Alla ändringar loggas med aktör, tid och detaljer. Valfri AI-analys av loggen som svarar på frågor med en verifierbar tidslinje. |
+| **Organisation** | Organisationsträd (företag, avdelning, enhet, grupp) och chefskedjor. Chefer ser hela sitt team. |
+| **Administration** | Användare och roller, anläggningar och områden, krav, branding (namn, logotyp, färg), säkerhetsinställningar och lösenordspolicy, systemstatus. |
+| **Utseende** | Ljust och mörkt tema som följer enhetens inställning, fungerar på mobil. |
+
+---
+
+## I siffror
+
+| | |
+|---|---|
+| **6** roller | administratör, anläggningsägare, anläggningsadministratör, linjechef, anställd, entreprenör |
+| **7** ansökningsstatusar | utkast, väntar på chef, väntar på anläggning, avsteg väntar, godkänd, nekad, utgången/återkallad |
+| **19** sidor i gränssnittet | inklusive publika sidor för entreprenörer och lösenordsåterställning |
+| **16** API-moduler | under `/api/*`, se [openapi.yaml](openapi.yaml) |
+| **7** databasmigreringar | körs automatiskt när backend startar |
+| **82** API-kontroller | hela flödet och behörigheterna, mot riktig databas ([scripts/smoke-test.mjs](scripts/smoke-test.mjs)) |
+| **18** enhetstester | 8 för statusreglerna i backend, 10 i frontend |
+| **2** teman | ljust och mörkt, plus "följ systemet" |
+
+---
+
+## Skärmbilder
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/ansokningar-ljust.png" alt="Ansökningslista, ljust tema"><br><sub>Ansökningar (anställd), ljust tema</sub></td>
+    <td width="50%"><img src="docs/images/ny-ansokan-morkt.png" alt="Ny ansökan, mörkt tema"><br><sub>Ny ansökan med områdesträd, mörkt tema</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/ansokan-detalj-ljust.png" alt="Ansökningsdetaljer"><br><sub>Ansökningsdetaljer</sub></td>
+    <td width="50%"><img src="docs/images/anvandare-ljust.png" alt="Användarhantering"><br><sub>Användarhantering (administratör)</sub></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/images/mobil-ljust.png" alt="Mobil, ljust tema" width="240">
+  &nbsp;&nbsp;
+  <img src="docs/images/mobil-morkt.png" alt="Mobil, mörkt tema" width="240">
+  <br><sub>Mobilvy i ljust och mörkt tema</sub>
+</p>
+
+Skärmbilderna visar påhittad testdata.
 
 ---
 
 ## Snabbstart
 
-```bash
-# 1. Klona repot
-git clone <REPO_URL> && cd access-guardian
+Kräver Docker med Docker Compose v2.
 
-# 2. Skapa .env-fil
+```bash
+# 1. Hämta koden
+git clone https://github.com/calzonswe/access-guardian.git
+cd access-guardian
+
+# 2. Skapa konfigurationen och sätt två hemligheter
 cp .env.example .env
-# Redigera .env — ändra DB_PASSWORD och JWT_SECRET
+#    Ändra DB_PASSWORD och JWT_SECRET i .env (JWT_SECRET minst 32 tecken), t.ex.:
+#    openssl rand -hex 32
 
-# 3. Starta med Docker Compose
-docker compose up -d
-
-# 4. Öppna i webbläsaren
-open http://localhost:8080
-```
-
-Logga in med `admin@foretag.se` och lösenordet som skrivs ut i backend-loggen vid första start (`docker compose logs backend`), eller det du satt i `INITIAL_ADMIN_PASSWORD`. Lösenordsbyte krävs vid första inloggning.
-
----
-
-## Systemkrav
-
-| Komponent | Version |
-|-----------|---------|
-| Docker & Docker Compose | 20+ / v2+ |
-| Node.js (för lokal utveckling) | 18+ |
-| npm | 9+ |
-
----
-
-## Installation
-
-### Docker (produktion)
-
-Hela applikationen (databas, backend, frontend) körs i tre Docker-containrar via Docker Compose.
-
-#### 1. Skapa miljövariabler
-
-```bash
-cp .env.example .env
-```
-
-Redigera `.env`:
-
-```env
-# OBLIGATORISKA — ändra dessa innan produktion
-DB_PASSWORD=ett_starkt_databaslösenord
-JWT_SECRET=en_lång_slumpmässig_sträng_för_jwt
-
-# VALFRIA
-APP_PORT=8080          # Port som frontend exponeras på (standard: 8080)
-```
-
-#### 2. Bygg och starta
-
-```bash
+# 3. Bygg och starta databas, backend och frontend
 docker compose up -d --build
+
+# 4. Hämta administratörens första lösenord ur loggen
+docker compose logs backend | grep -A3 "INITIAL ADMIN"
 ```
 
-Detta startar:
-- **db** — PostgreSQL 16 med automatisk databasinitiering (`db/init.sql`)
-- **backend** — Express.js API på port 3000 (internt)
-- **frontend** — React-app serverad via Nginx på port 8080
+Öppna sedan **http://localhost:8080** (eller porten du satt i `APP_PORT`).
 
-#### 3. Verifiera
+| Tjänst | Vad den gör | Port |
+|---|---|---|
+| `db` | PostgreSQL 16, schemat skapas från `db/init.sql` första gången | intern |
+| `backend` | Express-API, kör databasmigreringar och bakgrundsjobb vid start | 3000 |
+| `frontend` | Nginx som serverar appen och skickar `/api` vidare till backend | 8080 |
+
+Kontrollera att allt är igång:
 
 ```bash
-# Kontrollera att alla containrar körs
 docker compose ps
-
-# Kontrollera backend-hälsa
-curl http://localhost:3000/health
-
-# Kontrollera frontend-hälsa
-curl http://localhost:8080/health
-```
-
-#### 4. Stoppa
-
-```bash
-docker compose down          # Stoppa utan att radera data
-docker compose down -v       # Stoppa OCH radera databasvolym
-```
-
-### Lokal utveckling
-
-Frontend och backend kan köras separat utan Docker.
-
-#### Frontend
-
-```bash
-npm install
-npm run dev
-```
-
-Frontend startar på `http://localhost:8080`. I detta läge används localStorage som datakälla (ingen backend behövs).
-
-#### Backend
-
-```bash
-cd backend
-npm install
-npm run dev
-```
-
-Backend startar på `http://localhost:3000`. Kräver en PostgreSQL-databas — sätt miljövariabler:
-
-```bash
-export DB_HOST=localhost
-export DB_PORT=5432
-export DB_NAME=rbac_access
-export DB_USER=rbac_user
-export DB_PASSWORD=ditt_lösenord
-export JWT_SECRET=din_jwt_hemlighet
-```
-
-#### Databas
-
-Initiera PostgreSQL-schemat manuellt:
-
-```bash
-psql -U rbac_user -d rbac_access -f db/init.sql
+curl http://localhost:8080/api/health    # {"status":"ok","db":"ok"}
 ```
 
 ---
@@ -148,139 +158,306 @@ psql -U rbac_user -d rbac_access -f db/init.sql
 ## Första inloggning
 
 | Fält | Värde |
-|------|-------|
-| E-post | `INITIAL_ADMIN_EMAIL` (standard `admin@foretag.se`) |
-| Lösenord | `INITIAL_ADMIN_PASSWORD`, eller ett slumpat lösenord som skrivs ut en gång i backend-loggen |
+|---|---|
+| E-post | `INITIAL_ADMIN_EMAIL`, standard `admin@foretag.se` |
+| Lösenord | `INITIAL_ADMIN_PASSWORD` om den är satt, annars ett slumpat lösenord som skrivs ut **en gång** i backend-loggen |
 
-> **OBS:** Du måste byta lösenord vid första inloggning. Administratören skapas av backend vid start om det inte finns någon administratör i databasen.
->
-> I localStorage-läge (frontend utan backend, t.ex. Lovable preview) är inloggningen `admin@company.local` / `Admin123!`.
+Du måste byta lösenord vid första inloggningen. Backend skapar administratören bara om det inte finns någon administratör alls i databasen, så kontot återskapas aldrig av misstag.
+
+> Utan backend (till exempel Lovable-förhandsvisningen eller `npm run dev`) körs appen i webbläsarläge med data i `localStorage`. Där är inloggningen `admin@company.local` / `Admin123!`.
 
 ---
 
-## Projektstruktur
+## Roller
 
+En användare kan ha flera roller. Menyn visar bara det som rollen får använda.
+
+| Roll | Vad rollen gör | Sidor |
+|---|---|---|
+| **Administratör** | Hanterar allt: användare, roller, anläggningar, krav, organisation och inställningar. Får utföra varje steg i flödet. | Alla |
+| **Anläggningsägare** | Beslutar om ansökningar till sina anläggningar, inklusive avsteg. Återkallar tillträden, hanterar områden och utser anläggningsadministratörer. | Översikt, Ansökningar, Anläggningar, Krav |
+| **Anläggningsadministratör** | Beslutar om ansökningar till de anläggningar hen administrerar (ej avsteg), hanterar områden och återkallar tillträden. | Översikt, Ansökningar, Anläggningar, Krav |
+| **Linjechef** | Attesterar ansökningar från sitt team (hela chefskedjan nedåt) och följer teamets krav och tillträden. | Översikt, Ansökningar, Krav, Mitt team |
+| **Anställd** | Ansöker om tillträde och följer sina ansökningar, krav och aktiva tillträden. | Översikt, Ansökningar, Min åtkomst |
+| **Entreprenör** | Som anställd, men attesteras av sin kontaktperson (sponsor). Skapas via det publika formuläret eller av en administratör. | Översikt, Ansökningar, Min åtkomst |
+
+Alla roller har dessutom Aviseringar och Min profil. Behörigheterna kontrolleras i backend, inte bara i gränssnittet.
+
+---
+
+## Ansökningsflödet
+
+```mermaid
+flowchart LR
+    U[Utkast] -->|sökande skickar in| C[Väntar på chef]
+    C -->|chef/sponsor godkänner| F[Väntar på anläggning]
+    C -->|chef godkänner, krav saknas| E[Avsteg väntar]
+    C -->|nekas| N[Nekad]
+    F -->|anläggningen godkänner| G[Godkänd]
+    F -->|nekas| N
+    E -->|anläggningsägaren godkänner| G
+    E -->|nekas| N
+    G -->|slutdatum passerat| X[Utgången]
+    G -->|återkallas med anledning| R[Återkallad]
 ```
-├── backend/                 # Express.js backend (plain JS)
-│   ├── src/
-│   │   ├── index.js         # Appstart, route-registrering
-│   │   ├── db.js            # PostgreSQL-anslutning
-│   │   ├── middleware/
-│   │   │   ├── auth.js      # JWT-verifiering & token-signering
-│   │   │   ├── rbac.js      # Rollbaserad åtkomstkontroll
-│   │   │   └── rateLimit.js # Inloggningsbegränsning
-│   │   └── routes/          # API-routes (13 st)
-│   └── Dockerfile
-├── db/
-│   └── init.sql             # Fullständigt databasschema + seed-data
-├── src/                     # React frontend (TypeScript)
-│   ├── components/          # UI-komponenter (shadcn-ui baserade)
-│   ├── context/             # Auth, Theme, Branding contexts
-│   ├── pages/               # Sidkomponenter (14 st)
-│   ├── services/
-│   │   ├── api.ts           # HTTP-klient mot backend
-│   │   ├── dataStore.ts     # Abstraktionslager (API/localStorage)
-│   │   └── notifications.ts # Notifikationshantering
-│   └── types/               # TypeScript-typer
-├── docker-compose.yml       # 3-tjänste-uppsättning
-├── Dockerfile               # Frontend multi-stage build (Nginx)
-├── nginx.conf               # Reverse proxy & caching
-└── .env.example             # Mall för miljövariabler
-```
+
+| Steg | Vem beslutar | Regler |
+|---|---|---|
+| Utkast → Väntar på chef | Den sökande | Utkast syns bara för den sökande (och administratörer). Nya ansökningar skickas in direkt. |
+| Väntar på chef | Närmaste chef eller kontaktperson | Den sökande kan aldrig attestera sin egen ansökan, inte heller kollegor till varandra. Saknar den sökande chef går ansökan till administratörerna. |
+| Väntar på anläggning | Ägaren eller en administratör **för just den anläggningen** | |
+| Avsteg väntar | Anläggningsägaren | Gäller ansökningar där den sökande saknar krav och har lämnat en motivering. |
+| Godkänd → Utgången | Bakgrundsjobbet | Körs varje timme. Påminnelser skickas innan. |
+| Godkänd → Återkallad | Anläggningens personal | Kräver en anledning, som visas för den sökande. |
+
+Den sökande kan redigera sin ansökan så länge den väntar på chef. Varje övergång loggas och utlöser aviseringar till den sökande och till den som ska fatta nästa beslut. Reglerna finns i en tabell (`TRANSITIONS` i `backend/src/routes/applications.js`) med egna tester.
+
+---
+
+## Kom igång per roll
+
+<details>
+<summary><strong>Anställd eller entreprenör: ansök om tillträde</strong></summary>
+
+1. Gå till **Ansökningar** och välj **Ny ansökan**.
+2. Välj anläggning. Välj områden om du bara behöver vissa delar; väljer du ett underområde tas områdena ovanför med automatiskt.
+3. Ange startdatum och vid behov slutdatum.
+4. Saknar du ett krav visas en varning. Skriv en motivering så hanteras ansökan som ett avsteg.
+5. Bifoga intyg om du har dem och välj **Skicka ansökan**.
+
+Under **Min åtkomst** ser du dina aktiva tillträden och vilka krav du uppfyller. Du får en avisering vid varje beslut.
+</details>
+
+<details>
+<summary><strong>Linjechef: attestera</strong></summary>
+
+1. **Översikt** visar ansökningar som väntar på dig. Du får också en avisering.
+2. Öppna ansökan, läs den och välj **Godkänn** eller **Neka** (med anledning).
+3. Godkända ansökningar går vidare till anläggningen, eller till anläggningsägaren om de innehåller avsteg.
+
+**Mitt team** visar varje medarbetares krav, aktiva tillträden och väntande ansökningar.
+</details>
+
+<details>
+<summary><strong>Anläggningsägare eller anläggningsadministratör: besluta och förvalta</strong></summary>
+
+1. **Översikt** visar ansökningar att granska. Ägaren ser även avsteg att besluta.
+2. Öppna ansökan och välj **Godkänn** eller **Neka**.
+3. För att dra in ett tillträde: öppna den godkända ansökan, välj **Återkalla** och ange en anledning.
+4. Under **Anläggningar** hanterar du områden (med säkerhetsnivå och underområden). Ägaren utser anläggningsadministratörer via **Hantera**.
+</details>
+
+<details>
+<summary><strong>Administratör: sätt upp systemet</strong></summary>
+
+1. **Användare**: skapa konton, ge roller och ange närmaste chef. Nya användare får en länk via e-post om SMTP är konfigurerat.
+2. **Organisation**: bygg organisationsträdet och ange chefer.
+3. **Anläggningar**: skapa anläggningar, välj ägare och lägg till områden.
+4. **Krav**: skapa krav (med giltighetstid i dagar om de går ut) och koppla dem till anläggningar och områden. Registrera uppfyllda krav per användare via skölden i användarlistan.
+5. **Inställningar**: branding, aviseringar, entreprenörsformuläret, sessionstid, inloggningsspärr och lösenordspolicy. Fliken **System** visar status för databas, e-post och bakgrundsjobb.
+6. **Systemlogg**: filtrera, exportera och (valfritt) ställ frågor till AI-analysen.
+</details>
 
 ---
 
 ## Konfiguration
 
-### Miljövariabler
+### Miljövariabler (`.env`)
 
-| Variabel | Krävs | Beskrivning | Standard |
-|----------|-------|-------------|----------|
-| `DB_PASSWORD` | Ja | PostgreSQL-lösenord | — |
-| `JWT_SECRET` | Ja | Hemlig nyckel för JWT-signering | — |
-| `APP_PORT` | Nej | Port för frontend | `8080` |
-| `VITE_API_URL` | Nej | Backend-URL för frontend | `/api` (via Nginx) |
+| Variabel | Krävs | Standard | Beskrivning |
+|---|:---:|---|---|
+| `DB_PASSWORD` | Ja | | Lösenord till PostgreSQL |
+| `DB_APP_USER` / `DB_APP_PASSWORD` | | ägarkontot | Kör backend med ett konto med begränsade rättigheter, se [Drift](#databaskonto-med-begränsade-rättigheter) |
+| `JWT_SECRET` | Ja | | Nyckel för inloggningstokens, minst 32 tecken |
+| `APP_PORT` | | `8080` | Porten där appen nås |
+| `INITIAL_ADMIN_EMAIL` | | `admin@foretag.se` | Första administratörens e-post |
+| `INITIAL_ADMIN_PASSWORD` | | slumpas | Första administratörens lösenord |
+| `APP_BASE_URL` | Vid SMTP | | Appens publika adress, används i länkar i e-post (t.ex. `https://access.foretag.se`) |
+| `SMTP_HOST` | | tom = ingen e-post | SMTP-server. Aviseringar fungerar i appen även utan e-post. |
+| `SMTP_PORT` / `SMTP_SECURE` | | `587` / `false` | `SMTP_SECURE=true` för port 465 |
+| `SMTP_USER` / `SMTP_PASS` | | | Inloggning till SMTP-servern |
+| `SMTP_FROM` | | `no-reply@access-guardian.local` | Avsändare |
+| `CORS_ORIGIN` | | `*` | Tillåtna ursprung, kommaseparerade. Begränsa i produktion. |
+| `CSP_CONNECT_SRC` | | `'self'` | Lägg till API-värden om `VITE_API_URL` pekar på en annan domän |
+| `VITE_API_URL` | | `/api` | API-adress för frontend (byggtid) |
+| `API_RATE_LIMIT_MAX` | | `600` | Max antal API-anrop per användare och fönster |
+| `API_RATE_LIMIT_WINDOW_MS` | | `60000` | Fönstrets längd i ms |
+| `EXPIRY_JOB_INTERVAL_MS` | | `3600000` | Hur ofta utgångsjobbet körs. `0` stänger av det. |
+| `LOVABLE_API_KEY` | | tom = av | Aktiverar AI-analys av granskningsloggen |
+| `AI_MODEL` | | `openai/gpt-6-astra` | Modell för AI-analysen |
+| `LOG_LEVEL` / `LOG_FORMAT` | | `info` / `json` i Docker | Backendens loggnivå och format (`json` eller `text`) |
 
-### Systeminställningar (via GUI)
+### Inställningar i appen
 
-Under **Inställningar** i applikationen kan administratörer konfigurera:
+Under **Inställningar** (administratör):
 
-- **Branding** — Applikationsnamn, undertext, logotyp-URL, primärfärg
-- **Notifikationer** — Antal dagar före utgång för påminnelser
-- **Säkerhet** — Sessionstimeout, max inloggningsförsök
+| Flik | Innehåll |
+|---|---|
+| Allmänt | Organisationsnamn, publikt entreprenörsformulär på/av |
+| Branding | Applikationsnamn, undertitel, logotyp (https-adress) och primärfärg |
+| Aviseringar | Påminnelser 30, 7 och 1 dag före utgång, e-post på/av |
+| Autentisering | Sessionstid, max misslyckade inloggningar, spärrtid och lösenordspolicy |
+| System | Status för databas, e-post och bakgrundsjobb; kör utgångsjobbet manuellt |
 
 ---
 
-## Kommandon
+## Teman och utseende
+
+- **Ljust och mörkt tema.** Välj under sol/måne-knappen i sidhuvudet: *Ljust*, *Mörkt* eller *Följ systemet* (standard). Valet sparas per webbläsare och tillämpas innan sidan ritas, så det blinkar inte.
+- **Egen primärfärg.** Färgen från Branding används i båda temana. I mörkt tema ljusas den upp automatiskt så att text och knappar förblir läsbara.
+- **Mobil.** Menyn fälls ihop, sidhuvuden radbryts och ansökningslistan visas som kort.
+- **Tillgänglighet.** Synlig tangentbordsmarkering, etiketter på alla ikonknappar, rader som går att öppna med tangentbordet och färre animationer när enheten ber om det.
+
+---
+
+## Lokal utveckling
+
+Krav: Node.js 20 eller senare (Docker-avbilderna använder 24 LTS) och npm. npm är enda pakethanteraren.
+
+**Bara frontend (ingen databas behövs)**
+
+```bash
+npm install
+npm run dev          # http://localhost:8080, körs i webbläsarläge med localStorage
+```
+
+**Frontend och backend**
+
+```bash
+# Databas: PostgreSQL 16 med schemat, nåbar på localhost:5432
+docker run -d --name ag-dev-db -p 5432:5432 \
+  -e POSTGRES_DB=rbac_access -e POSTGRES_USER=rbac_user -e POSTGRES_PASSWORD=dev_password \
+  -v "$(pwd)/db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro" \
+  postgres:16-alpine
+
+# Backend (migreringarna i db/migrations körs automatiskt vid start)
+cd backend
+npm install
+export DB_HOST=localhost DB_PORT=5432 DB_NAME=rbac_access DB_USER=rbac_user \
+       DB_PASSWORD=dev_password JWT_SECRET=$(openssl rand -hex 32)
+npm run dev          # http://localhost:3000, startar om vid ändringar
+```
+
+Frontend avgör själv vilket läge den kör i: svarar `/api/health` med `{"status":"ok"}` används backend, annars localStorage. Sätt `VITE_LOCAL_MODE=true` för att tvinga fram webbläsarläget.
+
+### Kommandon
 
 | Uppgift | Kommando |
-|---------|----------|
-| Full stack (Docker) | `docker compose up -d --build` |
-| Frontend dev | `npm run dev` |
-| Frontend build | `npm run build` |
-| Frontend lint | `npm run lint` |
-| Backend dev | `cd backend && npm run dev` |
+|---|---|
+| Frontend, utvecklingsserver | `npm run dev` |
+| Frontend, produktionsbygge | `npm run build` |
+| Lint | `npm run lint` |
+| Frontendtester | `npm run test` (en gång) / `npm run test:watch` |
+| Ett enskilt test | `npx vitest run src/lib/utils.test.ts` |
+| Backend, utvecklingsserver | `cd backend && npm run dev` |
+| Backendtester | `cd backend && npm test` |
+| Hela stacken | `docker compose up -d --build` |
 
 ---
 
-## Dokumentation
+## Tester och kvalitet
 
-| Dokument | Beskrivning |
-|----------|-------------|
-| [TECHNICAL.md](TECHNICAL.md) | Fullständig teknisk dokumentation (arkitektur, API, databas) |
-| [MANUAL.md](MANUAL.md) | Användarhandledning |
-| [AGENTS.md](AGENTS.md) | Utvecklarinstruktioner för AI-agenter |
+| Nivå | Vad som testas | Kör |
+|---|---|---|
+| **Backend, enhet** (8) | Statusreglerna: vem får flytta en ansökan från vilket läge till vilket | `cd backend && npm test` |
+| **Frontend, enhet** (10) | Hjälpfunktioner, tokenhantering, logotyp-URL och brandfärg per tema | `npm run test` |
+| **API end-to-end** (82) | Hela flödet och behörigheterna mot en riktig databas: inloggning, lösenordsbyte, ansökningar, avsteg, entreprenörer, återkallelse, användare och krav | se nedan |
 
----
-
-## Felsökning
-
-### Containrar startar inte
+API-testet skapar egna användare och kräver därför en **tom** databas. Kör det i ett separat Compose-projekt så att riktig data inte påverkas:
 
 ```bash
-docker compose logs db       # Kontrollera databasloggar
-docker compose logs backend  # Kontrollera backend-loggar
+cat > /tmp/smoke.env <<'EOF'
+DB_PASSWORD=smoke_db_pw
+JWT_SECRET=0123456789abcdef0123456789abcdef0123456789abcdef
+INITIAL_ADMIN_PASSWORD=Smoke-Admin-1!
+APP_PORT=8088
+EOF
+docker compose -p ag-smoke --env-file /tmp/smoke.env up -d --build
+ADMIN_PW='Smoke-Admin-1!' node scripts/smoke-test.mjs
+docker compose -p ag-smoke --env-file /tmp/smoke.env down -v
 ```
 
-### "Felaktig e-post eller lösenord"
+Lint och typkontroll ska vara utan fel innan en ändring checkas in.
 
-- Kontrollera att e-postadressen är korrekt
-- Det initiala lösenordet skrivs ut i backend-loggen vid första start (`docker compose logs backend`)
+---
 
-### "För många inloggningsförsök"
+## Arkitektur
 
-- Vänta 15 minuter eller byt IP-adress
-- Rate limit: 5 försök per 15 minuter
+```mermaid
+flowchart LR
+    B[Webbläsare<br>React + TypeScript] -->|HTTPS| N[Nginx<br>statiska filer + /api]
+    N -->|/api| A[Express-API<br>JWT, roller, regler]
+    A --> P[(PostgreSQL 16)]
+    A --> F[(Bilagor<br>uploads-volym)]
+    A -.->|valfritt| S[SMTP]
+    A -.->|valfritt| AI[AI Gateway]
+    J[Utgångsjobb<br>varje timme] --> P
+```
 
-### Frontend visar ingen data
+**Frontend** (`src/`): React 18, TypeScript, Vite, Tailwind CSS och shadcn/ui. Sidorna hämtar data via `src/services/dataStore.ts`, som antingen pratar med API:t eller använder `localStorage`. Roller styr menyn och vilka sidor som går att öppna.
 
-- I Docker-läge: verifiera att backend-containern körs (`docker compose ps`)
-- I lokal dev: frontend använder localStorage — data finns bara lokalt
+**Backend** (`backend/src/`): Express i vanlig JavaScript utan byggsteg. JWT-inloggning, rollkontroller per anrop, granskningslogg, e-post, bakgrundsjobb och migreringar som körs vid start.
 
-### Databas behöver återställas
+**Databas** (`db/`): `init.sql` skapar schemat på en tom databas, `migrations/` uppdaterar befintliga databaser automatiskt.
 
-```bash
-docker compose down -v       # Raderar databasvolymen
-docker compose up -d --build # Återskapar med init.sql
+```
+access-guardian/
+├── src/                      Frontend
+│   ├── pages/                Sidor (19)
+│   ├── components/           Layout, dialoger och shadcn/ui-komponenter
+│   ├── context/              Inloggning, tema och branding
+│   ├── services/             API-klient och datalager
+│   └── types/                Domäntyper
+├── backend/
+│   ├── src/routes/           API-moduler (16)
+│   ├── src/middleware/       Inloggning, roller, begränsning av anrop
+│   ├── src/services/         Logg, e-post, inställningar, AI, captcha
+│   ├── src/jobs/             Utgångsjobb
+│   └── test/                 Tester för statusreglerna
+├── db/
+│   ├── init.sql              Grundschema
+│   ├── migrations/           Numrerade migreringar (körs vid start)
+│   └── least-privilege.sql   Databaskonto med begränsade rättigheter
+├── scripts/smoke-test.mjs    API-test end-to-end
+├── docs/images/              Skärmbilder
+├── docker-compose.yml        db, backend, frontend
+├── Dockerfile                Frontend (bygg + Nginx)
+└── nginx.conf.template       Proxy, cache och säkerhetshuvuden
 ```
 
 ---
 
-## Backup och återställning
+## Drift
 
-Två Docker-volymer innehåller all persistent data:
+### Uppgradera
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+Nya databasmigreringar körs automatiskt när backend startar. Följ loggen med `docker compose logs -f backend`.
+
+### Backup
+
+All data finns i två Docker-volymer:
 
 | Volym | Innehåll |
-|-------|----------|
-| `postgres_data` | Hela PostgreSQL-databasen (användare, ansökningar, loggar, inställningar) |
-| `uploads_data` | Filuppladdningar (bilagor, kravbevis) |
+|---|---|
+| `postgres_data` | Databasen: användare, ansökningar, loggar och inställningar |
+| `uploads_data` | Uppladdade bilagor och intyg |
 
-### Daglig backup (rekommenderat)
-
-Lägg följande i en cron-fil (`/etc/cron.d/access-guardian-backup`) på hosten:
+**Manuell backup**
 
 ```bash
-# Backup varje natt kl 02:00 — sparar 14 dagar bakåt
+docker compose exec -T db pg_dump -U rbac_user rbac_access | gzip > backup-db.sql.gz
+docker run --rm -v access-guardian_uploads_data:/data -v "$(pwd)":/backup alpine \
+  tar czf /backup/backup-uploads.tar.gz -C /data .
+```
+
+**Nattlig backup** (cron på värden, sparar 14 dagar):
+
+```bash
 0 2 * * * root cd /opt/access-guardian && \
   docker compose exec -T db pg_dump -U rbac_user rbac_access | gzip > \
   /var/backups/access-guardian/db-$(date +\%Y\%m\%d).sql.gz && \
@@ -289,69 +466,91 @@ Lägg följande i en cron-fil (`/etc/cron.d/access-guardian-backup`) på hosten:
   find /var/backups/access-guardian -type f -mtime +14 -delete
 ```
 
-### Manuell backup
+**Återställning**
 
 ```bash
-# Databas
-docker compose exec -T db pg_dump -U rbac_user rbac_access | gzip > backup-db.sql.gz
-
-# Uppladdningar
-docker run --rm -v access-guardian_uploads_data:/data -v $(pwd):/backup alpine \
-  tar czf /backup/backup-uploads.tar.gz -C /data .
-```
-
-### Återställning
-
-```bash
-# Stoppa backend så inga skrivningar sker under återställning
 docker compose stop backend
-
-# Återställ databas
 gunzip -c backup-db.sql.gz | docker compose exec -T db psql -U rbac_user rbac_access
-
-# Återställ uppladdningar
-docker run --rm -v access-guardian_uploads_data:/data -v $(pwd):/backup alpine \
+docker run --rm -v access-guardian_uploads_data:/data -v "$(pwd)":/backup alpine \
   sh -c "cd /data && tar xzf /backup/backup-uploads.tar.gz"
-
 docker compose start backend
 ```
 
-Testa återställningsproceduren minst en gång per kvartal på en staging-miljö.
+Prova återställningen regelbundet i en testmiljö.
 
----
+### Databaskonto med begränsade rättigheter
 
-## Databaskonto med begränsade rättigheter (rekommenderas)
-
-Som standard kör backend med databasägaren `rbac_user`. För produktion kan du
-i stället köra applikationen med ett konto som bara får läsa och skriva data,
-aldrig ändra tabellstrukturen:
+För produktion kan backend köras med ett konto som bara läser och skriver data:
 
 ```bash
 docker compose cp db/least-privilege.sql db:/tmp/least-privilege.sql
 docker compose exec -T db psql -U rbac_user rbac_access \
-  -v app_password="'<starkt-losenord>'" -f /tmp/least-privilege.sql
+  -v app_password="'<starkt-lösenord>'" -f /tmp/least-privilege.sql
 ```
 
-Sätt sedan i `.env`:
+Lägg sedan till i `.env` och starta om backend (`docker compose up -d backend`):
 
 ```env
-DB_USER=rbac_app
-DB_PASSWORD=<starkt-losenord>
+DB_APP_USER=rbac_app
+DB_APP_PASSWORD=<starkt-lösenord>
 ```
 
-Vid uppgraderingar som innehåller nya migrationer: kör backend en gång med
-`DB_USER=rbac_user` så att migrationerna kan appliceras, och växla tillbaka
-till `rbac_app` därefter.
+Vid uppgraderingar med nya migreringar: kommentera bort de två raderna, starta backend en gång så att migreringarna tillämpas som ägarkontot, och lägg sedan tillbaka dem.
 
 ---
 
+## Säkerhet
 
-## Kända begränsningar (v1.0)
+- **Inloggning:** lösenord hashas med bcrypt. Tokens förnyas medan användaren är aktiv och slutar gälla vid inaktivitet, vid lösenordsbyte och när kontot inaktiveras.
+- **Lösenord:** policyn ställs in av administratören. Byte kräver nuvarande lösenord, och återställningslänkar kan bara användas en gång.
+- **Spärrar:**
+  - Kontot spärras tillfälligt efter för många misslyckade inloggningar (standard 5 försök, 15 minuter).
+  - Varje användare har en gräns för antal API-anrop.
+  - Det publika formuläret har captcha och en gräns per IP-adress.
+- **Behörighet:** varje anrop kontrolleras i backend mot roll och koppling: rätt anläggning, rätt chefskedja, egen ansökan.
+- **Spårbarhet:** alla ändringar loggas i granskningsloggen. Text som användare skrivit escapas i e-post.
+- **Nginx:**
+  - Säkerhetshuvuden: CSP, X-Frame-Options och Referrer-Policy.
+  - Typsnitt levereras från den egna servern, så inga anrop går till tredje part.
 
-Följande funktioner är medvetet inte med i 1.0-släppet och ligger i backloggen:
+---
 
-- **Refresh-tokens**: JWT lever 8h (eller enligt `sessionTimeoutMinutes`) och kan inte förnyas tyst — användaren loggas ut vid timeout.
-- **Självservice-byte av e-post**: E-post kan bara ändras av administratör i användarhanteringen (kräver verifieringsflöde för självservice).
-- **Server-side sök/filter**: Listor filtreras klient-sidan efter API-hämtning (skalar upp till ~1000 rader). Loggar stödjer server-side paginering via `?page=&pageSize=`.
-- **OpenAPI/Swagger UI**: Ett förenklat API-schema finns i `openapi.yaml`; interaktiv utforskare kommer i 1.1.
+## Felsökning
 
+| Problem | Lösning |
+|---|---|
+| Containrarna startar inte | `docker compose logs db` och `docker compose logs backend`. Kontrollera att `DB_PASSWORD` och `JWT_SECRET` (minst 32 tecken) är satta. |
+| Hittar inte första lösenordet | `docker compose logs backend \| grep -A3 "INITIAL ADMIN"`. Det skrivs bara ut när administratören skapas. Sätt annars `INITIAL_ADMIN_PASSWORD` på en tom databas. |
+| "Kontot är tillfälligt låst" | Vänta spärrtiden (standard 15 minuter) eller ändra gränsen under Inställningar → Autentisering. |
+| "Servern svarar inte just nu" | Backend eller databas är nere. Kontrollera `docker compose ps` och `curl http://localhost:8080/api/health`. |
+| Appen visar ingen data alls | Du kör troligen i webbläsarläge (`npm run dev` utan backend). Data finns då bara i den här webbläsaren. |
+| Länkar i e-post fungerar inte | Sätt `APP_BASE_URL` till appens publika adress. |
+| Ingen e-post skickas | Kontrollera SMTP-variablerna och fliken Inställningar → System. E-post kan också vara avstängd under Aviseringar. |
+| Entreprenörsformuläret svarar "avstängd" | Slå på det under Inställningar → Allmänt. |
+| Börja om med tom databas | `docker compose down -v && docker compose up -d --build` (raderar all data). |
+
+---
+
+## Kända begränsningar
+
+- **Inloggning:** endast lokal inloggning med e-post och lösenord. Entra ID/Azure AD, SAML och tvåfaktorsautentisering finns inte ännu.
+- **E-postadress:** kan bara ändras av en administratör.
+- **Sök i systemloggen:** loggsidan saknar fritextsök.
+- **Interaktiv API-dokumentation:** finns inte; se [openapi.yaml](openapi.yaml).
+- **Stora listor:** användar- och ansökningslistan pagineras på servern, men övriga listor hämtas i sin helhet.
+
+Planerat arbete finns i [roadmap.md](roadmap.md).
+
+---
+
+## Mer dokumentation
+
+| Dokument | Innehåll |
+|---|---|
+| [TECHNICAL.md](TECHNICAL.md) | Teknisk dokumentation: databasschema, API-referens, roller och sidor |
+| [MANUAL.md](MANUAL.md) | Användarhandledning (engelska) |
+| [openapi.yaml](openapi.yaml) | API-schema |
+| [REVIEW.md](REVIEW.md) | Kodgranskning och åtgärdslista |
+| [ROLE-TEST.md](ROLE-TEST.md) | Test av gränssnittet roll för roll |
+| [CLAUDE.md](CLAUDE.md) | Instruktioner för AI-assisterad utveckling |
+| [roadmap.md](roadmap.md) | Planerade funktioner |

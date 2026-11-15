@@ -32,8 +32,9 @@ services:
       DB_HOST: db
       DB_PORT: 5432
       DB_NAME: rbac_access
-      DB_USER: rbac_user
-      DB_PASSWORD: ${DB_PASSWORD}
+      # Optional least-privilege account (db/least-privilege.sql); defaults to the owner.
+      DB_USER: ${DB_APP_USER:-rbac_user}
+      DB_PASSWORD: ${DB_APP_PASSWORD:-${DB_PASSWORD}}
       JWT_SECRET: ${JWT_SECRET}
       LOVABLE_API_KEY: ${LOVABLE_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-openai/gpt-6-astra}
