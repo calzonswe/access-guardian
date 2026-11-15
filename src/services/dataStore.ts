@@ -641,6 +641,23 @@ export async function deleteApplication(id: string): Promise<void> {
   localSet(KEYS.APPLICATIONS, localGet<Application>(KEYS.APPLICATIONS).filter(a => a.id !== id));
 }
 
+/**
+ * Requirements that matter for a user: those linked to the facilities and
+ * areas of their active or pending applications, plus any they already hold.
+ * (Showing every requirement in the system made "0 / N" meaningless.)
+ */
+export function getRelevantRequirements(userId: string): Requirement[] {
+  const apps = getApplications().filter(a =>
+    a.applicant_id === userId && ['pending_manager', 'pending_facility', 'pending_exception', 'approved'].includes(a.status));
+  const ids = new Set<string>();
+  for (const app of apps) {
+    getFacilityRequirements(app.facility_id).forEach(fr => ids.add(fr.requirement_id));
+    for (const areaId of app.area_ids || []) getAreaRequirements(areaId).forEach(ar => ids.add(ar.requirement_id));
+  }
+  getUserRequirements(userId).forEach(ur => ids.add(ur.requirement_id));
+  return getRequirements().filter(r => ids.has(r.id));
+}
+
 // ============= USER REQUIREMENTS =============
 
 export function getUserRequirements(userId?: string): UserRequirement[] {

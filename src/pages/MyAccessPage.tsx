@@ -16,7 +16,7 @@ export default function MyAccessPage() {
   if (loading) return <div className="flex items-center justify-center p-8 text-muted-foreground">Laddar...</div>;
 
   const applications = store.getApplications();
-  const requirements = store.getRequirements();
+  const requirements = store.getRelevantRequirements(currentUser.id);
   const facilities = store.getFacilities();
   const areas = store.getAreas();
   const userReqs = store.getUserRequirements(currentUser.id);

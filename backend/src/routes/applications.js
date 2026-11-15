@@ -223,11 +223,16 @@ function buildAppFilters(req, params) {
   return conditions;
 }
 
-async function pagedAppQuery(req, res, scopeConditions) {
+async function pagedAppQuery(req, res, scopeConditions, { hideOthersDrafts = false } = {}) {
   const paging = parsePaging(req);
   const params = [];
   const scope = scopeConditions(params);
   const filters = buildAppFilters(req, params);
+  // Drafts are private until submitted: only the applicant sees them.
+  if (hideOthersDrafts) {
+    params.push(req.user.id);
+    filters.push(`(a.status <> 'draft' OR a.applicant_id = $${params.length})`);
+  }
   const all = [...scope, ...filters];
   const where = all.length ? `WHERE ${all.join(scope.length > 1 ? ' OR ' : ' AND ')}` : '';
   // Scope alternatives are OR-ed; filters must apply to all of them, so wrap scope in parens.
@@ -302,7 +307,7 @@ router.get('/', async (req, res) => {
     if (applicantIds.size === 0 && facilityIds.length === 0) {
       return res.json(paging ? { data: [], total: 0, page: paging.page, pageSize: paging.pageSize } : []);
     }
-    return pagedAppQuery(req, res, scopeConditions);
+    return pagedAppQuery(req, res, scopeConditions, { hideOthersDrafts: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internt serverfel' });

@@ -29,9 +29,9 @@ export default function ProfilePage() {
 
   if (!currentUser) return null;
 
-  const requirements = store.getRequirements();
+  const requirements = store.getRelevantRequirements(currentUser.id);
   const userReqs = store.getUserRequirements(currentUser.id);
-  const fulfilledCount = userReqs.filter(ur => ur.status === 'fulfilled').length;
+  const fulfilledCount = userReqs.filter(ur => ur.status === 'fulfilled' && requirements.some(r => r.id === ur.requirement_id)).length;
   const progress = requirements.length > 0 ? Math.round((fulfilledCount / requirements.length) * 100) : 0;
 
   const manager = currentUser.manager_id ? store.getUser(currentUser.manager_id) : null;
@@ -201,6 +201,9 @@ export default function ProfilePage() {
           <CardContent className="space-y-4">
             <Progress value={progress} className="h-2" />
             <div className="space-y-2">
+              {requirements.length === 0 && (
+                <p className="text-sm text-muted-foreground">Inga krav är kopplade till dina ansökningar.</p>
+              )}
               {requirements.map(req => {
                 const ur = userReqs.find(u => u.requirement_id === req.id);
                 const fulfilled = ur?.status === 'fulfilled';

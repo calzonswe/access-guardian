@@ -92,7 +92,7 @@ export default function Dashboard() {
   // Employee/contractor stats
   if (roles.includes('employee') || roles.includes('contractor')) {
     const myApps = applications.filter(a => a.applicant_id === currentUser.id);
-    const requirements = store.getRequirements();
+    const requirements = store.getRelevantRequirements(currentUser.id);
     const myReqs = store.getUserRequirements(currentUser.id).filter(ur => ur.status === 'fulfilled');
 
     if (!roles.includes('administrator') && !roles.includes('line_manager')) {
