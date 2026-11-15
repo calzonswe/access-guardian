@@ -166,9 +166,20 @@ async function notifyApprovers(appId, scope, newStatus, actorId) {
   let title = '';
   let message = '';
   if (newStatus === 'pending_manager') {
-    recipients = [scope.managerId, scope.contactPersonId];
+    recipients = [scope.managerId, scope.contactPersonId].filter(Boolean);
     title = 'Ny ansökan att attestera';
     message = 'En tillträdesansökan väntar på ditt godkännande.';
+    if (recipients.length === 0) {
+      // Nobody can approve at the manager step: hand it to the administrators
+      // (who may perform every transition) instead of leaving it unnoticed.
+      const { rows } = await pool.query(
+        `SELECT ur.user_id AS uid FROM user_roles ur JOIN users u ON u.id = ur.user_id
+          WHERE ur.role = 'administrator' AND u.is_active = true`
+      );
+      recipients = rows.map(r => r.uid);
+      title = 'Ansökan saknar chef att attestera';
+      message = 'Sökanden har ingen närmaste chef eller kontaktperson registrerad. Granska ansökan eller tilldela en chef.';
+    }
   } else if (newStatus === 'pending_facility') {
     const { rows } = await pool.query(
       `SELECT owner_id AS uid FROM facilities WHERE id = $1 AND owner_id IS NOT NULL

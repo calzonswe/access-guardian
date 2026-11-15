@@ -204,6 +204,11 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{editApplication ? 'Redigera ansökan' : 'Ny tillträdesansökan'}</DialogTitle></DialogHeader>
         <div className="space-y-4">
+          {!currentUser.manager_id && !currentUser.contact_person_id && (
+            <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm text-foreground">
+              Du har ingen närmaste chef registrerad. Ansökan skickas till en administratör för granskning.
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Anläggning</Label>
             <Select value={facilityId} onValueChange={v => { setFacilityId(v); setSelectedAreas([]); }}>
@@ -263,11 +268,11 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
                 ))}
               </div>
             )}
-            <input ref={fileInputRef} type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif" onChange={handleFileChange} className="hidden" id="attachment-input" />
+            <input ref={fileInputRef} type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.xls,.xlsx,.txt,.csv" onChange={handleFileChange} className="hidden" id="attachment-input" />
             <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
               <Paperclip className="mr-2 h-4 w-4" />Ladda upp bilagor
             </Button>
-            <p className="text-xs text-muted-foreground">PDF, bilder, Word-dokument. Max 10 MB per fil.</p>
+            <p className="text-xs text-muted-foreground">PDF, bilder, Word/Excel, text/CSV. Max 10 MB per fil.</p>
           </div>
         </div>
         <DialogFooter>
