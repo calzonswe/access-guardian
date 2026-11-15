@@ -61,6 +61,13 @@ export function setUnauthorizedHandler(fn: UnauthorizedHandler | null) {
   unauthorizedHandler = fn;
 }
 
+export class UnauthorizedError extends Error {
+  constructor(message = 'Sessionen har gått ut. Logga in igen.') { super(message); this.name = 'UnauthorizedError'; }
+}
+export function isUnauthorizedError(err: unknown): boolean {
+  return err instanceof UnauthorizedError;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -71,9 +78,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
   if (res.status === 401) {
-    setToken(null);
-    if (unauthorizedHandler) unauthorizedHandler();
-    throw new Error('Unauthorized');
+    const body = await res.json().catch(() => ({}));
+    // A 401 on a request without a session (e.g. wrong password at login)
+    // is just an error message, not a reason to end a session.
+    if (headers['Authorization']) {
+      setToken(null);
+      if (unauthorizedHandler) unauthorizedHandler();
+    }
+    throw new UnauthorizedError(body.error || undefined);
   }
 
   if (!res.ok) {
@@ -316,7 +328,7 @@ export async function uploadUserRequirementAttachment(urId: string, file: File):
   if (res.status === 401) {
     setToken(null);
     if (unauthorizedHandler) unauthorizedHandler();
-    throw new Error('Unauthorized');
+    throw new UnauthorizedError();
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -515,7 +527,7 @@ export async function uploadAttachmentMultipart(applicationId: string, file: Fil
   if (res.status === 401) {
     setToken(null);
     if (unauthorizedHandler) unauthorizedHandler();
-    throw new Error('Unauthorized');
+    throw new UnauthorizedError();
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

@@ -13,6 +13,20 @@ if (JWT_SECRET.length < 32) {
 }
 
 
+/**
+ * User id from a valid Bearer token, or null. Signature-checked so a forged
+ * token can't be used to get a fresh rate-limit bucket. No database access.
+ */
+export function verifiedUserId(req) {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return null;
+  try {
+    return jwt.verify(header.slice(7), JWT_SECRET).id || null;
+  } catch {
+    return null;
+  }
+}
+
 export function signToken(payload, expiresIn = '8h') {
   return jwt.sign(payload, JWT_SECRET, { expiresIn });
 }

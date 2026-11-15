@@ -181,7 +181,10 @@ async function initIfNeeded(): Promise<void> {
   console.log(`[DataStore] Mode: ${_apiMode ? 'API' : 'localStorage'}`);
 
   if (_apiMode) {
-    await loadFromApi();
+    if (api.getToken()) {
+      await loadFromApi();
+      _lastLoadedAt = Date.now();
+    }
   } else {
     await initLocalMode();
   }
@@ -194,9 +197,31 @@ export function isApiMode(): boolean {
   return _apiMode;
 }
 
-/** Reload all data from API (call after login or mutations) */
-export async function refreshAll(): Promise<void> {
-  if (_apiMode) await loadFromApi();
+let _inflight: Promise<void> | null = null;
+let _lastLoadedAt = 0;
+
+/**
+ * Reload all data from the API.
+ * - Concurrent calls share one request round.
+ * - With maxAgeMs, data loaded more recently than that is reused (page mounts).
+ * - Without options it always reloads (use after mutations).
+ */
+export async function refreshAll(opts: { maxAgeMs?: number } = {}): Promise<void> {
+  if (!_apiMode) return;
+  if (_inflight) return _inflight;
+  if (opts.maxAgeMs !== undefined && Date.now() - _lastLoadedAt < opts.maxAgeMs) return;
+  _inflight = loadFromApi()
+    .then(() => { _lastLoadedAt = Date.now(); })
+    .finally(() => { _inflight = null; });
+  return _inflight;
+}
+
+/** Forget cached data (on logout) so the next user starts clean. */
+export function clearCache(): void {
+  _users = []; _facilities = []; _areas = []; _requirements = []; _applications = [];
+  _logs = []; _notifications = []; _orgUnits = []; _userRequirements = [];
+  _facilityRequirements = []; _areaRequirements = [];
+  _lastLoadedAt = 0;
 }
 
 // ============= AUTH (local mode only) =============

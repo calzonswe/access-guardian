@@ -18,7 +18,7 @@ import areaRequirementsRoutes from './routes/areaRequirements.js';
 import settingsRoutes from './routes/settings.js';
 import attachmentsRoutes from './routes/attachments.js';
 import contractorRoutes from './routes/contractor.js';
-import { authMiddleware } from './middleware/auth.js';
+import { authMiddleware, verifiedUserId } from './middleware/auth.js';
 import { createRateLimit } from './middleware/rateLimit.js';
 import { startExpiryScheduler, runExpiryJob, getExpiryStats } from './jobs/expiryJob.js';
 import { getEmailStatus, isEmailEnabled } from './services/email.js';
@@ -49,11 +49,17 @@ async function healthHandler(_req, res) {
 app.get('/health', healthHandler);
 app.get('/api/health', healthHandler);
 
-// General API rate limit (per user-id when authenticated, otherwise per IP).
+// General API rate limit: per user id when the request carries a valid token,
+// otherwise per IP. (It runs before authMiddleware, so req.user is not set yet;
+// keying on req.user made every user behind one office IP share one bucket.)
 // Generous default: 600 requests / minute. Override via API_RATE_LIMIT_MAX.
 const apiRateMax = parseInt(process.env.API_RATE_LIMIT_MAX || '600', 10);
 const apiRateWindowMs = parseInt(process.env.API_RATE_LIMIT_WINDOW_MS || '60000', 10);
-app.use('/api/', createRateLimit({ windowMs: apiRateWindowMs, max: apiRateMax }));
+app.use('/api/', createRateLimit({
+  windowMs: apiRateWindowMs,
+  max: apiRateMax,
+  keyFn: (req) => { const uid = verifiedUserId(req); return uid ? `user:${uid}` : `ip:${req.ip}`; },
+}));
 
 // Public routes
 app.use('/api/auth', authRoutes);

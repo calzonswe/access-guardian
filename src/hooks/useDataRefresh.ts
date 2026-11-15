@@ -13,7 +13,8 @@ export function useDataRefresh() {
     let cancelled = false;
     (async () => {
       await store.initPromise;
-      await store.refreshAll();
+      // Reuse data loaded in the last 30 s instead of re-fetching everything per page.
+      await store.refreshAll({ maxAgeMs: 30_000 });
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };

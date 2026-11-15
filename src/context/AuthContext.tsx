@@ -40,14 +40,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // API mode: check if we have a token
         const token = api.getToken();
         if (token) {
-          try {
-            const { user, mustChangePassword: mcp, sessionTimeoutMinutes: sto } = await api.getMe();
-            setCurrentUser(user);
-            setMustChangePassword(mcp);
-            if (sto) setSessionTimeoutMinutes(sto);
-            await store.refreshAll();
-          } catch {
-            api.setToken(null);
+          // Only an explicit 401 ends the session. Rate limiting (429) or a
+          // server hiccup (5xx/network) is retried and never deletes the token.
+          for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+              const { user, mustChangePassword: mcp, sessionTimeoutMinutes: sto } = await api.getMe();
+              setCurrentUser(user);
+              setMustChangePassword(mcp);
+              if (sto) setSessionTimeoutMinutes(sto);
+              if (!mcp) await store.refreshAll({ maxAgeMs: 30_000 });
+              break;
+            } catch (err) {
+              if (api.isUnauthorizedError(err)) { api.setToken(null); break; }
+              if (attempt === 2) {
+                toast.error('Kunde inte nå servern. Ladda om sidan om en stund.');
+              } else {
+                await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
+              }
+            }
           }
         }
       } else {
@@ -75,7 +85,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setCurrentUser(res.user);
         setMustChangePassword(res.mustChangePassword);
         if (res.sessionTimeoutMinutes) setSessionTimeoutMinutes(res.sessionTimeoutMinutes);
-        await store.refreshAll();
+        // Nothing can be loaded until a forced password change is done.
+        if (!res.mustChangePassword) await store.refreshAll();
         return { success: true };
       } catch (err) {
         return { success: false, error: errorMessage(err, 'Inloggningen misslyckades') };
@@ -94,6 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     store.clearSession();
+    store.clearCache();
     api.setToken(null);
     setCurrentUser(null);
     setMustChangePassword(false);
@@ -137,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await api.changePassword(newPassword, currentPassword);
       setCurrentUser(res.user);
       setMustChangePassword(false);
+      await store.refreshAll();
     } else {
       if (newPassword.length < 8) throw new Error('Lösenordet måste vara minst 8 tecken');
       if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
