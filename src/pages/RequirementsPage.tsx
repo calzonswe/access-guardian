@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import * as store from '@/services/dataStore';
+import { errorMessage } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import type { Requirement } from '@/types/rbac';
@@ -56,15 +57,20 @@ export default function RequirementsPage() {
 
   const handleSave = async () => {
     if (!name.trim()) { toast.error('Ange namn'); return; }
-    if (editReq) {
-      await store.updateRequirement(editReq.id, { name, description, type, has_expiry: hasExpiry, validity_days: hasExpiry ? validityDays : undefined });
-      toast.success('Krav uppdaterat');
-    } else {
-      await store.createRequirement({ name, description, type, has_expiry: hasExpiry, validity_days: hasExpiry ? validityDays : undefined });
-      await store.addLog({ action: 'requirement_created', actor_id: currentUser.id, details: `Nytt krav skapat: ${name}` });
-      toast.success('Krav skapat');
+    if (hasExpiry && !(Number(validityDays) > 0)) { toast.error('Ange giltighetstid i dagar (minst 1)'); return; }
+    try {
+      if (editReq) {
+        await store.updateRequirement(editReq.id, { name, description, type, has_expiry: hasExpiry, validity_days: hasExpiry ? validityDays : undefined });
+        toast.success('Krav uppdaterat');
+      } else {
+        await store.createRequirement({ name, description, type, has_expiry: hasExpiry, validity_days: hasExpiry ? validityDays : undefined });
+        await store.addLog({ action: 'requirement_created', actor_id: currentUser.id, details: `Nytt krav skapat: ${name}` });
+        toast.success('Krav skapat');
+      }
+      setDialogOpen(false); reload();
+    } catch (err) {
+      toast.error(errorMessage(err, 'Kunde inte spara krav'));
     }
-    setDialogOpen(false); reload();
   };
 
   const handleDelete = async (r: Requirement) => {
@@ -142,7 +148,7 @@ export default function RequirementsPage() {
                       <TableCell className="text-muted-foreground">{req.description}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {req.has_expiry ? (
-                          <div className="flex items-center gap-1"><Clock className="h-3 w-3" />{req.validity_days} dagar</div>
+                          <div className="flex items-center gap-1"><Clock className="h-3 w-3" />{req.validity_days ? `${req.validity_days} dagar` : "Giltighetstid saknas"}</div>
                         ) : (
                           <span className="text-success">Permanent</span>
                         )}

@@ -95,7 +95,11 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
       await store.updateApplication(application.id, updates);
       await store.addLog({ action: newStatus === 'approved' ? 'application_approved_facility' : 'application_approved_manager', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: 'Ansökan godkänd' });
       await notifyApplicationStatusChange(application, newStatus, currentUser.id);
-      toast.success('Ansökan godkänd');
+      toast.success(
+        newStatus === 'pending_facility' ? 'Godkänd – skickad till anläggningen för beslut'
+          : newStatus === 'pending_exception' ? 'Godkänd – skickad till anläggningsägaren för beslut om avsteg'
+            : 'Ansökan godkänd'
+      );
       onUpdated?.(); onOpenChange(false);
     } catch (err) {
       toast.error(errorMessage(err, 'Kunde inte godkänna ansökan'));

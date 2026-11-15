@@ -43,15 +43,18 @@ export default function Dashboard() {
     const myFacilities = facilities.filter(f => f.owner_id === currentUser.id || f.admin_ids.includes(currentUser.id));
     const myFacilityIds = myFacilities.map(f => f.id);
     const myApps = applications.filter(a => myFacilityIds.includes(a.facility_id));
-    const myPending = myApps.filter(a => a.status === 'pending_facility' || a.status === 'pending_exception');
-    const exceptions = myApps.filter(a => a.has_exception && a.status === 'pending_exception');
+    // Exceptions are decided by the facility owner only; facility admins act on
+    // the regular facility step.
+    const ownedIds = myFacilities.filter(f => f.owner_id === currentUser.id).map(f => f.id);
+    const exceptions = myApps.filter(a => a.status === 'pending_exception' && ownedIds.includes(a.facility_id));
+    const myPending = myApps.filter(a => a.status === 'pending_facility');
 
     if (!roles.includes('administrator')) {
       sections.push(
         <div key="facility-stats" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard title="Mina anläggningar" value={myFacilities.length} icon={Building2} variant="primary" />
           <StatCard title="Väntande granskning" value={myPending.length} icon={Clock} variant="warning" />
-          <StatCard title="Väntande avsteg" value={exceptions.length} icon={AlertTriangle} variant="destructive" />
+          <StatCard title={ownedIds.length > 0 ? 'Avsteg att besluta' : 'Avsteg hos ägaren'} value={ownedIds.length > 0 ? exceptions.length : myApps.filter(a => a.status === 'pending_exception').length} icon={AlertTriangle} variant="destructive" />
           <StatCard title="Aktiva tillträden" value={myApps.filter(a => a.status === 'approved').length} icon={CheckCircle} variant="success" />
         </div>
       );
