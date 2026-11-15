@@ -2,6 +2,11 @@ import pg from 'pg';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 
+// DATE columns (OID 1082) as plain 'YYYY-MM-DD' strings. By default pg turns
+// them into JS Dates at midnight, which serialize as '...T00:00:00.000Z' and
+// can shift a day depending on the server's time zone.
+pg.types.setTypeParser(1082, (value) => value);
+
 if (!process.env.DB_PASSWORD) {
   console.error('FATAL: DB_PASSWORD environment variable is not set');
   process.exit(1);

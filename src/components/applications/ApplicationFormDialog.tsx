@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,21 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [existingAttachments, setExistingAttachments] = useState<Attachment[]>(editApplication?.attachments || []);
   const [uploading, setUploading] = useState(false);
+
+  // The dialog stays mounted between uses: reset every field from the
+  // application being edited (or to empty for a new one) each time it opens.
+  // Otherwise "edit" opened empty and a new form showed the previous
+  // application's attachments.
+  useEffect(() => {
+    if (!open) return;
+    setFacilityId(editApplication?.facility_id || '');
+    setSelectedAreas(editApplication?.area_ids || []);
+    setStartDate((editApplication?.start_date || '').slice(0, 10));
+    setEndDate((editApplication?.end_date || '').slice(0, 10));
+    setJustification(editApplication?.exception_justification || '');
+    setPendingFiles([]);
+    setExistingAttachments(editApplication?.attachments || []);
+  }, [open, editApplication]);
 
   if (!currentUser) return null;
 
