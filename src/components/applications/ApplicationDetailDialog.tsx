@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -35,13 +35,22 @@ interface Props {
 export function ApplicationDetailDialog({ application, open, onOpenChange, onUpdated, onEdit, onDelete }: Props) {
   const { currentUser } = useAuth();
   const [denyReason, setDenyReason] = useState('');
+  const [revokeOpen, setRevokeOpen] = useState(false);
+  const [revokeReason, setRevokeReason] = useState('');
+
+  // The dialog stays mounted: clear typed reasons when another application is shown.
+  useEffect(() => {
+    setDenyReason(''); setRevokeOpen(false); setRevokeReason('');
+  }, [application?.id]);
 
   if (!application || !currentUser) return null;
 
   const applicant = store.getUser(application.applicant_id);
   const facility = store.getFacility(application.facility_id);
   const areas = store.getAreas().filter(a => application.area_ids.includes(a.id));
-  const status = STATUS_MAP[application.status];
+  const status = application.status === 'expired'
+    ? { ...STATUS_MAP.expired, label: application.revoked_at ? 'Återkallad' : 'Utgången' }
+    : STATUS_MAP[application.status];
 
   const roles = currentUser.roles;
   const isAdmin = roles.includes('administrator');
@@ -118,12 +127,13 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
   };
 
   const handleRevoke = async () => {
-    if (!confirm('Är du säker på att du vill återkalla detta tillträde?')) return;
+    if (!revokeReason.trim()) { toast.error('Ange en anledning till återkallelsen'); return; }
     try {
-      await store.updateApplication(application.id, { status: 'expired' });
+      await store.updateApplication(application.id, { status: 'expired', revoke_reason: revokeReason.trim() });
       await store.addLog({ action: 'access_revoked', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: `Tillträde återkallat för ${applicant?.full_name ?? 'okänd'} till ${facility?.name ?? 'okänd'}` });
       await notifyApplicationStatusChange({ ...application, status: 'approved' }, 'expired', currentUser.id);
       toast.success('Tillträde återkallat');
+      setRevokeOpen(false); setRevokeReason('');
       onUpdated?.(); onOpenChange(false);
     } catch (err) {
       toast.error(errorMessage(err, 'Kunde inte återkalla tillträdet'));
@@ -151,7 +161,7 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
                 <Button variant="ghost" size="icon" onClick={() => onDelete?.(application)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
               )}
               {canRevoke && (
-                <Button variant="destructive" size="sm" onClick={handleRevoke}>
+                <Button variant="destructive" size="sm" onClick={() => setRevokeOpen(o => !o)}>
                   <Ban className="mr-1 h-4 w-4" />Återkalla
                 </Button>
               )}
@@ -187,6 +197,22 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
           )}
           {application.has_exception && application.exception_justification && (
             <div className="rounded-lg border border-warning/30 bg-warning/5 p-3"><p className="text-sm font-medium text-warning mb-1">Undantagsmotivering</p><p className="text-sm text-foreground">{application.exception_justification}</p></div>
+          )}
+          {revokeOpen && canRevoke && (
+            <div className="rounded-lg border border-destructive/30 p-3 space-y-2">
+              <p className="text-sm font-medium text-destructive">Återkalla tillträde</p>
+              <Textarea placeholder="Anledning (visas för den sökande)..." value={revokeReason} onChange={e => setRevokeReason(e.target.value)} />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => { setRevokeOpen(false); setRevokeReason(''); }}>Avbryt</Button>
+                <Button variant="destructive" size="sm" onClick={handleRevoke}>Bekräfta återkallelse</Button>
+              </div>
+            </div>
+          )}
+          {application.revoked_at && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+              <p className="text-sm font-medium text-destructive mb-1">Återkallad {new Date(application.revoked_at).toLocaleString('sv-SE')}{store.getUser(application.revoked_by || '')?.full_name ? ` av ${store.getUser(application.revoked_by || '')?.full_name}` : ''}</p>
+              {application.revoke_reason && <p className="text-sm text-foreground">{application.revoke_reason}</p>}
+            </div>
           )}
           {application.denied_reason && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3"><p className="text-sm font-medium text-destructive mb-1">Avslag</p><p className="text-sm text-foreground">{application.denied_reason}</p></div>

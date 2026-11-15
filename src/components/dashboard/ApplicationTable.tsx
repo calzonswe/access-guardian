@@ -51,7 +51,7 @@ export function ApplicationTable({ applications, title = 'Ansökningar', onRowCl
                     <TableCell>{facility?.name ?? '–'}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={status.className}>
-                        {status.label}
+                        {app.status === 'expired' && app.revoked_at ? 'Återkallad' : status.label}
                         {app.has_exception && ' ⚠'}
                       </Badge>
                     </TableCell>

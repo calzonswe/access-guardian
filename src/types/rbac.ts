@@ -120,6 +120,9 @@ export interface Application {
   exception_approved_at?: string;
   exception_approved_by?: string;
   denied_reason?: string;
+  revoked_at?: string;        // set when a person revoked access (status 'expired')
+  revoked_by?: string;
+  revoke_reason?: string;
   attachments: Attachment[];
   created_at: string;
   updated_at: string;

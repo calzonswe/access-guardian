@@ -438,6 +438,9 @@ router.put('/:id', async (req, res) => {
     if (body.denied_reason !== undefined && newStatus !== 'denied') {
       return fail(400, 'Avslagsanledning kan bara anges vid avslag');
     }
+    if (body.revoke_reason !== undefined && newStatus !== 'expired') {
+      return fail(400, 'Anledning till återkallelse kan bara anges vid återkallelse');
+    }
 
     const now = new Date().toISOString();
     const updates = [];
@@ -465,6 +468,12 @@ router.put('/:id', async (req, res) => {
       addField('facility_approved_by', req.user.id);
     }
     if (newStatus === 'denied') addField('denied_reason', body.denied_reason ? String(body.denied_reason).slice(0, 2000) : null);
+    if (newStatus === 'expired') {
+      // Revocation by a person (the expiry job sets 'expired' without these).
+      addField('revoked_at', now);
+      addField('revoked_by', req.user.id);
+      addField('revoke_reason', body.revoke_reason ? String(body.revoke_reason).slice(0, 2000) : null);
+    }
     if (updates.length > 0) {
       vals.push(appId);
       await client.query(`UPDATE applications SET ${updates.join(', ')} WHERE id = $${idx}`, vals);
@@ -485,7 +494,7 @@ router.put('/:id', async (req, res) => {
         pending_exception: ['Undantagsbegäran skickad', 'Din ansökan har skickats vidare för undantagsbedömning hos anläggningsägaren.'],
         approved: ['Ansökan godkänd', 'Din tillträdesansökan har godkänts.'],
         denied: ['Ansökan nekad', `Din tillträdesansökan har nekats.${body.denied_reason ? ` Anledning: ${String(body.denied_reason).slice(0, 500)}` : ''}`],
-        expired: ['Tillträde återkallat', 'Ditt tillträde har återkallats.'],
+        expired: ['Tillträde återkallat', `Ditt tillträde har återkallats.${body.revoke_reason ? ` Anledning: ${String(body.revoke_reason).slice(0, 500)}` : ''}`],
       };
       const tm = titleMap[newStatus];
       if (tm && scope.applicantId !== req.user.id) {
@@ -501,7 +510,7 @@ router.put('/:id', async (req, res) => {
         action: newStatus === 'expired' ? 'access_revoked' : `application_${newStatus}`,
         targetId: appId,
         targetType: 'application',
-        details: `Status: ${current.status} → ${newStatus}${body.denied_reason ? ` (${String(body.denied_reason).slice(0, 200)})` : ''}`,
+        details: `Status: ${current.status} → ${newStatus}${body.denied_reason ? ` (${String(body.denied_reason).slice(0, 200)})` : ''}${body.revoke_reason ? ` (${String(body.revoke_reason).slice(0, 200)})` : ''}`,
       });
     } else {
       await audit({ req, action: 'application_updated', targetId: appId, targetType: 'application' });
