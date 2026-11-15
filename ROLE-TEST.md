@@ -10,6 +10,31 @@ Roles tested: administrator, facility owner, facility admin, line manager (also 
 
 Priority: **P1** = breaks normal use or misleads about security · **P2** = wrong or confusing behaviour · **P3** = polish.
 
+## Status (updated 2026-11-15)
+
+**Fixed on `main`:** all items except #19, which is only partly done (see below). Verified on a rebuilt stack with a fresh database:
+- **API smoke test:** `scripts/smoke-test.mjs` passes all 82 checks.
+- **Back-to-back crawl:** all six roles ran without backend restarts, with 0 × 429, 0 failed API calls and 0 console errors.
+- **Re-run UI scenarios:**
+  - The edit form is prefilled, and a new form starts clean.
+  - Dates show as `YYYY-MM-DD` everywhere.
+  - Revoking requires a reason and shows "Återkallad … av …".
+  - The owner can assign facility admins.
+  - Facility admins can manage areas.
+  - The team page shows real requirement counts.
+  - Manager toasts say where the application went.
+  - The self-registration switch turns the public form off (403) and on.
+  - Other people's drafts are hidden.
+
+**Correction to #7:** the expiry-warning toggles did work; the settings page converts them to `expiryWarningDays` when saving. The real bug was narrower: turning all three off fell back to 30/7/1 days. That is now fixed.
+
+**#19 (partly done):** nothing loads during a forced password change after a fresh login. Reloading the page during a forced change still sends one round of requests that return 403 (harmless).
+
+**Behaviour changes to know about:**
+- Migration `0007` adds the revocation columns.
+- Backend logs are JSON in Docker (`NODE_ENV=production`).
+- The Krav tab in Settings is gone; requirements are managed on the Krav page.
+
 ---
 
 ## P1: breaks normal use
