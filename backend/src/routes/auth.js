@@ -47,7 +47,7 @@ router.post('/login', async (req, res) => {
     }
 
     const { rows } = await pool.query(
-      `SELECT u.*, array_agg(ur.role) AS roles
+      `SELECT u.*, array_agg(ur.role::text) AS roles
        FROM users u
        LEFT JOIN user_roles ur ON ur.user_id = u.id
        WHERE LOWER(u.email) = LOWER($1) AND u.is_active = true
@@ -125,7 +125,7 @@ router.post('/change-password', authMiddleware, async (req, res) => {
     await audit({ req, action: 'password_changed', targetId: req.user.id, targetType: 'user' });
     // Return updated user
     const { rows } = await pool.query(
-      `SELECT u.*, array_agg(ur.role) AS roles FROM users u
+      `SELECT u.*, array_agg(ur.role::text) AS roles FROM users u
        LEFT JOIN user_roles ur ON ur.user_id = u.id WHERE u.id = $1 GROUP BY u.id`,
       [req.user.id]
     );
@@ -245,7 +245,7 @@ router.post('/reset-password', async (req, res) => {
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT u.*, array_agg(ur.role) AS roles FROM users u
+      `SELECT u.*, array_agg(ur.role::text) AS roles FROM users u
        LEFT JOIN user_roles ur ON ur.user_id = u.id WHERE u.id = $1 GROUP BY u.id`,
       [req.user.id]
     );
@@ -296,7 +296,7 @@ router.put('/me', authMiddleware, async (req, res) => {
       await audit({ req, action: 'user_updated', targetId: req.user.id, targetType: 'user', details: 'Egen profil uppdaterad' });
     }
     const { rows } = await pool.query(
-      `SELECT u.*, array_agg(ur.role) AS roles FROM users u
+      `SELECT u.*, array_agg(ur.role::text) AS roles FROM users u
        LEFT JOIN user_roles ur ON ur.user_id = u.id WHERE u.id = $1 GROUP BY u.id`,
       [req.user.id]
     );

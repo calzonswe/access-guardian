@@ -22,7 +22,7 @@ UI text, error messages, docs and commit messages are in **Swedish** — follow 
 | Backend dev (port 3000) | `cd backend && npm run dev` (`node --watch`, no build step) |
 | Full stack | `cp .env.example .env && docker compose up -d --build` |
 
-Backend tests: `cd backend && npm test` (node:test in `backend/test/`, pure logic, no database). Frontend tests use `vitest.config.ts` (jsdom, `@` alias, setup in `src/test/setup.ts`). There is no Playwright config yet.
+Full-stack smoke test (82 API checks of the workflow and permissions, needs a fresh DB; instructions at the top of the file): `node scripts/smoke-test.mjs`. Backend tests: `cd backend && npm test` (node:test in `backend/test/`, pure logic, no database). Frontend tests use `vitest.config.ts` (jsdom, `@` alias, setup in `src/test/setup.ts`). There is no Playwright config yet.
 
 npm is the only package manager (lockfiles in both packages; bun lockfiles were removed; Lovable may re-add `bun.lock`, delete it).
 

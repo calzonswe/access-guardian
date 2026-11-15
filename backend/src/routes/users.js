@@ -11,7 +11,7 @@ const router = Router();
 const USER_SELECT = `SELECT u.id, u.email, u.full_name, u.first_name, u.last_name, u.department,
               u.title, u.phone, u.manager_id, u.contact_person_id, u.company, u.org_unit_id,
               u.is_active, u.created_at,
-              array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL) AS roles
+              array_agg(ur.role::text) FILTER (WHERE ur.role IS NOT NULL) AS roles
        FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id`;
 
 // Parse optional pagination params. Returns null when not requested (legacy array response).
