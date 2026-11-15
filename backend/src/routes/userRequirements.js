@@ -48,23 +48,30 @@ router.get('/', async (req, res) => {
       const { rows } = await pool.query(query, params);
       return res.json(rows);
     }
-    if (req.user.roles.includes('line_manager') || req.user.roles.includes('facility_owner') || req.user.roles.includes('facility_admin')) {
-      const managed = await getManagedUserIds(req.user.id);
-      const targetUserId = userId || req.user.id;
-      if (targetUserId !== req.user.id && !managed.includes(targetUserId) && !req.user.roles.includes('facility_owner') && !req.user.roles.includes('facility_admin')) {
+    // Users whose requirements this user may read: themselves, everyone they
+    // manage (line managers) and the contractors they sponsor.
+    const visible = new Set([req.user.id]);
+    if (req.user.roles.includes('line_manager')) {
+      (await getManagedUserIds(req.user.id)).forEach(id => visible.add(id));
+    }
+    const { rows: sponsored } = await pool.query('SELECT id FROM users WHERE contact_person_id = $1', [req.user.id]);
+    sponsored.forEach(r => visible.add(r.id));
+    const isFacilityStaff = req.user.roles.includes('facility_owner') || req.user.roles.includes('facility_admin');
+
+    if (userId) {
+      // Facility staff check applicants' requirements when deciding applications.
+      if (!visible.has(userId) && !isFacilityStaff) {
         return res.status(403).json({ error: 'Otillräckliga rättigheter' });
       }
       const { rows } = await pool.query(
         'SELECT * FROM user_requirements WHERE user_id = $1 ORDER BY fulfilled_at DESC',
-        [targetUserId]
+        [userId]
       );
       return res.json(rows);
     }
-    const targetUserId = userId || req.user.id;
-    if (targetUserId !== req.user.id) return res.status(403).json({ error: 'Otillräckliga rättigheter' });
     const { rows } = await pool.query(
-      'SELECT * FROM user_requirements WHERE user_id = $1 ORDER BY fulfilled_at DESC',
-      [targetUserId]
+      'SELECT * FROM user_requirements WHERE user_id = ANY($1) ORDER BY fulfilled_at DESC',
+      [[...visible]]
     );
     res.json(rows);
   } catch {
