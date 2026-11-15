@@ -41,8 +41,16 @@ export async function initDb() {
   // Read initial admin credentials from env, with safe fallbacks.
   const email = (process.env.INITIAL_ADMIN_EMAIL || 'admin@foretag.se').toLowerCase();
 
+  // Seed only when the system has no administrator at all. Checking the
+  // e-mail address instead would create a new admin on every restart once
+  // the original admin changed address or was removed.
+  const { rows: admins } = await pool.query(`SELECT 1 FROM user_roles WHERE role = 'administrator' LIMIT 1`);
+  if (admins.length > 0) return;
   const { rows } = await pool.query('SELECT id FROM users WHERE LOWER(email) = $1', [email]);
-  if (rows.length > 0) return;
+  if (rows.length > 0) {
+    console.warn(`[initDb] No administrator exists, but ${email} is already a user; grant the role manually.`);
+    return;
+  }
 
   let password = process.env.INITIAL_ADMIN_PASSWORD;
   let generated = false;

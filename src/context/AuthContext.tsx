@@ -13,7 +13,7 @@ interface AuthContextType {
   hasRole: (role: AppRole) => boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  changePassword: (newPassword: string) => Promise<void>;
+  changePassword: (newPassword: string, currentPassword?: string) => Promise<void>;
   refreshUser: () => void;
 }
 
@@ -105,18 +105,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout();
   });
 
-  const changePassword = useCallback(async (newPassword: string) => {
+  const changePassword = useCallback(async (newPassword: string, currentPassword?: string) => {
     if (!currentUser) throw new Error('Ej inloggad');
-    if (newPassword.length < 8) throw new Error('Lösenordet måste vara minst 8 tecken');
-    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
-      throw new Error('Lösenordet måste innehålla stora och små bokstäver, siffror och specialtecken');
-    }
 
     if (store.isApiMode()) {
-      const res = await api.changePassword(newPassword);
+      // The server validates against the configurable password policy.
+      const res = await api.changePassword(newPassword, currentPassword);
       setCurrentUser(res.user);
       setMustChangePassword(false);
     } else {
+      if (newPassword.length < 8) throw new Error('Lösenordet måste vara minst 8 tecken');
+      if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
+        throw new Error('Lösenordet måste innehålla stora och små bokstäver, siffror och specialtecken');
+      }
       await store.changePassword(currentUser.id, newPassword);
       const updated = store.getStoredUser(currentUser.id);
       if (updated) {

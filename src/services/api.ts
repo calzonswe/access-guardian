@@ -99,8 +99,8 @@ export async function login(email: string, password: string): Promise<LoginRespo
   return res;
 }
 
-export async function changePassword(newPassword: string): Promise<LoginResponse> {
-  const res = await post<LoginResponse>('/auth/change-password', { newPassword });
+export async function changePassword(newPassword: string, currentPassword?: string): Promise<LoginResponse> {
+  const res = await post<LoginResponse>('/auth/change-password', { newPassword, currentPassword });
   setToken(res.token);
   return res;
 }

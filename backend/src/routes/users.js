@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db.js';
-import { requireRole, getManagedUserIds } from '../middleware/rbac.js';
+import { requireRole, getManagedUserIds, VALID_ROLES } from '../middleware/rbac.js';
 import { audit } from '../services/audit.js';
-import { sendMail, isEmailEnabled } from '../services/email.js';
+import { sendMail, isEmailEnabled, htmlEscape } from '../services/email.js';
 import { getPasswordPolicy, validatePassword } from '../services/settings.js';
 
 const router = Router();
@@ -73,6 +73,10 @@ router.get('/', async (req, res) => {
       managed.forEach(id => visibleIds.add(id));
     }
 
+    // Sponsors (contact persons) see the contractors they sponsor
+    const { rows: sponsored } = await pool.query('SELECT id FROM users WHERE contact_person_id = $1', [req.user.id]);
+    sponsored.forEach(r => visibleIds.add(r.id));
+
     // Facility owners/admins see users with applications to their facilities
     if (roles.includes('facility_owner') || roles.includes('facility_admin')) {
       const { rows: facUsers } = await pool.query(
@@ -120,15 +124,16 @@ router.get('/:id', async (req, res) => {
     const targetId = req.params.id;
     // Users can always see themselves
     if (req.user.id !== targetId && !req.user.roles.includes('administrator')) {
-      // Check if line manager
-      if (req.user.roles.includes('line_manager')) {
+      const { rows: rel } = await pool.query(
+        'SELECT 1 FROM users WHERE id = $1 AND contact_person_id = $2',
+        [targetId, req.user.id]
+      );
+      let allowed = rel.length > 0;
+      if (!allowed && req.user.roles.includes('line_manager')) {
         const managed = await getManagedUserIds(req.user.id);
-        if (!managed.includes(targetId)) {
-          return res.status(403).json({ error: 'Otillräckliga rättigheter' });
-        }
-      } else {
-        return res.status(403).json({ error: 'Otillräckliga rättigheter' });
+        allowed = managed.includes(targetId);
       }
+      if (!allowed) return res.status(403).json({ error: 'Otillräckliga rättigheter' });
     }
     const { rows } = await pool.query(
       `${USER_SELECT} WHERE u.id = $1 GROUP BY u.id`,
@@ -161,23 +166,42 @@ async function managerChainError(client, userId, managerId) {
   return rows.length > 0 ? 'Cirkulär chefskedja är inte tillåten' : null;
 }
 
+function invalidRoles(roles) {
+  if (roles === undefined) return null;
+  if (!Array.isArray(roles)) return 'Roller ogiltigt format';
+  const bad = roles.filter(r => !VALID_ROLES.includes(r));
+  return bad.length ? `Ogiltig roll: ${bad.join(', ')}` : null;
+}
+
+// Would this change leave the system without an active administrator?
+async function removesLastAdmin(client, targetId, { roles, is_active }) {
+  const losesAdmin = (roles !== undefined && !roles.includes('administrator')) || is_active === false;
+  if (!losesAdmin) return false;
+  const { rows } = await client.query(
+    `SELECT COUNT(*)::int AS n FROM users u JOIN user_roles ur ON ur.user_id = u.id
+      WHERE ur.role = 'administrator' AND u.is_active = true AND u.id <> $1`,
+    [targetId]
+  );
+  return rows[0].n === 0;
+}
+
 // POST, PUT, DELETE require administrator
 router.post('/', requireRole('administrator'), async (req, res) => {
+
+  const { email, full_name, first_name, last_name, password, roles, department, title, phone, manager_id, contact_person_id, company, is_active, org_unit_id } = req.body || {};
+
+  // Input validation (before taking a connection / opening a transaction)
+  if (!email || typeof email !== 'string' || email.length > 255) return res.status(400).json({ error: 'Ogiltig e-postadress' });
+  if (!full_name || typeof full_name !== 'string' || full_name.length > 255) return res.status(400).json({ error: 'Namn krävs (max 255 tecken)' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Ogiltig e-postadress' });
+  const rolesErr = invalidRoles(roles);
+  if (rolesErr) return res.status(400).json({ error: rolesErr });
+  const policyErr = validatePassword(password, await getPasswordPolicy());
+  if (policyErr) return res.status(400).json({ error: policyErr });
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const { email, full_name, first_name, last_name, password, roles, department, title, phone, manager_id, contact_person_id, company, is_active, org_unit_id } = req.body;
-
-    // Input validation
-    if (!email || typeof email !== 'string' || email.length > 255) return res.status(400).json({ error: 'Ogiltig e-postadress' });
-    if (!full_name || typeof full_name !== 'string' || full_name.length > 255) return res.status(400).json({ error: 'Namn krävs (max 255 tecken)' });
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Ogiltig e-postadress' });
-    const policy = await getPasswordPolicy();
-    const policyErr = validatePassword(password, policy);
-    if (policyErr) { await client.query('ROLLBACK'); return res.status(400).json({ error: policyErr }); }
-    const chainErr = await managerChainError(client, null, manager_id || null);
-    if (chainErr) { await client.query('ROLLBACK'); return res.status(400).json({ error: chainErr }); }
 
 
     const hash = await bcrypt.hash(password, 12);
@@ -212,7 +236,7 @@ router.post('/', requireRole('administrator'), async (req, res) => {
           to: email,
           subject: 'Välkommen till Access Guardian',
           title: 'Ditt konto har skapats',
-          body: `<p>Hej ${full_name},</p><p>Ett konto har skapats åt dig. Klicka på knappen nedan för att välja ditt lösenord. Länken gäller i 24 timmar.</p>`,
+          body: `<p>Hej ${htmlEscape(full_name)},</p><p>Ett konto har skapats åt dig. Klicka på knappen nedan för att välja ditt lösenord. Länken gäller i 24 timmar.</p>`,
           ctaLabel: 'Välj lösenord',
           ctaUrl: link,
         }).catch(() => {});
@@ -236,7 +260,14 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
   try {
     await client.query('BEGIN');
     const targetId = req.params.id;
-    const { email, full_name, first_name, last_name, password, roles, department, title, phone, manager_id, contact_person_id, company, is_active, org_unit_id } = req.body;
+    const { email, full_name, first_name, last_name, password, roles, department, title, phone, manager_id, contact_person_id, company, is_active, org_unit_id } = req.body || {};
+
+    const rolesErr = invalidRoles(roles);
+    if (rolesErr) { await client.query('ROLLBACK'); return res.status(400).json({ error: rolesErr }); }
+    if (await removesLastAdmin(client, targetId, { roles, is_active })) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Det måste finnas minst en aktiv administratör' });
+    }
 
     const updates = [];
     const vals = [];
@@ -261,8 +292,9 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
       const chainErr = await managerChainError(client, targetId, manager_id || null);
       if (chainErr) { await client.query('ROLLBACK'); return res.status(400).json({ error: chainErr }); }
     }
-    addField('manager_id', manager_id || null);
-    addField('contact_person_id', contact_person_id || null);
+    // Only touch manager/sponsor when the caller actually sent them.
+    if (manager_id !== undefined) addField('manager_id', manager_id || null);
+    if (contact_person_id !== undefined) addField('contact_person_id', contact_person_id || null);
     addField('company', company !== undefined ? (company || '').slice(0, 255) : undefined);
     addField('is_active', is_active);
     if (org_unit_id !== undefined) addField('org_unit_id', org_unit_id || null);
@@ -274,6 +306,7 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
       const hash = await bcrypt.hash(password, 12);
       addField('password_hash', hash);
       addField('must_change_password', true);
+      updates.push('password_changed_at = now()');
     }
 
     if (updates.length > 0) {
@@ -303,8 +336,9 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
     await audit({ req, action: 'user_updated', targetId, targetType: 'user', details: changed.join('; ') || 'profiluppdatering' });
     res.json({ ...pub, roles: pub.roles || [] });
   } catch (err) {
-    await client.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(() => {});
     console.error(err);
+    if (err.constraint === 'users_email_key') return res.status(409).json({ error: 'E-postadressen används redan' });
     res.status(500).json({ error: 'Internt serverfel' });
   } finally {
     client.release();
@@ -317,10 +351,18 @@ router.delete('/:id', requireRole('administrator'), async (req, res) => {
     if (targetId === req.user.id) {
       return res.status(403).json({ error: 'Du kan inte ta bort ditt eget konto' });
     }
+    if (await removesLastAdmin(pool, targetId, { is_active: false })) {
+      return res.status(400).json({ error: 'Det måste finnas minst en aktiv administratör' });
+    }
     await pool.query('DELETE FROM users WHERE id = $1', [targetId]);
     await audit({ req, action: 'user_deleted', targetId, targetType: 'user' });
     res.json({ success: true });
   } catch (err) {
+    if (err.code === '23503') {
+      // Still referenced by applications or owned facilities.
+      return res.status(409).json({ error: 'Användaren har ansökningar eller äger anläggningar och kan inte tas bort. Inaktivera kontot i stället.' });
+    }
+    console.error(err);
     res.status(500).json({ error: 'Internt serverfel' });
   }
 });

@@ -29,17 +29,12 @@ function sanitizeFileName(name) {
   return String(name).replace(/[^\w.\-]+/g, '_').slice(0, 200) || 'file';
 }
 
-// Can the current request modify/upload to a user_requirement owned by `ownerId`?
-async function canModifyOwner(req, ownerId) {
-  if (!req.user) return false;
-  if (req.user.id === ownerId) return true;
-  if (req.user.roles.includes('administrator')) return true;
-  if (req.user.roles.includes('facility_owner') || req.user.roles.includes('facility_admin')) return true;
-  if (req.user.roles.includes('line_manager')) {
-    const managed = await getManagedUserIds(req.user.id);
-    return managed.includes(ownerId);
-  }
-  return false;
+const isAdmin = (req) => req.user?.roles?.includes('administrator');
+
+// Certifying a requirement (creating it, or changing status/dates) is an
+// administrator task. Owners may only attach evidence to their own entries.
+async function canAttachEvidence(req, ownerId) {
+  return isAdmin(req) || req.user.id === ownerId;
 }
 
 router.get('/', async (req, res) => {
@@ -79,25 +74,15 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    if (!req.user.roles.includes('administrator') &&
-        !req.user.roles.includes('facility_owner') &&
-        !req.user.roles.includes('facility_admin') &&
-        !req.user.roles.includes('line_manager')) {
-      return res.status(403).json({ error: 'Otillräckliga rättigheter' });
-    }
-    let { user_id, requirement_id, fulfilled_at, expires_at, certified_by, status, attachment_name } = req.body;
-    if (user_id !== req.user.id && !req.user.roles.includes('administrator') &&
-        !req.user.roles.includes('facility_owner') && !req.user.roles.includes('facility_admin')) {
-      const managed = await getManagedUserIds(req.user.id);
-      if (!managed.includes(user_id)) {
-        return res.status(403).json({ error: 'Kan endast lägga till krav för egna eller underställda' });
-      }
-    }
+    if (!isAdmin(req)) return res.status(403).json({ error: 'Endast administratörer kan registrera krav' });
+    const { user_id, requirement_id, fulfilled_at, expires_at, status, attachment_name } = req.body || {};
+    if (!user_id || !requirement_id) return res.status(400).json({ error: 'user_id och requirement_id krävs' });
     const { rows } = await pool.query(
       `INSERT INTO user_requirements (user_id, requirement_id, fulfilled_at, expires_at, certified_by, status, attachment_name)
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [user_id, requirement_id, fulfilled_at || new Date().toISOString(), expires_at || null, certified_by || null, status || 'fulfilled', attachment_name || null]
+      [user_id, requirement_id, fulfilled_at || new Date().toISOString(), expires_at || null, req.user.id, status || 'fulfilled', attachment_name || null]
     );
+    await audit({ req, action: 'requirement_fulfilled', targetId: rows[0].id, targetType: 'user_requirement', details: `Användare: ${user_id}, krav: ${requirement_id}` });
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
@@ -109,10 +94,10 @@ router.put('/:id', async (req, res) => {
   try {
     const { rows: existing } = await pool.query('SELECT user_id FROM user_requirements WHERE id = $1', [req.params.id]);
     if (existing.length === 0) return res.status(404).json({ error: 'Ej hittad' });
-    if (!(await canModifyOwner(req, existing[0].user_id))) {
-      return res.status(403).json({ error: 'Otillräckliga rättigheter' });
+    if (!isAdmin(req)) {
+      return res.status(403).json({ error: 'Endast administratörer kan ändra krav' });
     }
-    const { fulfilled_at, expires_at, status, attachment_name } = req.body;
+    const { fulfilled_at, expires_at, status, attachment_name } = req.body || {};
     const updates = [];
     const vals = [];
     let idx = 1;
@@ -140,8 +125,8 @@ router.delete('/:id', async (req, res) => {
       [req.params.id]
     );
     if (existing.length === 0) return res.status(404).json({ error: 'Ej hittad' });
-    if (!(await canModifyOwner(req, existing[0].user_id))) {
-      return res.status(403).json({ error: 'Otillräckliga rättigheter' });
+    if (!isAdmin(req)) {
+      return res.status(403).json({ error: 'Endast administratörer kan ta bort krav' });
     }
     // Clean up file on disk
     const key = existing[0].attachment_storage_key;
@@ -169,7 +154,7 @@ router.post('/:id/attachment', upload.single('file'), async (req, res) => {
       [req.params.id]
     );
     if (existing.length === 0) return res.status(404).json({ error: 'Ej hittad' });
-    if (!(await canModifyOwner(req, existing[0].user_id))) {
+    if (!(await canAttachEvidence(req, existing[0].user_id))) {
       return res.status(403).json({ error: 'Otillräckliga rättigheter' });
     }
     const mime = req.file.mimetype || 'application/octet-stream';
@@ -241,7 +226,7 @@ router.delete('/:id/attachment', async (req, res) => {
       [req.params.id]
     );
     if (existing.length === 0) return res.status(404).json({ error: 'Ej hittad' });
-    if (!(await canModifyOwner(req, existing[0].user_id))) {
+    if (!(await canAttachEvidence(req, existing[0].user_id))) {
       return res.status(403).json({ error: 'Otillräckliga rättigheter' });
     }
     const key = existing[0].attachment_storage_key;

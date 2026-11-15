@@ -86,17 +86,34 @@ router.post('/', async (req, res) => {
 router.put('/:id', requireFacilityAccess('id'), async (req, res) => {
   try {
     const facilityId = req.params.id;
-    const { name, description, address, owner_id } = req.body;
+    const { name, description, address, owner_id } = req.body || {};
     const { rows: current } = await pool.query('SELECT owner_id FROM facilities WHERE id = $1', [facilityId]);
     if (current.length === 0) return res.status(404).json({ error: 'Ej hittad' });
-    const newOwnerId = owner_id || current[0].owner_id;
-    const { rows } = await pool.query(
-      `UPDATE facilities SET name=$1, description=$2, address=$3, owner_id=$4 WHERE id=$5 RETURNING *`,
-      [name, description, address, newOwnerId, facilityId]
-    );
+    if (name !== undefined && !String(name).trim()) return res.status(400).json({ error: 'Namn krävs' });
+    // Only administrators and the current owner may hand over ownership.
+    const isAdmin = req.user.roles.includes('administrator');
+    if (owner_id && owner_id !== current[0].owner_id && !isAdmin && current[0].owner_id !== req.user.id) {
+      return res.status(403).json({ error: 'Endast ägaren eller en administratör kan byta ägare' });
+    }
+    const updates = [];
+    const vals = [];
+    const add = (col, val) => { if (val !== undefined) { vals.push(val); updates.push(`${col} = $${vals.length}`); } };
+    add('name', name !== undefined ? String(name).trim() : undefined);
+    add('description', description);
+    add('address', address);
+    add('owner_id', owner_id || undefined);
+    let row;
+    if (updates.length > 0) {
+      vals.push(facilityId);
+      const { rows } = await pool.query(`UPDATE facilities SET ${updates.join(', ')} WHERE id = $${vals.length} RETURNING *`, vals);
+      row = rows[0];
+    } else {
+      const { rows } = await pool.query('SELECT * FROM facilities WHERE id = $1', [facilityId]);
+      row = rows[0];
+    }
     const admins = await pool.query('SELECT user_id FROM facility_admins WHERE facility_id = $1', [facilityId]);
     await audit({ req, action: 'facility_updated', targetId: facilityId, targetType: 'facility' });
-    res.json({ ...rows[0], admin_ids: admins.rows.map(r => r.user_id) });
+    res.json({ ...row, admin_ids: admins.rows.map(r => r.user_id) });
   } catch (err) {
     console.error('Facility update error:', err);
     res.status(500).json({ error: 'Internt serverfel' });

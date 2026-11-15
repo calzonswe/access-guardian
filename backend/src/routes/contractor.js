@@ -76,6 +76,8 @@ router.get('/facilities', async (_req, res) => {
 // POST /api/contractor/apply — submit a contractor application publicly
 router.post('/apply', async (req, res) => {
   const client = await pool.connect();
+  const writtenFiles = [];
+  const cleanupFiles = () => Promise.all(writtenFiles.map(f => fs.unlink(f).catch(() => {})));
   try {
     const {
       first_name, last_name, email, phone, company,
@@ -125,20 +127,25 @@ router.post('/apply', async (req, res) => {
       }
     }
 
-    await client.query('BEGIN');
-
-    // ---- Find or create contractor user ----
+    // ---- Existing accounts must apply from inside the app ----
+    // Creating applications for an existing address from an anonymous form
+    // would let anyone file applications in someone else's name.
     const { rows: existing } = await client.query(
-      `SELECT id, is_active FROM users WHERE LOWER(email) = LOWER($1)`,
+      `SELECT id FROM users WHERE LOWER(email) = LOWER($1)`,
       [email]
     );
+    if (existing.length > 0) {
+      return res.status(409).json({
+        error: 'Det finns redan ett konto med denna e-postadress. Logga in och skicka ansökan inifrån systemet, eller använd "Glömt lösenord".',
+      });
+    }
+
+    await client.query('BEGIN');
+
+    // ---- Create contractor user ----
     let contractorId;
     let tempPassword = null;
-    if (existing.length > 0) {
-      // Known address: leave the existing account completely untouched.
-      // The application is simply queued for sponsor approval.
-      contractorId = existing[0].id;
-    } else {
+    {
       tempPassword = generateTempPassword();
       const hash = await bcrypt.hash(tempPassword, 12);
       const fullName = `${first_name} ${last_name}`.trim().slice(0, 255);
@@ -179,23 +186,28 @@ router.post('/apply', async (req, res) => {
       if (m) { mime = m[1]; b64 = m[2]; }
       if (!ALLOWED_MIME.has(mime)) {
         await client.query('ROLLBACK');
+        await cleanupFiles();
         return res.status(400).json({ error: `Filtypen tillåts inte: ${att.file_name}` });
       }
       let buffer;
       try { buffer = Buffer.from(b64, 'base64'); } catch {
         await client.query('ROLLBACK');
+        await cleanupFiles();
         return res.status(400).json({ error: 'Ogiltig fildata' });
       }
       if (!buffer.length || buffer.length > MAX_FILE_BYTES) {
         await client.query('ROLLBACK');
+        await cleanupFiles();
         return res.status(400).json({ error: `Filen är för stor: ${att.file_name}` });
       }
       const safeName = sanitizeFileName(att.file_name);
       const storedName = `${randomUUID()}_${safeName}`;
-      await fs.writeFile(path.join(UPLOAD_DIR, storedName), buffer, { mode: 0o640 });
+      const fullPath = path.join(UPLOAD_DIR, storedName);
+      await fs.writeFile(fullPath, buffer, { mode: 0o640 });
+      writtenFiles.push(fullPath);
       await client.query(
-        `INSERT INTO attachments (application_id, file_name, file_url) VALUES ($1,$2,$3)`,
-        [appId, safeName, `fs:${storedName}`]
+        `INSERT INTO attachments (application_id, file_name, file_url, mime_type) VALUES ($1,$2,$3,$4)`,
+        [appId, safeName, `fs:${storedName}`, mime]
       );
     }
 
@@ -221,13 +233,12 @@ router.post('/apply', async (req, res) => {
     res.status(201).json({
       success: true,
       application_id: appId,
-      temp_password: tempPassword, // null if account already existed
-      message: tempPassword
-        ? 'Ansökan mottagen. Spara ditt tillfälliga lösenord – du behöver det för att logga in och följa ärendet.'
-        : 'Ansökan mottagen. Använd dina befintliga inloggningsuppgifter för att följa ärendet.',
+      temp_password: tempPassword,
+      message: 'Ansökan mottagen. Spara ditt tillfälliga lösenord – du behöver det för att logga in och följa ärendet.',
     });
   } catch (err) {
     try { await client.query('ROLLBACK'); } catch { /* ignore */ }
+    await cleanupFiles();
     console.error('contractor apply error', err);
     res.status(500).json({ error: 'Internt serverfel' });
   } finally {

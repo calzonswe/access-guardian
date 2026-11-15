@@ -17,6 +17,9 @@ export function signToken(payload, expiresIn = '8h') {
   return jwt.sign(payload, JWT_SECRET, { expiresIn });
 }
 
+// Routes a user may call while a password change is pending.
+const PASSWORD_CHANGE_ALLOWED = new Set(['/api/auth/change-password', '/api/auth/me']);
+
 export async function authMiddleware(req, res, next) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
@@ -25,12 +28,27 @@ export async function authMiddleware(req, res, next) {
   try {
     const decoded = jwt.verify(header.slice(7), JWT_SECRET);
 
-    // Always load fresh roles from the database
+    // Always load fresh state from the database: deactivated users, revoked
+    // roles and tokens issued before a password change must stop working.
     const { rows } = await pool.query(
-      'SELECT role FROM user_roles WHERE user_id = $1',
+      `SELECT u.is_active, u.must_change_password, u.password_changed_at,
+              COALESCE(array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '{}') AS roles
+         FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id
+        WHERE u.id = $1 GROUP BY u.id`,
       [decoded.id]
     );
-    const roles = rows.map(r => r.role);
+    const u = rows[0];
+    if (!u || !u.is_active) {
+      return res.status(401).json({ error: 'Kontot är inaktiverat' });
+    }
+    if (u.password_changed_at && decoded.iat * 1000 < new Date(u.password_changed_at).getTime() - 1000) {
+      return res.status(401).json({ error: 'Sessionen har upphört, logga in igen' });
+    }
+    const path = (req.originalUrl || '').split('?')[0];
+    if (u.must_change_password && !PASSWORD_CHANGE_ALLOWED.has(path)) {
+      return res.status(403).json({ error: 'Du måste byta lösenord innan du fortsätter' });
+    }
+    const roles = u.roles;
 
     req.user = {
       id: decoded.id,

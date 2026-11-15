@@ -15,7 +15,7 @@
  */
 
 import { pool } from '../db.js';
-import { sendMailToUser, isEmailEnabled } from '../services/email.js';
+import { sendMailToUser, isEmailEnabled, htmlEscape } from '../services/email.js';
 import { logger } from '../services/logger.js';
 
 const DEFAULT_WARNING_DAYS = [30, 7, 1];
@@ -70,7 +70,7 @@ async function notifyOnce(client, { userId, title, message, type, link, email = 
     sendMailToUser(userId, {
       subject: title,
       title,
-      body: `<p>${message}</p>`,
+      body: `<p>${htmlEscape(message)}</p>`,
       ctaLabel: link ? 'Öppna i Access Guardian' : undefined,
       ctaUrl: link,
     }).catch(() => {});

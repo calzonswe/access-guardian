@@ -82,16 +82,27 @@ router.put('/:id', async (req, res) => {
       const hasAccess = await isFacilityAdminOrOwner(req.user.id, areaRows[0].facility_id);
       if (!hasAccess) return res.status(403).json({ error: 'Ingen åtkomst till detta område' });
     }
-    const { name, description, security_level } = req.body;
-    const parentId = req.body.parent_id !== undefined ? (req.body.parent_id || null) : undefined;
-    if (parentId !== undefined) {
+    const { name, description, security_level } = req.body || {};
+    if (name !== undefined && !String(name).trim()) return res.status(400).json({ error: 'Namn krävs' });
+    const updates = [];
+    const vals = [];
+    const add = (col, val) => { vals.push(val); updates.push(`${col} = $${vals.length}`); };
+    if (name !== undefined) add('name', String(name).trim());
+    if (description !== undefined) add('description', description);
+    if (security_level !== undefined) add('security_level', security_level);
+    if (req.body?.parent_id !== undefined) {
+      const parentId = req.body.parent_id || null;
       const parentErr = await validateParent(parentId, areaRows[0].facility_id, areaId);
       if (parentErr) return res.status(400).json({ error: parentErr });
+      add('parent_id', parentId);
     }
-    const { rows } = await pool.query(
-      'UPDATE areas SET name=$1, description=$2, security_level=$3, parent_id=COALESCE($4, CASE WHEN $5::boolean THEN NULL ELSE parent_id END) WHERE id=$6 RETURNING *',
-      [name, description, security_level, parentId ?? null, parentId !== undefined, areaId]
-    );
+    let rows;
+    if (updates.length > 0) {
+      vals.push(areaId);
+      ({ rows } = await pool.query(`UPDATE areas SET ${updates.join(', ')} WHERE id = $${vals.length} RETURNING *`, vals));
+    } else {
+      ({ rows } = await pool.query('SELECT * FROM areas WHERE id = $1', [areaId]));
+    }
     await audit({ req, action: 'area_updated', targetId: areaId, targetType: 'area' });
     res.json(rows[0]);
   } catch (err) {

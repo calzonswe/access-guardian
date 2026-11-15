@@ -5,7 +5,7 @@ import { pool } from '../db.js';
 import { signToken, authMiddleware } from '../middleware/auth.js';
 import { createRateLimit } from '../middleware/rateLimit.js';
 import { audit } from '../services/audit.js';
-import { sendMail, isEmailEnabled } from '../services/email.js';
+import { sendMail, isEmailEnabled, htmlEscape } from '../services/email.js';
 import { getSecuritySettings, getPasswordPolicy, validatePassword } from '../services/settings.js';
 import { checkLock, recordFailure, recordSuccess } from '../services/loginAttempts.js';
 
@@ -98,13 +98,28 @@ router.post('/login', async (req, res) => {
 
 router.post('/change-password', authMiddleware, async (req, res) => {
   try {
-    const { newPassword } = req.body;
+    const { currentPassword, newPassword } = req.body || {};
+    const { rows: cur } = await pool.query(
+      'SELECT password_hash, must_change_password FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    if (cur.length === 0) return res.status(404).json({ error: 'Användare hittades ej' });
+    // A forced change (first login / admin reset) happens right after logging
+    // in with the current password; otherwise require it again.
+    if (!cur[0].must_change_password) {
+      if (!currentPassword || !(await bcrypt.compare(String(currentPassword), cur[0].password_hash || ''))) {
+        return res.status(400).json({ error: 'Nuvarande lösenord är felaktigt' });
+      }
+    }
     const policy = await getPasswordPolicy();
     const policyErr = validatePassword(newPassword, policy);
     if (policyErr) return res.status(400).json({ error: policyErr });
+    if (await bcrypt.compare(String(newPassword), cur[0].password_hash || '')) {
+      return res.status(400).json({ error: 'Det nya lösenordet måste skilja sig från det nuvarande' });
+    }
     const hash = await bcrypt.hash(newPassword, 12);
     await pool.query(
-      'UPDATE users SET password_hash = $1, must_change_password = false WHERE id = $2',
+      'UPDATE users SET password_hash = $1, must_change_password = false, password_changed_at = now() WHERE id = $2',
       [hash, req.user.id]
     );
     await audit({ req, action: 'password_changed', targetId: req.user.id, targetType: 'user' });
@@ -163,7 +178,7 @@ router.post('/forgot-password', forgotLimiter, async (req, res) => {
         to: user.email,
         subject: 'Återställ ditt lösenord',
         title: 'Återställ ditt lösenord',
-        body: `<p>Hej ${user.full_name || ''},</p><p>Klicka på knappen nedan för att välja ett nytt lösenord. Länken gäller i ${RESET_TOKEN_TTL_MIN} minuter.</p><p>Om du inte begärt återställning kan du ignorera detta meddelande.</p>`,
+        body: `<p>Hej ${htmlEscape(user.full_name || '')},</p><p>Klicka på knappen nedan för att välja ett nytt lösenord. Länken gäller i ${RESET_TOKEN_TTL_MIN} minuter.</p><p>Om du inte begärt återställning kan du ignorera detta meddelande.</p>`,
         ctaLabel: 'Återställ lösenord',
         ctaUrl: link,
       }).catch(() => {});
@@ -195,26 +210,30 @@ router.post('/reset-password', async (req, res) => {
     const policyErr = validatePassword(newPassword, policy);
     if (policyErr) return res.status(400).json({ error: policyErr });
     const tokenHash = hashToken(token);
+    const { rows: existing } = await pool.query(
+      'SELECT used_at, expires_at FROM password_reset_tokens WHERE token_hash = $1',
+      [tokenHash]
+    );
+    if (existing.length === 0) return res.status(400).json({ error: 'Ogiltig eller använd länk' });
+    if (existing[0].used_at) return res.status(400).json({ error: 'Länken har redan använts' });
+    if (new Date(existing[0].expires_at).getTime() < Date.now()) {
+      return res.status(400).json({ error: 'Länken har gått ut' });
+    }
+    const hash = await bcrypt.hash(newPassword, 12);
+    // Consume the token atomically so the same link can't be used twice in parallel.
     const { rows } = await pool.query(
-      `SELECT id, user_id, expires_at, used_at FROM password_reset_tokens
-       WHERE token_hash = $1`,
+      `UPDATE password_reset_tokens SET used_at = now()
+        WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()
+        RETURNING user_id`,
       [tokenHash]
     );
     if (rows.length === 0) return res.status(400).json({ error: 'Ogiltig eller använd länk' });
     const t = rows[0];
-    if (t.used_at) return res.status(400).json({ error: 'Länken har redan använts' });
-    if (new Date(t.expires_at).getTime() < Date.now()) {
-      return res.status(400).json({ error: 'Länken har gått ut' });
-    }
-    const hash = await bcrypt.hash(newPassword, 12);
-    await pool.query(
-      'UPDATE users SET password_hash = $1, must_change_password = false WHERE id = $2',
+    const { rows: userRows } = await pool.query(
+      'UPDATE users SET password_hash = $1, must_change_password = false, password_changed_at = now() WHERE id = $2 RETURNING email',
       [hash, t.user_id]
     );
-    await pool.query(
-      'UPDATE password_reset_tokens SET used_at = now() WHERE id = $1',
-      [t.id]
-    );
+    if (userRows[0]) await recordSuccess(userRows[0].email);
     await audit({ action: 'password_reset_completed', actorId: t.user_id, targetId: t.user_id, targetType: 'user' });
     res.json({ success: true });
   } catch (err) {
