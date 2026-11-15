@@ -5,26 +5,50 @@ import { audit } from '../services/audit.js';
 
 const router = Router();
 
+// Facility rows with admin ids plus the names of the owner and admins, so
+// owners and facility admins can show them without access to /api/users.
+const FACILITY_SELECT = `SELECT f.*, ou.full_name AS owner_name,
+         COALESCE(array_agg(fa.user_id) FILTER (WHERE fa.user_id IS NOT NULL), '{}') AS admin_ids,
+         COALESCE(json_agg(json_build_object('id', au.id, 'full_name', au.full_name))
+                  FILTER (WHERE au.id IS NOT NULL), '[]') AS admins
+    FROM facilities f
+    LEFT JOIN users ou ON ou.id = f.owner_id
+    LEFT JOIN facility_admins fa ON fa.facility_id = f.id
+    LEFT JOIN users au ON au.id = fa.user_id`;
+
+// Users that can be appointed facility admin (for owners, who can't list users).
+router.get('/admin-candidates', async (req, res) => {
+  try {
+    if (!req.user.roles.includes('administrator') && !req.user.roles.includes('facility_owner')) {
+      return res.status(403).json({ error: 'Otillräckliga rättigheter' });
+    }
+    const { rows } = await pool.query(
+      `SELECT u.id, u.full_name, u.email, array_agg(ur.role::text) AS roles
+         FROM users u JOIN user_roles ur ON ur.user_id = u.id
+        WHERE u.is_active = true
+          AND u.id IN (SELECT user_id FROM user_roles WHERE role IN ('facility_admin', 'administrator'))
+        GROUP BY u.id ORDER BY u.full_name`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internt serverfel' });
+  }
+});
+
 router.get('/', async (req, res) => {
   try {
     if (req.user.roles.includes('administrator')) {
       const { rows } = await pool.query(
-        `SELECT f.*,
-                COALESCE(array_agg(fa.user_id) FILTER (WHERE fa.user_id IS NOT NULL), '{}') AS admin_ids
-         FROM facilities f
-         LEFT JOIN facility_admins fa ON fa.facility_id = f.id
-         GROUP BY f.id ORDER BY f.name`
+        `${FACILITY_SELECT} GROUP BY f.id, ou.full_name ORDER BY f.name`
       );
       return res.json(rows);
     }
     if (req.user.roles.includes('facility_owner') || req.user.roles.includes('facility_admin')) {
       const { rows } = await pool.query(
-        `SELECT f.*,
-                COALESCE(array_agg(fa.user_id) FILTER (WHERE fa.user_id IS NOT NULL), '{}') AS admin_ids
-         FROM facilities f
-         LEFT JOIN facility_admins fa ON fa.facility_id = f.id
+        `${FACILITY_SELECT}
          WHERE f.owner_id = $1 OR f.id IN (SELECT facility_id FROM facility_admins WHERE user_id = $1)
-         GROUP BY f.id ORDER BY f.name`,
+         GROUP BY f.id, ou.full_name ORDER BY f.name`,
         [req.user.id]
       );
       return res.json(rows);

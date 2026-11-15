@@ -220,6 +220,10 @@ export function deleteFacility(id: string): Promise<void> {
   return del(`/facilities/${id}`);
 }
 
+export function getFacilityAdminCandidates(): Promise<(Pick<User, 'id' | 'full_name' | 'email' | 'roles'>)[]> {
+  return get('/facilities/admin-candidates');
+}
+
 export function addFacilityAdmin(facilityId: string, userId: string): Promise<void> {
   return post(`/facilities/${facilityId}/admins`, { user_id: userId });
 }

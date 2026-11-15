@@ -10,6 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import * as store from '@/services/dataStore';
+import * as api from '@/services/api';
+import { errorMessage } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -24,6 +26,7 @@ export default function FacilitiesPage() {
   const [reqDialogOpen, setReqDialogOpen] = useState(false);
   const [reqFacilityId, setReqFacilityId] = useState<string | null>(null);
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
+  const [adminCandidates, setAdminCandidates] = useState<Awaited<ReturnType<typeof api.getFacilityAdminCandidates>>>([]);
   const [adminFacilityId, setAdminFacilityId] = useState<string | null>(null);
   const [expandedReqs, setExpandedReqs] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
@@ -111,6 +114,11 @@ export default function FacilitiesPage() {
   const openAdminDialog = (facilityId: string) => {
     setAdminFacilityId(facilityId);
     setAdminDialogOpen(true);
+    if (store.isApiMode() && !currentUser.roles.includes('administrator')) {
+      api.getFacilityAdminCandidates()
+        .then(setAdminCandidates)
+        .catch(err => toast.error(errorMessage(err, 'Kunde inte hämta administratörer')));
+    }
   };
 
   const toggleFacilityAdmin = async (facilityId: string, userId: string, checked: boolean) => {
@@ -125,9 +133,11 @@ export default function FacilitiesPage() {
     reload();
   };
 
-  const facilityAdminCandidates = users.filter(u =>
-    u.roles.includes('facility_admin') || u.roles.includes('administrator')
-  );
+  // Administrators can list all users; facility owners get candidates from a
+  // dedicated endpoint because their user list only contains their applicants.
+  const facilityAdminCandidates = currentUser.roles.includes('administrator') || !store.isApiMode()
+    ? users.filter(u => u.roles.includes('facility_admin') || u.roles.includes('administrator'))
+    : adminCandidates;
 
   return (
     <div className="space-y-6">
@@ -168,13 +178,13 @@ export default function FacilitiesPage() {
         <div className="grid gap-4 md:grid-cols-2">
           {facilities.map(facility => {
             const facilityAreas = areas.filter(a => a.facility_id === facility.id);
-            const owner = users.find(u => u.id === facility.owner_id);
+            const owner = users.find(u => u.id === facility.owner_id) ?? (facility.owner_name ? { full_name: facility.owner_name } : undefined);
             const facilityReqs = store.getFacilityRequirements(facility.id);
             const reqNames = facilityReqs
               .map(fr => allRequirements.find(r => r.id === fr.requirement_id))
               .filter(Boolean);
             const showReqs = expandedReqs.has(facility.id);
-            const admins = (facility.admin_ids || []).map(id => users.find(u => u.id === id)).filter(Boolean);
+            const admins = (facility.admin_ids || []).map(id => users.find(u => u.id === id) ?? facility.admins?.find(a => a.id === id)).filter(Boolean);
 
             return (
               <Card key={facility.id} className="hover:shadow-md transition-shadow">
@@ -189,14 +199,16 @@ export default function FacilitiesPage() {
                         <p className="text-xs text-muted-foreground">{facility.description}</p>
                       </div>
                     </div>
-                    {(currentUser.roles.includes('administrator') || facility.owner_id === currentUser.id) && (
+                    {(currentUser.roles.includes('administrator') || facility.owner_id === currentUser.id || (facility.admin_ids || []).includes(currentUser.id)) && (
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8" title="Hantera områden" asChild>
                           <Link to={`/facilities/${facility.id}/areas`}><MapPin className="h-3.5 w-3.5 text-primary" /></Link>
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(facility)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
+                        {(currentUser.roles.includes('administrator') || facility.owner_id === currentUser.id) && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(facility)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         {currentUser.roles.includes('administrator') && (
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(facility)}>
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />

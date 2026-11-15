@@ -42,6 +42,8 @@ export interface Facility {
   address: string;
   owner_id: string;           // Facility Owner user ID
   admin_ids: string[];        // Facility Admin user IDs
+  owner_name?: string;        // Provided by the API for display
+  admins?: { id: string; full_name: string }[];
   created_at: string;
 }
 

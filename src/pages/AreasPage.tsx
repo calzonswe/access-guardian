@@ -46,7 +46,10 @@ export default function AreasPage() {
   const facility = routeFacilityId ? facilities[0] : undefined;
   const allAreas = store.getAreas();
   const allRequirements = store.getRequirements();
-  const canEdit = currentUser.roles.includes('administrator') || currentUser.roles.includes('facility_owner') || currentUser.roles.includes('facility_admin');
+  // Areas can be managed by administrators and by the owner/admins of that facility.
+  const canEditFacility = (f: { owner_id?: string; admin_ids?: string[] }) =>
+    currentUser.roles.includes('administrator') || f.owner_id === currentUser.id || (f.admin_ids || []).includes(currentUser.id);
+  const canEdit = facilities.some(canEditFacility);
   // Linking requirements to areas is administrator-only on the backend.
   const canManageReqs = currentUser.roles.includes('administrator');
 
@@ -142,7 +145,11 @@ export default function AreasPage() {
       </div>
 
       {facilities.length === 0 ? (
-        <Card><CardContent className="py-16 text-center text-muted-foreground">Skapa en anläggning först</CardContent></Card>
+        <Card><CardContent className="py-16 text-center text-muted-foreground">
+          {loading ? 'Laddar…' : routeFacilityId
+            ? 'Anläggningen finns inte, eller så har du inte behörighet att hantera den.'
+            : 'Skapa en anläggning först'}
+        </CardContent></Card>
       ) : (
         facilities.map(facility => {
           const areas = treeFor(facility.id);
@@ -196,8 +203,12 @@ export default function AreasPage() {
                                     <Shield className="h-3 w-3 text-primary" />
                                   </Button>
                                 )}
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(area)}><Pencil className="h-3 w-3" /></Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(area)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                                {canEditFacility(facility) && (
+                                  <>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(area)}><Pencil className="h-3 w-3" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(area)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                                  </>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
