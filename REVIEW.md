@@ -6,6 +6,20 @@ Priority legend: **P0** = app is broken for normal use · **P1** = security/auth
 
 The decisions that settle the open questions are in [section 3](#3-decisions-answered-2026-11-15).
 
+## Status (updated 2026-11-15)
+
+**Fixed on `main`:** P0 #1–#7, P1 #8–#21, P2 #22–#38, P3 #39 (0 lint errors), #42, #43; dependency phases A and B. Two more bugs found while fixing are also fixed: assigning facility admins never worked (the UI sent `admin_ids` to a PUT that ignores it), and the user form could not clear a manager once the backend stopped wiping fields it didn't receive.
+
+**Verified:** `npm ci` in both packages, `npm run build`, `tsc`, `npm run lint`, frontend vitest (5 tests), backend `node:test` (8 tests on the transition rules). **Not yet verified at runtime:** the backend has not been run against PostgreSQL; migration 0006 and the route changes still need a smoke test with `docker compose up`.
+
+**Still open:**
+- #40 (partly done): there are no route-level authorization tests against a real database.
+- #41: every mutation still re-fetches all collections.
+- #44: login lockout is per e-mail only.
+- `nodemailer` 8 has a high advisory, fixed only in v10 (major). The app doesn't pass user-controlled `raw` options, so exposure is low.
+- `react-router-dom` 6.x has a moderate advisory, fixed only in v7 (deferred with the other Phase C majors).
+- Remaining dev-only advisories (vitest/tinypool, the Vite dev server, eslint tooling) need the Phase C majors.
+
 ---
 
 ## 1. Dependencies
