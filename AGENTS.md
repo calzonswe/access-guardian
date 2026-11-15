@@ -12,6 +12,7 @@ RBAC access control system with a React frontend and Express/PostgreSQL backend.
 | Frontend build | `npm run build` |
 | Frontend lint | `npm run lint` |
 | Frontend unit tests | `npm run test` (vitest, single run) / `npm run test:watch` |
+| Backend tests | `cd backend && npm test` (node:test, no database needed) |
 | Backend dev | `cd backend && npm run dev` (port 3000, `node --watch`) |
 | Full stack (Docker) | `docker compose up` (needs `.env` — copy from `.env.example`) |
 
@@ -45,7 +46,8 @@ Routes are guarded by `RoleGuard` in `App.tsx` — check there for which pages e
 ## Testing
 
 - **Unit**: vitest with jsdom, tests live in `src/**/*.{test,spec}.{ts,tsx}`, setup in `src/test/setup.ts`
-- **E2E**: Playwright via `lovable-agent-playwright-config`, config in `playwright.config.ts`, fixture re-exported from `playwright-fixture.ts`
+- **Backend**: `node:test` files in `backend/test/*.test.js`
+- **E2E**: `@playwright/test` is installed but no Playwright config or tests exist yet
 
 ## Env vars (`.env`)
 
@@ -58,6 +60,6 @@ Required for Docker: `DB_PASSWORD`, `JWT_SECRET`. Optional: `APP_PORT` (default 
 - No `package-lock.json` in backend/ — it uses its own `npm install --production` in Docker
 - Backend has RBAC enforcement: `requireRole()` and facility-level `requireFacilityAccess()` middleware protect all routes
 - Application workflow: `draft` → `pending_manager` (line_manager approves) → `pending_facility` (facility_owner/admin approves) → `approved`
-- Exception requests go to `pending_exception` → administrator approves
+- Exception requests (applications with missing requirements): the line manager's approval sends them to `pending_exception` → the facility owner of that facility approves or denies. Transition rules live in `TRANSITIONS` in `backend/src/routes/applications.js`
 - Attachments are uploaded as base64 via `POST /api/attachments` (JSON body, max 10MB per file)
 - System settings are stored in `system_settings` table, managed via `GET/PUT /api/settings`

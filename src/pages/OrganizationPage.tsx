@@ -15,6 +15,7 @@ import * as store from '@/services/dataStore';
 import { ORG_UNIT_LABELS, ORG_ALLOWED_PARENTS, type OrgUnit, type OrgUnitType } from '@/types/organization';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
 import { useAuth } from '@/context/AuthContext';
+import { errorMessage } from '@/lib/utils';
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
@@ -151,8 +152,8 @@ export default function OrganizationPage() {
       }
       setDialog({ open: false, mode: 'add' });
       reload();
-    } catch (err: any) {
-      toast.error(err?.message || 'Kunde inte spara');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Kunde inte spara'));
     }
   };
 
@@ -162,8 +163,8 @@ export default function OrganizationPage() {
       await store.deleteOrgUnit(node.id);
       toast.success('Organisationsenhet borttagen');
       reload();
-    } catch (err: any) {
-      toast.error(err?.message || 'Kunde inte ta bort');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Kunde inte ta bort'));
     }
   };
 

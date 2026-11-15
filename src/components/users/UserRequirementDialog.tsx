@@ -10,6 +10,7 @@ import * as api from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import type { User, UserRequirement } from '@/types/rbac';
+import { errorMessage } from '@/lib/utils';
 
 interface Props {
   open: boolean;
@@ -67,8 +68,8 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
       if (attachmentFile && created?.id) {
         try {
           await api.uploadUserRequirementAttachment(created.id, attachmentFile);
-        } catch (err: any) {
-          toast.error(`Bilagan kunde inte laddas upp: ${err.message || ''}`);
+        } catch (err) {
+          toast.error(`Bilagan kunde inte laddas upp: ${errorMessage(err, '')}`);
         }
       }
 
@@ -119,8 +120,8 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
     if (!ur.attachment_name) return;
     try {
       await api.downloadUserRequirementAttachment(ur.id, ur.attachment_name);
-    } catch (err: any) {
-      toast.error(err.message || 'Kunde inte hämta bilaga');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Kunde inte hämta bilaga'));
     }
   };
 

@@ -13,6 +13,7 @@ import { Plus, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import type { Application, ApplicationStatus } from '@/types/rbac';
 import { exportApplications } from '@/services/exportService';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
+import { errorMessage } from '@/lib/utils';
 
 const PAGE_SIZE = 10;
 
@@ -136,12 +137,11 @@ export default function ApplicationsPage() {
     if (!confirm('Är du säker på att du vill ta bort denna ansökan?')) return;
     try {
       await store.deleteApplication(app.id);
-      await store.addLog({ action: 'application_denied', actor_id: currentUser.id, target_id: app.id, target_type: 'application', details: 'Ansökan borttagen' });
       toast.success('Ansökan borttagen');
       closeDetail();
       reloadPaged();
-    } catch (err: any) {
-      toast.error(err?.message || 'Kunde inte ta bort ansökan');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Kunde inte ta bort ansökan'));
     }
   };
 

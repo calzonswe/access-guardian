@@ -366,9 +366,18 @@ export async function createFacility(data: Omit<Facility, 'id' | 'created_at'>):
 
 export async function updateFacility(id: string, data: Partial<Omit<Facility, 'id' | 'created_at'>>): Promise<Facility | undefined> {
   if (_apiMode) {
-    const updated = await api.updateFacility(id, data);
+    const { admin_ids, ...fields } = data;
+    // Facility admins are managed through their own endpoints, not the facility PUT.
+    if (admin_ids) {
+      const current = _facilities.find(f => f.id === id)?.admin_ids || [];
+      for (const uid of admin_ids.filter(u => !current.includes(u))) await api.addFacilityAdmin(id, uid);
+      for (const uid of current.filter(u => !admin_ids.includes(u))) await api.removeFacilityAdmin(id, uid);
+    }
+    const updated = Object.keys(fields).length > 0
+      ? await api.updateFacility(id, fields)
+      : undefined;
     _facilities = await api.getFacilities();
-    return updated;
+    return updated ?? _facilities.find(f => f.id === id);
   }
   const items = localGet<Facility>(KEYS.FACILITIES);
   const idx = items.findIndex(f => f.id === id);

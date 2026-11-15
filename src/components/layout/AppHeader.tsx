@@ -36,7 +36,7 @@ export function AppHeader() {
       if (n && !n.read) {
         n.read = true;
         const allNotifs = JSON.parse(localStorage.getItem('rbac_notifications') || '[]');
-        const idx = allNotifs.findIndex((x: any) => x.id === id);
+        const idx = allNotifs.findIndex((x: { id: string }) => x.id === id);
         if (idx >= 0) { allNotifs[idx].read = true; localStorage.setItem('rbac_notifications', JSON.stringify(allNotifs)); }
       }
     }

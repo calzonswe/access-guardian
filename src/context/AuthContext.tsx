@@ -5,6 +5,7 @@ import type { StoredUser } from '@/services/dataStore';
 import * as store from '@/services/dataStore';
 import * as api from '@/services/api';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
+import { errorMessage } from '@/lib/utils';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -76,8 +77,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (res.sessionTimeoutMinutes) setSessionTimeoutMinutes(res.sessionTimeoutMinutes);
         await store.refreshAll();
         return { success: true };
-      } catch (err: any) {
-        return { success: false, error: err.message || 'Inloggningen misslyckades' };
+      } catch (err) {
+        return { success: false, error: errorMessage(err, 'Inloggningen misslyckades') };
       }
     } else {
       const user = await store.authenticate(email, password);

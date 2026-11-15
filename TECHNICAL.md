@@ -113,7 +113,7 @@ administrator
 1. **draft** — Användaren skapar ansökan, väljer anläggning och eventuella områden
 2. **pending_manager** — Linjechef/kontaktperson granskar och godkänner eller nekar
 3. **pending_facility** — Anläggningsägare/-admin granskar och godkänner eller nekar
-4. **pending_exception** — Om krav saknas: administratör beslutar om avsteg
+4. **pending_exception** — Om krav saknas: anläggningsägaren beslutar om avsteg
 5. **approved** — Tillträde beviljat
 6. **denied** — Ansökan nekad (med motivering)
 7. **expired** — Tillträde utgånget (passerats slutdatum)

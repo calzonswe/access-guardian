@@ -11,6 +11,7 @@ import * as store from '@/services/dataStore';
 import { downloadAttachment } from '@/services/api';
 import { notifyApplicationStatusChange } from '@/services/notifications';
 import type { Application, ApplicationStatus } from '@/types/rbac';
+import { errorMessage } from '@/lib/utils';
 
 const STATUS_MAP: Record<ApplicationStatus, { label: string; className: string }> = {
   draft: { label: 'Utkast', className: 'bg-muted text-muted-foreground' },
@@ -96,8 +97,8 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
       await notifyApplicationStatusChange(application, newStatus, currentUser.id);
       toast.success('Ansökan godkänd');
       onUpdated?.(); onOpenChange(false);
-    } catch (err: any) {
-      toast.error(err?.message || 'Kunde inte godkänna ansökan');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Kunde inte godkänna ansökan'));
     }
   };
 
@@ -107,8 +108,8 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
       await store.addLog({ action: 'application_denied', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: `Ansökan nekad: ${denyReason}` });
       await notifyApplicationStatusChange(application, 'denied', currentUser.id);
       toast.success('Ansökan nekad'); setDenyReason(''); onUpdated?.(); onOpenChange(false);
-    } catch (err: any) {
-      toast.error(err?.message || 'Kunde inte neka ansökan');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Kunde inte neka ansökan'));
     }
   };
 
@@ -120,8 +121,8 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
       await notifyApplicationStatusChange({ ...application, status: 'approved' }, 'expired', currentUser.id);
       toast.success('Tillträde återkallat');
       onUpdated?.(); onOpenChange(false);
-    } catch (err: any) {
-      toast.error(err?.message || 'Kunde inte återkalla tillträdet');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Kunde inte återkalla tillträdet'));
     }
   };
 

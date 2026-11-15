@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
+import { errorMessage } from '@/lib/utils';
 
 export default function ChangePasswordPage() {
   const { changePassword, logout } = useAuth();
@@ -27,8 +28,8 @@ export default function ChangePasswordPage() {
 
     try {
       await changePassword(newPassword);
-    } catch (err: any) {
-      setError(err?.message || 'Kunde inte ändra lösenord');
+    } catch (err) {
+      setError(errorMessage(err, 'Kunde inte ändra lösenord'));
     }
   };
 

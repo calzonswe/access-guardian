@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import type { Requirement } from '@/types/rbac';
 import * as store from '@/services/dataStore';
 import * as api from '@/services/api';
+import { errorMessage } from '@/lib/utils';
 
 const TYPE_LABELS: Record<string, string> = { certification: 'Certifiering', clearance: 'Säkerhetsprövning', training: 'Utbildning' };
 const TYPE_ICONS: Record<string, typeof Award> = { certification: Award, clearance: Lock, training: Shield };
@@ -578,8 +579,8 @@ function SystemStatusTab() {
     setError('');
     try {
       setStatus(await api.getSystemStatus());
-    } catch (e: any) {
-      setError(e?.message || 'Kunde inte hämta systemstatus');
+    } catch (e) {
+      setError(errorMessage(e, 'Kunde inte hämta systemstatus'));
     } finally {
       setLoading(false);
     }
@@ -593,8 +594,8 @@ function SystemStatusTab() {
       await api.runExpiryJobNow();
       toast.success('Expiry-jobbet kördes');
       await load();
-    } catch (e: any) {
-      toast.error(e?.message || 'Kunde inte köra expiry-jobbet');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Kunde inte köra expiry-jobbet'));
     } finally {
       setRunning(false);
     }

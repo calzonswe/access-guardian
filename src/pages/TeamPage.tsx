@@ -13,6 +13,7 @@ import UserFormDialog from '@/components/users/UserFormDialog';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
+import { errorMessage } from '@/lib/utils';
 
 function getSubordinates(managerId: string, allUsers: User[]): User[] {
   const direct = allUsers.filter(u => u.manager_id === managerId || u.contact_person_id === managerId);
@@ -59,8 +60,8 @@ export default function TeamPage() {
       await store.addLog({ action: 'user_updated', actor_id: currentUser.id, target_id: u.id, target_type: 'user', details: `Användare borttagen: ${u.full_name}` });
       toast.success('Användare borttagen');
       reload();
-    } catch (err: any) {
-      toast.error(err?.message || 'Kunde inte ta bort användaren');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Kunde inte ta bort användaren'));
     }
   };
 

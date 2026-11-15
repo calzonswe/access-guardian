@@ -22,7 +22,9 @@ UI text, error messages, docs and commit messages are in **Swedish** — follow 
 | Backend dev (port 3000) | `cd backend && npm run dev` (`node --watch`, no build step) |
 | Full stack | `cp .env.example .env && docker compose up -d --build` |
 
-Note: there are currently no test files and no `vitest.config.ts` / `playwright.config.ts` in the repo (AGENTS.md mentions them, but they don't exist). Vitest would pick up the config from `vite.config.ts`; a jsdom environment and the `@` alias would need to be set up there before writing component tests.
+Backend tests: `cd backend && npm test` (node:test in `backend/test/`, pure logic, no database). Frontend tests use `vitest.config.ts` (jsdom, `@` alias, setup in `src/test/setup.ts`). There is no Playwright config yet.
+
+npm is the only package manager (lockfiles in both packages; bun lockfiles were removed; Lovable may re-add `bun.lock`, delete it).
 
 Local backend needs Postgres and env vars `DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD JWT_SECRET`. On startup `backend/src/db.js` creates the initial admin (`INITIAL_ADMIN_EMAIL`, default `admin@foretag.se`) if missing; the password comes from `INITIAL_ADMIN_PASSWORD` or is generated and printed once to the backend log (README's `Admin123!` is outdated). In localStorage mode the seeded admin is `admin@company.local` / `Admin123!`.
 
@@ -56,7 +58,9 @@ Auth/session lives in `src/context/AuthContext.tsx`; page access per role is enf
 
 ### Domain workflow
 
-Application status: `draft` → `pending_manager` (line_manager approves) → `pending_facility` (facility_owner/facility_admin approves) → `approved`. Exceptions to requirements go to `pending_exception` and are approved by an `administrator`. Roles: `administrator`, `facility_owner`, `facility_admin`, `line_manager`, `employee`, `contractor`.
+Application status: `draft` → `pending_manager` (the applicant's manager or sponsor approves; never the applicant) → `pending_facility` (owner/admin of *that* facility approves) → `approved` → `expired` (revoked by facility staff or the expiry job). Applications with missing requirements (`has_exception`) go from the manager to `pending_exception` and are decided by the facility owner. Administrators may perform any listed transition. The rules are the `TRANSITIONS` table in `backend/src/routes/applications.js` (tested in `backend/test/`); the UI in `ApplicationDetailDialog.tsx` mirrors them.
+
+In API mode the backend writes the audit log and sends notifications for every mutation; `store.addLog` and `notifyApplicationStatusChange` are no-ops there (they only simulate this in localStorage mode). Roles: `administrator`, `facility_owner`, `facility_admin`, `line_manager`, `employee`, `contractor`.
 
 ### Deployment
 

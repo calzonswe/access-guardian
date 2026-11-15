@@ -98,7 +98,7 @@ draft → pending_manager → pending_facility → pending_exception → approve
 1. **Draft** - User creates application (initially)
 2. **pending_manager** - Submitted, awaiting line manager approval
 3. **pending_facility** - Manager approved, awaiting facility owner/admin approval
-4. **pending_exception** - Missing requirements, awaiting administrator decision
+4. **pending_exception** - Missing requirements, awaiting the facility owner's decision
 5. **approved** - Access granted
 6. **denied** - Access denied
 
@@ -128,8 +128,8 @@ draft → pending_manager → pending_facility → pending_exception → approve
 
 #### Exception Requests
 - If user lacks required certifications/clearances
-- Application goes to `pending_exception` status
-- Administrator decides to approve or deny
+- Application goes to `pending_exception` status after the manager's approval
+- The facility owner decides to approve or deny
 
 ---
 

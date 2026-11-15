@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { useBranding } from '@/context/BrandingContext';
+import { errorMessage } from '@/lib/utils';
 
 interface PublicFacility { id: string; name: string; description?: string; address?: string }
 interface PublicArea { id: string; facility_id: string; name: string; security_level: string }
@@ -111,8 +112,8 @@ export default function ContractorApplyPage() {
         throw new Error(body.error || 'Något gick fel');
       }
       setSuccess({ tempPassword: body.temp_password || null, message: body.message || 'Ansökan mottagen.' });
-    } catch (err: any) {
-      setError(err.message || 'Något gick fel');
+    } catch (err) {
+      setError(errorMessage(err, 'Något gick fel'));
     } finally {
       setSubmitting(false);
     }

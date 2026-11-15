@@ -92,18 +92,20 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
     if (editUser) {
-      const updateData: any = {
+      // Send explicit empty values so clearing a field in the form clears it on the server
+      // (the backend leaves fields it does not receive untouched).
+      const updateData: Parameters<typeof store.updateUser>[1] = {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         full_name: fullName,
         email,
         roles,
-        title: title || undefined,
-        phone: phone || undefined,
-        company: company || undefined,
-        department: department || undefined,
-        manager_id: managerId || undefined,
-        contact_person_id: isContractor ? contactPersonId || undefined : undefined,
+        title: title || '',
+        phone: phone || '',
+        company: company || '',
+        department: department || '',
+        manager_id: managerId || null,
+        contact_person_id: isContractor ? contactPersonId || null : null,
         org_unit_id: orgUnitId || null,
       };
       if (password.trim()) { updateData.password = password; updateData.must_change_password = true; }

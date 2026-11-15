@@ -35,7 +35,7 @@ docker compose up -d
 open http://localhost:8080
 ```
 
-Logga in med `admin@foretag.se` / `Admin123!` (lösenordsändring krävs vid första inloggning).
+Logga in med `admin@foretag.se` och lösenordet som skrivs ut i backend-loggen vid första start (`docker compose logs backend`), eller det du satt i `INITIAL_ADMIN_PASSWORD`. Lösenordsbyte krävs vid första inloggning.
 
 ---
 
@@ -149,10 +149,12 @@ psql -U rbac_user -d rbac_access -f db/init.sql
 
 | Fält | Värde |
 |------|-------|
-| E-post | `admin@foretag.se` |
-| Lösenord | `Admin123!` |
+| E-post | `INITIAL_ADMIN_EMAIL` (standard `admin@foretag.se`) |
+| Lösenord | `INITIAL_ADMIN_PASSWORD`, eller ett slumpat lösenord som skrivs ut en gång i backend-loggen |
 
-> **OBS:** Du måste byta lösenord vid första inloggning. Standardanvändaren skapas av backend vid databasinitiering.
+> **OBS:** Du måste byta lösenord vid första inloggning. Administratören skapas av backend vid start om det inte finns någon administratör i databasen.
+>
+> I localStorage-läge (frontend utan backend, t.ex. Lovable preview) är inloggningen `admin@company.local` / `Admin123!`.
 
 ---
 
@@ -243,7 +245,7 @@ docker compose logs backend  # Kontrollera backend-loggar
 ### "Felaktig e-post eller lösenord"
 
 - Kontrollera att e-postadressen är korrekt
-- Standardlösenord: `Admin123!`
+- Det initiala lösenordet skrivs ut i backend-loggen vid första start (`docker compose logs backend`)
 
 ### "För många inloggningsförsök"
 

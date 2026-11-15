@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useBranding } from '@/context/BrandingContext';
 import * as api from '@/services/api';
 import { toast } from 'sonner';
+import { errorMessage } from '@/lib/utils';
 
 export default function ResetPasswordPage() {
   const { appName, logoUrl } = useBranding();
@@ -38,8 +39,8 @@ export default function ResetPasswordPage() {
       await api.resetPassword(token, password);
       toast.success('Lösenordet har återställts. Logga in med det nya lösenordet.');
       navigate('/');
-    } catch (err: any) {
-      setError(err.message || 'Kunde inte återställa lösenordet');
+    } catch (err) {
+      setError(errorMessage(err, 'Kunde inte återställa lösenordet'));
     } finally {
       setLoading(false);
     }
