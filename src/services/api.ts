@@ -375,6 +375,10 @@ export function analyzeLogs(body: { question: string; from?: string; to?: string
   return post('/logs/analyze', body);
 }
 
+export function getLogAnalysisStatus(): Promise<{ configured: boolean }> {
+  return get('/logs/analyze/status');
+}
+
 export function getLogs(): Promise<SystemLog[]> {
   return get('/logs');
 }
