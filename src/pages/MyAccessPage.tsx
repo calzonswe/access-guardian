@@ -8,6 +8,7 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import * as store from '@/services/dataStore';
 import { useAuth } from '@/context/AuthContext';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
+import { RequirementLookup } from '@/components/applications/RequirementLookup';
 
 export default function MyAccessPage() {
   const { currentUser } = useAuth();
@@ -105,6 +106,8 @@ export default function MyAccessPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <RequirementLookup userId={currentUser.id} />
     </div>
   );
 }

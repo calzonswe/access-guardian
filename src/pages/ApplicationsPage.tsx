@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import * as store from '@/services/dataStore';
@@ -15,6 +15,7 @@ import { exportApplications } from '@/services/exportService';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
 import { usePersistentState } from '@/hooks/usePersistentState';
 import { useActionableApplications } from '@/hooks/useActionableApplications';
+import { canRenew } from '@/lib/applicationRules';
 import { errorMessage } from '@/lib/utils';
 
 const PAGE_SIZE = 10;
@@ -46,6 +47,8 @@ export default function ApplicationsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [editApp, setEditApp] = useState<Application | null>(null);
+  const [templateApp, setTemplateApp] = useState<Application | null>(null);
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = usePersistentState('applications:search', '');
   const [statusFilter, setStatusFilter] = usePersistentState<string>('applications:status', 'all');
   const actionable = useActionableApplications(currentUser);
@@ -59,12 +62,21 @@ export default function ApplicationsPage() {
   // Deep link from notifications: /applications/:applicationId opens the detail dialog.
   useEffect(() => {
     if (!applicationId || loading) return;
+    // From the expiry reminder: /applications/:id?renew=1 opens a prefilled renewal.
+    const openIt = (app: Application) => {
+      if (searchParams.get('renew') === '1' && currentUser && canRenew(app, currentUser)) {
+        setEditApp(null); setTemplateApp(app); setFormOpen(true);
+        navigate('/applications', { replace: true });
+      } else {
+        setSelectedApp(app);
+      }
+    };
     const cached = store.getApplication(applicationId);
-    if (cached) { setSelectedApp(cached); return; }
+    if (cached) { openIt(cached); return; }
     if (!store.isApiMode()) { toast.error('Ansökan hittades inte'); return; }
     let cancelled = false;
     store.fetchApplication(applicationId)
-      .then(app => { if (!cancelled) setSelectedApp(app); })
+      .then(app => { if (!cancelled) openIt(app); })
       .catch(err => { if (!cancelled) toast.error(err instanceof Error ? err.message : 'Ansökan hittades inte'); });
     return () => { cancelled = true; };
   }, [applicationId, loading]);
@@ -169,7 +181,7 @@ export default function ApplicationsPage() {
             <Download className="mr-2 h-4 w-4" />Exportera
           </Button>
           {canCreateApplication && (
-            <Button onClick={() => { setEditApp(null); setFormOpen(true); }}>
+            <Button onClick={() => { setEditApp(null); setTemplateApp(null); setFormOpen(true); }}>
               <Plus className="mr-2 h-4 w-4" />Ny ansökan
             </Button>
           )}
@@ -218,13 +230,14 @@ export default function ApplicationsPage() {
         </div>
       )}
 
-      <ApplicationFormDialog open={formOpen} onOpenChange={setFormOpen} editApplication={editApp} onSaved={reloadPaged} />
+      <ApplicationFormDialog open={formOpen} onOpenChange={setFormOpen} editApplication={editApp} templateApplication={templateApp} onSaved={reloadPaged} />
       <ApplicationDetailDialog
         application={selectedApp}
         open={!!selectedApp}
         onOpenChange={(open) => { if (!open) closeDetail(); }}
         onUpdated={reloadPaged}
-        onEdit={(app) => { closeDetail(); setEditApp(app); setFormOpen(true); }}
+        onEdit={(app) => { closeDetail(); setTemplateApp(null); setEditApp(app); setFormOpen(true); }}
+        onReapply={(app) => { closeDetail(); setEditApp(null); setTemplateApp(app); setFormOpen(true); }}
         onDelete={handleDelete}
       />
     </div>

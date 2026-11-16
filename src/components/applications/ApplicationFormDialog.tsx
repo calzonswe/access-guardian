@@ -11,6 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertTriangle, Paperclip, X, FileText } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import * as store from '@/services/dataStore';
+import { checkRequirements } from '@/lib/requirements';
+import { renewalStartDate } from '@/lib/applicationRules';
+import { RequirementChecklist } from '@/components/applications/RequirementChecklist';
 import { notifyApplicationStatusChange } from '@/services/notifications';
 import * as api from '@/services/api';
 import type { Application } from '@/types/rbac';
@@ -20,12 +23,14 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editApplication?: Application | null;
+  /** Prefill a new application from an earlier one ("Förläng" / "Ansök igen"). */
+  templateApplication?: Application | null;
   onSaved?: () => void;
 }
 
 const SECURITY_LABELS: Record<string, string> = { low: 'Låg', medium: 'Medel', high: 'Hög', critical: 'Kritisk' };
 
-export function ApplicationFormDialog({ open, onOpenChange, editApplication, onSaved }: Props) {
+export function ApplicationFormDialog({ open, onOpenChange, editApplication, templateApplication, onSaved }: Props) {
   const { currentUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [facilityId, setFacilityId] = useState(editApplication?.facility_id || '');
@@ -43,6 +48,19 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
   // application's attachments.
   useEffect(() => {
     if (!open) return;
+    const template = !editApplication ? templateApplication : null;
+    if (template) {
+      // Only areas that still exist in the facility (areas may have been removed since).
+      const existing = new Set(store.getAreas(template.facility_id).map(a => a.id));
+      setFacilityId(template.facility_id);
+      setSelectedAreas((template.area_ids || []).filter(id => existing.has(id)));
+      setStartDate(renewalStartDate(template));
+      setEndDate('');
+      setJustification('');
+      setPendingFiles([]);
+      setExistingAttachments([]);
+      return;
+    }
     setFacilityId(editApplication?.facility_id || '');
     setSelectedAreas(editApplication?.area_ids || []);
     setStartDate((editApplication?.start_date || '').slice(0, 10));
@@ -50,13 +68,12 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
     setJustification(editApplication?.exception_justification || '');
     setPendingFiles([]);
     setExistingAttachments(editApplication?.attachments || []);
-  }, [open, editApplication]);
+  }, [open, editApplication, templateApplication]);
 
   if (!currentUser) return null;
 
   const facilities = store.getFacilities();
   const areas = facilityId ? store.getAreas(facilityId) : [];
-  const userReqs = store.getUserRequirements(currentUser.id);
 
   // Areas ordered as a tree with depth for indentation
   const areaTree: { area: typeof areas[number]; depth: number }[] = [];
@@ -82,19 +99,6 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
   // A parent is locked while any of its sub-areas is selected
   const lockedAreaIds = new Set(selectedAreas.flatMap(id => ancestorsOf(id)));
 
-  const facilityReqLinks = facilityId ? store.getFacilityRequirements(facilityId) : [];
-  const facilityReqIds = facilityReqLinks.map(fr => fr.requirement_id);
-
-  const areaReqIds = new Set<string>();
-  for (const areaId of selectedAreas) {
-    for (const ar of store.getAreaRequirements(areaId)) {
-      areaReqIds.add(ar.requirement_id);
-    }
-  }
-
-  const allReqIds = new Set([...facilityReqIds, ...areaReqIds]);
-  const combinedRequirements = store.getRequirements().filter(r => allReqIds.has(r.id));
-
   const toggleArea = (areaId: string) => {
     setSelectedAreas(prev => {
       if (prev.includes(areaId)) {
@@ -107,8 +111,9 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
     });
   };
 
-  const fulfilledReqIds = userReqs.filter(ur => ur.status === 'fulfilled').map(ur => ur.requirement_id);
-  const hasMissingReqs = combinedRequirements.length > 0 && combinedRequirements.some(r => !fulfilledReqIds.includes(r.id));
+  const requirementChecks = checkRequirements(currentUser.id, facilityId, selectedAreas, endDate || undefined);
+  const hasMissingReqs = requirementChecks.some(c => c.state === 'missing');
+  const isRenewal = !editApplication && !!templateApplication && ['approved', 'expired'].includes(templateApplication.status);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -159,6 +164,7 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
           status: 'pending_manager', start_date: startDate, end_date: endDate || undefined,
           has_exception: hasMissingReqs, exception_justification: hasMissingReqs ? justification : undefined,
           attachments: [],
+          renewed_from_id: isRenewal ? templateApplication.id : undefined,
         });
         appId = app.id;
         store.addLog({ action: 'application_created', actor_id: currentUser.id, target_id: app.id, target_type: 'application', details: `Ny ansökan skapad för ${store.getFacility(facilityId)?.name}` });
@@ -202,7 +208,7 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetForm(); onOpenChange(o); }}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>{editApplication ? 'Redigera ansökan' : 'Ny tillträdesansökan'}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editApplication ? 'Redigera ansökan' : isRenewal ? 'Förläng tillträde' : templateApplication ? 'Ansök igen' : 'Ny tillträdesansökan'}</DialogTitle></DialogHeader>
         <div className="space-y-4">
           {!currentUser.manager_id && !currentUser.contact_person_id && (
             <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm text-foreground">
@@ -240,6 +246,12 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, onS
             <div className="space-y-2"><Label>Startdatum</Label><Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
             <div className="space-y-2"><Label>Slutdatum (valfritt)</Label><Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
           </div>
+          {facilityId && (
+            <div className="space-y-2 rounded-lg border border-border p-3">
+              <Label className="block">Krav för ditt val</Label>
+              <RequirementChecklist checks={requirementChecks} emptyText="Inga krav för den här anläggningen och de valda områdena." />
+            </div>
+          )}
           {hasMissingReqs && (
             <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 space-y-2">
               <div className="flex items-center gap-2 text-warning"><AlertTriangle className="h-4 w-4" /><span className="text-sm font-medium">Du saknar krav – motivering behövs</span></div>

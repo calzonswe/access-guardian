@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, XCircle, FileText, Trash2, Pencil, Ban, Download, Send } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, Trash2, Pencil, Ban, Download, Send, RefreshCw, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import * as store from '@/services/dataStore';
 import { downloadAttachment } from '@/services/api';
 import { notifyApplicationStatusChange } from '@/services/notifications';
-import { canActOn } from '@/lib/applicationRules';
+import { canActOn, canRenew } from '@/lib/applicationRules';
 import { subordinateIds } from '@/hooks/useActionableApplications';
 import type { Application, ApplicationStatus } from '@/types/rbac';
 import { errorMessage } from '@/lib/utils';
@@ -32,9 +32,11 @@ interface Props {
   onUpdated?: () => void;
   onEdit?: (app: Application) => void;
   onDelete?: (app: Application) => void;
+  /** Open a new, prefilled application ("Förläng" / "Ansök igen"). */
+  onReapply?: (app: Application) => void;
 }
 
-export function ApplicationDetailDialog({ application, open, onOpenChange, onUpdated, onEdit, onDelete }: Props) {
+export function ApplicationDetailDialog({ application, open, onOpenChange, onUpdated, onEdit, onDelete, onReapply }: Props) {
   const { currentUser } = useAuth();
   const [denyReason, setDenyReason] = useState('');
   const [revokeOpen, setRevokeOpen] = useState(false);
@@ -150,6 +152,12 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
           <div className="flex items-center justify-between">
             <Badge variant="outline" className={status.className}>{status.label}</Badge>
             <div className="flex gap-1">
+              {onReapply && canRenew(application, currentUser) && (
+                <Button size="sm" onClick={() => onReapply(application)}><RefreshCw className="mr-1 h-4 w-4" />Förläng</Button>
+              )}
+              {onReapply && isApplicant && application.status === 'denied' && (
+                <Button size="sm" variant="outline" onClick={() => onReapply(application)}><RotateCcw className="mr-1 h-4 w-4" />Ansök igen</Button>
+              )}
               {canSubmit && (
                 <Button size="sm" onClick={handleSubmitDraft}><Send className="mr-1 h-4 w-4" />Skicka in</Button>
               )}
