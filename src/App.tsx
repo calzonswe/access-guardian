@@ -17,6 +17,7 @@ import Dashboard from "./pages/Dashboard";
 import ApplicationsPage from "./pages/ApplicationsPage";
 import FacilitiesPage from "./pages/FacilitiesPage";
 import AreasPage from "./pages/AreasPage";
+import FacilityAccessPage from "./pages/FacilityAccessPage";
 import RequirementsPage from "./pages/RequirementsPage";
 import UsersPage from "./pages/UsersPage";
 import OrganizationPage from "./pages/OrganizationPage";
@@ -69,6 +70,7 @@ const App = () => (
                   <Route path="/applications/:applicationId" element={<ApplicationsPage />} />
                   <Route path="/facilities" element={<RoleGuard roles={['administrator', 'facility_owner', 'facility_admin']}><FacilitiesPage /></RoleGuard>} />
                   <Route path="/facilities/:facilityId/areas" element={<RoleGuard roles={['administrator', 'facility_owner', 'facility_admin']}><AreasPage /></RoleGuard>} />
+                  <Route path="/facilities/:facilityId/access" element={<RoleGuard roles={['administrator', 'facility_owner', 'facility_admin']}><FacilityAccessPage /></RoleGuard>} />
                   <Route path="/areas" element={<Navigate to="/facilities" replace />} />
                   <Route path="/requirements" element={<RoleGuard roles={['administrator', 'facility_owner', 'facility_admin', 'line_manager']}><RequirementsPage /></RoleGuard>} />
                   <Route path="/users" element={<RoleGuard roles={['administrator']}><UsersPage /></RoleGuard>} />

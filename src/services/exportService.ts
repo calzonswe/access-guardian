@@ -70,16 +70,3 @@ export function exportRequirementsFulfillment(): void {
   }
   downloadCsv(`kravuppfyllnad_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
 }
-
-export function exportLogs(): void {
-  const logs = store.getLogs();
-  const users = store.getUsers();
-  const headers = ['Tidpunkt', 'Åtgärd', 'Utförd av', 'Detaljer'];
-  const rows = logs.map(l => [
-    new Date(l.created_at).toLocaleString('sv-SE'),
-    l.action,
-    users.find(u => u.id === l.actor_id)?.full_name || l.actor_id,
-    l.details,
-  ]);
-  downloadCsv(`systemlogg_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
-}

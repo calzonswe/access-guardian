@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, Shield, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { Plus, Pencil, Trash2, Shield, Search, ChevronLeft, ChevronRight, Download, Upload } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ROLE_LABELS, type AppRole } from '@/types/rbac';
 import * as store from '@/services/dataStore';
+import { UserImportDialog } from '@/components/users/UserImportDialog';
 import { errorMessage } from '@/lib/utils';
 import * as api from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
@@ -29,6 +30,7 @@ export default function UsersPage() {
   const [editUser, setEditUser] = useState<User | null>(null);
   const [reqDialogOpen, setReqDialogOpen] = useState(false);
   const [reqTargetUser, setReqTargetUser] = useState<User | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [search, setSearch] = usePersistentState('users:search', '');
   const [roleFilter, setRoleFilter] = usePersistentState<string>('users:role', 'all');
   const [statusFilter, setStatusFilter] = usePersistentState<string>('users:status', 'all');
@@ -109,6 +111,9 @@ export default function UsersPage() {
           <Button variant="outline" onClick={() => { exportRequirementsFulfillment(); toast.success('Kravuppfyllnad exporterad'); }}>
             <Download className="mr-2 h-4 w-4" />Kravrapport
           </Button>
+          {store.isApiMode() && (
+            <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="mr-2 h-4 w-4" />Importera</Button>
+          )}
           <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Ny användare</Button>
         </div>
       </div>
@@ -213,6 +218,7 @@ export default function UsersPage() {
       )}
 
       <UserFormDialog open={dialogOpen} onOpenChange={setDialogOpen} editUser={editUser} users={users} currentUserId={currentUser.id} onSaved={reloadPaged} />
+      <UserImportDialog open={importOpen} onOpenChange={setImportOpen} onImported={reloadPaged} />
       <UserRequirementDialog open={reqDialogOpen} onOpenChange={setReqDialogOpen} targetUser={reqTargetUser} onUpdated={reloadPaged} />
     </div>
   );

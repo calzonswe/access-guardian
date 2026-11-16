@@ -1,132 +1,208 @@
-import { useState, useMemo } from 'react';
-import { ScrollText, Download, Filter } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ScrollText, Download, Search, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import * as store from '@/services/dataStore';
-import { exportLogs } from '@/services/exportService';
-import { toast } from 'sonner';
+import * as api from '@/services/api';
 import LogAnalysisPanel from '@/components/logs/LogAnalysisPanel';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
+import { usePersistentState } from '@/hooks/usePersistentState';
+import { HISTORY_LABELS } from '@/components/applications/ApplicationHistory';
+import { toCsv } from '@/lib/csv';
+import { errorMessage } from '@/lib/utils';
+import { isoDay } from '@/lib/applicationRules';
+import type { SystemLog } from '@/types/rbac';
 
-const ACTION_OPTIONS = [
-  'all', 'application_created', 'application_approved_manager', 'application_approved_facility',
-  'application_denied', 'access_granted', 'access_revoked', 'access_expired',
-  'user_created', 'user_updated', 'role_assigned', 'role_removed',
-  'requirement_created', 'facility_created', 'area_created',
-];
+/** Swedish labels for the actions the backend writes to the audit log. */
+const ACTION_LABELS: Record<string, string> = {
+  ...HISTORY_LABELS,
+  application_deleted: 'Ansökan borttagen',
+  login_success: 'Inloggning',
+  login_failed: 'Misslyckad inloggning',
+  password_changed: 'Lösenord bytt',
+  password_reset_requested: 'Lösenordsåterställning begärd',
+  password_reset_completed: 'Lösenord återställt',
+  user_created: 'Användare skapad',
+  user_updated: 'Användare ändrad',
+  user_deleted: 'Användare borttagen',
+  requirement_fulfilled: 'Krav registrerat',
+  requirement_expired: 'Krav utgånget',
+  facility_created: 'Anläggning skapad',
+  facility_updated: 'Anläggning ändrad',
+  facility_deleted: 'Anläggning borttagen',
+  facility_admin_added: 'Anläggningsadministratör tillagd',
+  facility_admin_removed: 'Anläggningsadministratör borttagen',
+  area_created: 'Område skapat',
+  area_updated: 'Område ändrat',
+  area_deleted: 'Område borttaget',
+  settings_updated: 'Inställningar ändrade',
+  audit_ai_query: 'AI-analys av loggen',
+};
+const actionLabel = (a: string) => ACTION_LABELS[a] ?? a.replace(/_/g, ' ');
 
 const PAGE_SIZE = 50;
+const EXPORT_MAX = 10000;
+
+type LogRow = SystemLog & { actor_name?: string | null };
 
 export default function LogsPage() {
   const { loading } = useDataRefresh();
-  const allLogs = store.getLogs();
-  const users = store.getUsers();
-  const [filterAction, setFilterAction] = useState('all');
-  const [filterActor, setFilterActor] = useState('');
-  const [filterDetails, setFilterDetails] = useState('');
+  const apiMode = store.isApiMode();
+  const [q, setQ] = usePersistentState('logs:q', '');
+  const [action, setAction] = usePersistentState('logs:action', 'all');
+  const [from, setFrom] = usePersistentState('logs:from', '');
+  const [to, setTo] = usePersistentState('logs:to', '');
   const [page, setPage] = useState(1);
+  const [debouncedQ, setDebouncedQ] = useState(q);
+  const [items, setItems] = useState<LogRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [fetching, setFetching] = useState(false);
 
-  const filteredLogs = useMemo(() => {
-    return allLogs.filter(log => {
-      if (filterAction !== 'all' && log.action !== filterAction) return false;
-      if (filterActor) {
-        const actor = users.find(u => u.id === log.actor_id);
-        const name = actor?.full_name || '';
-        if (!name.toLowerCase().includes(filterActor.toLowerCase())) return false;
+  // Search as you type, without one request per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedQ(q); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  useEffect(() => {
+    if (!apiMode || loading) return;
+    let cancelled = false;
+    setFetching(true);
+    api.getLogsPage({ page, pageSize: PAGE_SIZE, q: debouncedQ.trim() || undefined, from: from || undefined, to: to || undefined, action })
+      .then(r => { if (!cancelled) { setItems(r.items); setTotal(r.total); } })
+      .catch(err => { if (!cancelled) toast.error(errorMessage(err, 'Kunde inte hämta loggen')); })
+      .finally(() => { if (!cancelled) setFetching(false); });
+    return () => { cancelled = true; };
+  }, [apiMode, loading, page, debouncedQ, from, to, action]);
+
+  // localStorage mode: filter the local log in the browser.
+  const localRows: LogRow[] = apiMode ? [] : store.getLogs().filter(l => {
+    const name = store.getUser(l.actor_id)?.full_name || '';
+    const text = `${l.action} ${l.details || ''} ${name}`.toLowerCase();
+    const day = l.created_at.slice(0, 10);
+    return (!debouncedQ.trim() || text.includes(debouncedQ.trim().toLowerCase()))
+      && (action === 'all' || l.action === action)
+      && (!from || day >= from) && (!to || day <= to);
+  });
+  const rows = apiMode ? items : localRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const count = apiMode ? total : localRows.length;
+  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
+  const hasFilter = !!(q || from || to || action !== 'all');
+  const actorName = (l: LogRow) => l.actor_name ?? store.getUser(l.actor_id)?.full_name ?? '–';
+
+  const clearFilters = () => { setQ(''); setAction('all'); setFrom(''); setTo(''); setPage(1); };
+
+  const exportFiltered = async () => {
+    try {
+      let all: LogRow[] = localRows;
+      if (apiMode) {
+        const r = await api.getLogsPage({ page: 1, pageSize: EXPORT_MAX, q: debouncedQ.trim() || undefined, from: from || undefined, to: to || undefined, action });
+        all = r.items;
+        if (r.total > EXPORT_MAX) toast.info(`Exporten innehåller de senaste ${EXPORT_MAX} av ${r.total} poster`);
       }
-      if (filterDetails && log.details && !log.details.toLowerCase().includes(filterDetails.toLowerCase())) return false;
-      return true;
-    });
-  }, [allLogs, filterAction, filterActor, filterDetails, users]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE));
-  const paginatedLogs = filteredLogs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+      const csv = toCsv(all.map(l => ({
+        tidpunkt: new Date(l.created_at).toLocaleString('sv-SE'),
+        handelse: actionLabel(l.action),
+        anvandare: actorName(l),
+        detaljer: l.details || '',
+      })), ['tidpunkt', 'handelse', 'anvandare', 'detaljer']);
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `systemlogg_${isoDay(new Date())}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast.success('Logg exporterad');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Exporten misslyckades'));
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Systemlogg</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {filteredLogs.length} av {allLogs.length} poster
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">{count} {hasFilter ? 'poster matchar filtret' : 'poster'}</p>
         </div>
-        {filteredLogs.length > 0 && (
-          <Button variant="outline" onClick={() => { exportLogs(); toast.success('Logg exporterad'); }}>
-            <Download className="mr-2 h-4 w-4" />Exportera
-          </Button>
+        {count > 0 && (
+          <Button variant="outline" onClick={exportFiltered}><Download className="mr-2 h-4 w-4" />Exportera{hasFilter ? ' urval' : ''}</Button>
         )}
       </div>
 
       <LogAnalysisPanel />
 
       <Card>
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Filter className="h-4 w-4" />
-            <span>Filtrera</span>
+        <CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[2fr_1.3fr_1fr_1fr_auto] lg:items-end">
+          <div className="space-y-1">
+            <Label htmlFor="log-q" className="text-xs">Sök</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input id="log-q" className="pl-9" placeholder="Användare, händelse eller detaljer…" value={q} onChange={e => setQ(e.target.value)} />
+            </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Select value={filterAction} onValueChange={v => { setFilterAction(v); setPage(1); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+          <div className="space-y-1">
+            <Label className="text-xs">Händelse</Label>
+            <Select value={action} onValueChange={v => { setAction(v); setPage(1); }}>
+              <SelectTrigger aria-label="Händelse"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Alla händelser</SelectItem>
-                {ACTION_OPTIONS.filter(o => o !== 'all').map(a => (
-                  <SelectItem key={a} value={a}>{a.replace(/_/g, ' ')}</SelectItem>
+                {Object.keys(ACTION_LABELS).sort((a, b) => actionLabel(a).localeCompare(actionLabel(b), 'sv')).map(a => (
+                  <SelectItem key={a} value={a}>{actionLabel(a)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Input
-              placeholder="Filtrera på användare..."
-              value={filterActor}
-              onChange={e => { setFilterActor(e.target.value); setPage(1); }}
-            />
-            <Input
-              placeholder="Filtrera på detaljer..."
-              value={filterDetails}
-              onChange={e => { setFilterDetails(e.target.value); setPage(1); }}
-            />
           </div>
+          <div className="space-y-1">
+            <Label htmlFor="log-from" className="text-xs">Från</Label>
+            <Input id="log-from" type="date" value={from} max={to || undefined} onChange={e => { setFrom(e.target.value); setPage(1); }} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="log-to" className="text-xs">Till och med</Label>
+            <Input id="log-to" type="date" value={to} min={from || undefined} onChange={e => { setTo(e.target.value); setPage(1); }} />
+          </div>
+          <Button variant="ghost" onClick={clearFilters} disabled={!hasFilter} className="justify-self-start">
+            <X className="mr-1 h-4 w-4" />Rensa
+          </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardContent className="p-0">
-          {paginatedLogs.length === 0 ? (
+          {rows.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <ScrollText className="h-12 w-12 text-muted-foreground/40 mb-4" />
-              <p className="text-muted-foreground">Inga loggposter matchar filtret</p>
+              <ScrollText className="h-12 w-12 text-muted-foreground/40 mb-4" aria-hidden="true" />
+              <p className="text-muted-foreground">{fetching || loading ? 'Laddar…' : 'Inga loggposter matchar filtret'}</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tid</TableHead>
-                  <TableHead>Användare</TableHead>
-                  <TableHead>Händelse</TableHead>
-                  <TableHead>Detaljer</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedLogs.map(log => {
-                  const actor = users.find(u => u.id === log.actor_id);
-                  return (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tid</TableHead>
+                    <TableHead>Användare</TableHead>
+                    <TableHead>Händelse</TableHead>
+                    <TableHead>Detaljer</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map(log => (
                     <TableRow key={log.id}>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(log.created_at).toLocaleString('sv-SE')}
-                      </TableCell>
-                      <TableCell className="font-medium">{actor?.full_name ?? '–'}</TableCell>
-                      <TableCell><Badge variant="outline" className="text-xs">{log.action.replace(/_/g, ' ')}</Badge></TableCell>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{new Date(log.created_at).toLocaleString('sv-SE')}</TableCell>
+                      <TableCell className="font-medium whitespace-nowrap">{actorName(log)}</TableCell>
+                      <TableCell><Badge variant="outline" className="text-xs whitespace-nowrap">{actionLabel(log.action)}</Badge></TableCell>
                       <TableCell className="text-sm text-muted-foreground">{log.details}</TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, MapPin, Plus, Pencil, Trash2, Shield, ChevronDown, ChevronUp, Users, Search } from 'lucide-react';
+import { Building2, MapPin, Plus, Pencil, Trash2, Shield, ShieldCheck, ChevronDown, ChevronUp, Users, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import * as store from '@/services/dataStore';
 import * as api from '@/services/api';
 import { errorMessage } from '@/lib/utils';
+import { activeAccessFor } from '@/lib/applicationRules';
 import { useAuth } from '@/context/AuthContext';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -246,6 +247,13 @@ export default function FacilitiesPage() {
                     ))}
                     {facilityAreas.length === 0 && <span className="text-xs text-muted-foreground">Inga områden</span>}
                   </div>
+
+                  {(currentUser.roles.includes('administrator') || facility.owner_id === currentUser.id || (facility.admin_ids || []).includes(currentUser.id)) && (
+                    <Link to={`/facilities/${facility.id}/access`} className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                      <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+                      Aktiva tillträden ({activeAccessFor(store.getApplications(), facility.id).length})
+                    </Link>
+                  )}
 
                   <div className="border-t border-border pt-3 mt-3">
                     <button

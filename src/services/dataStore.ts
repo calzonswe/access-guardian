@@ -88,9 +88,6 @@ async function loadFromApi(): Promise<void> {
   const token = api.getToken();
   if (!token) return; // No token = can't load yet, will load after login
 
-  // Logs are admin-only on the backend; skip them for everyone else.
-  const isAdmin = api.getTokenRoles().includes('administrator');
-
   // allSettled: one failing collection must not wipe all the others.
   const results = await Promise.allSettled([
     api.getUsers(),
@@ -98,7 +95,8 @@ async function loadFromApi(): Promise<void> {
     api.getAreas(),
     api.getRequirements(),
     api.getApplications(),
-    isAdmin ? api.getLogs() : Promise.resolve([] as SystemLog[]),
+    // The log page queries the server directly; nothing else needs the log in the cache.
+    Promise.resolve([] as SystemLog[]),
     api.getNotifications(),
     api.getOrgUnits(),
     api.getUserRequirements(),
@@ -782,7 +780,7 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
 
 export interface SystemSettings {
   branding?: { appName?: string; subtitle?: string; primaryColor?: string; logoUrl?: string; selfRegistration?: boolean };
-  notifications?: { expiryWarningDays?: number[]; emailEnabled?: boolean; warning30?: boolean; warning7?: boolean; warning1?: boolean };
+  notifications?: { expiryWarningDays?: number[]; emailEnabled?: boolean; warning30?: boolean; warning7?: boolean; warning1?: boolean; remindAfterDays?: number; escalateAfterDays?: number };
   security?: { sessionTimeoutMinutes?: number; maxLoginAttempts?: number; lockoutMinutes?: number; twoFactorRequired?: boolean };
   passwordPolicy?: { minLength?: number; requireUpper?: boolean; requireLower?: boolean; requireDigit?: boolean; requireSymbol?: boolean };
   general?: { organizationName?: string; language?: string; selfRegistration?: boolean };

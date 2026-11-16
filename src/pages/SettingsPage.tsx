@@ -25,7 +25,7 @@ const TYPE_ICONS: Record<string, typeof Award> = { certification: Award, clearan
 
 interface SystemSettings {
   branding?: { appName?: string; subtitle?: string; primaryColor?: string; logoUrl?: string };
-  notifications?: { expiryWarningDays?: number[]; emailEnabled?: boolean; warning30?: boolean; warning7?: boolean; warning1?: boolean };
+  notifications?: { expiryWarningDays?: number[]; emailEnabled?: boolean; warning30?: boolean; warning7?: boolean; warning1?: boolean; remindAfterDays?: number; escalateAfterDays?: number };
   security?: { sessionTimeoutMinutes?: number; maxLoginAttempts?: number; lockoutMinutes?: number; twoFactorRequired?: boolean };
   passwordPolicy?: { minLength?: number; requireUpper?: boolean; requireLower?: boolean; requireDigit?: boolean; requireSymbol?: boolean };
   general?: { organizationName?: string; language?: string; selfRegistration?: boolean };
@@ -34,7 +34,7 @@ interface SystemSettings {
 
 const DEFAULT_SETTINGS: SystemSettings = {
   branding: { appName: 'RBAC Access', subtitle: 'Tillträdeshantering', primaryColor: '#2563eb', logoUrl: '' },
-  notifications: { emailEnabled: true, warning30: true, warning7: true, warning1: true, expiryWarningDays: [30, 7, 1] },
+  notifications: { emailEnabled: true, warning30: true, warning7: true, warning1: true, expiryWarningDays: [30, 7, 1], remindAfterDays: 3, escalateAfterDays: 7 },
   security: { sessionTimeoutMinutes: 30, maxLoginAttempts: 5, lockoutMinutes: 15, twoFactorRequired: false },
   passwordPolicy: { minLength: 8, requireUpper: true, requireLower: true, requireDigit: true, requireSymbol: true },
   general: { organizationName: 'Företaget AB', language: 'Svenska', selfRegistration: true },
@@ -290,6 +290,25 @@ export default function SettingsPage() {
                   checked={settings.notifications?.emailEnabled !== false}
                   onCheckedChange={v => updateSetting('notifications', { emailEnabled: v })}
                 />
+              </div>
+              <Separator />
+              <div>
+                <p className="text-sm font-medium text-foreground">Ansökningar som väntar på beslut</p>
+                <p className="text-xs text-muted-foreground">En påminnelse till beslutsfattarna, och sedan en eskalering till administratörerna. 0 stänger av.</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="remind-days">Påminn efter (dagar)</Label>
+                  <Input id="remind-days" type="number" min={0} max={90}
+                    value={settings.notifications?.remindAfterDays ?? 3}
+                    onChange={e => updateSetting('notifications', { remindAfterDays: e.target.value === '' ? 0 : Math.max(0, Number(e.target.value)) })} />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="escalate-days">Eskalera efter (dagar)</Label>
+                  <Input id="escalate-days" type="number" min={0} max={180}
+                    value={settings.notifications?.escalateAfterDays ?? 7}
+                    onChange={e => updateSetting('notifications', { escalateAfterDays: e.target.value === '' ? 0 : Math.max(0, Number(e.target.value)) })} />
+                </div>
               </div>
             </CardContent>
           </Card>
