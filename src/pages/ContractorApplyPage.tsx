@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useBranding } from '@/context/BrandingContext';
 import { errorMessage } from '@/lib/utils';
 import { t } from '@/i18n';
+import { LanguageSwitch } from '@/components/layout/LanguageSwitch';
 
 interface PublicFacility { id: string; name: string; description?: string; address?: string }
 interface PublicArea { id: string; facility_id: string; name: string; security_level: string }
@@ -170,8 +171,9 @@ export default function ContractorApplyPage() {
         </div>
 
         {loading ? (
-          <p className="text-center text-muted-foreground">Laddar...</p>
+          <p className="text-center text-muted-foreground">{t('Laddar...')}</p>
         ) : (
+          <>
           <Card>
             <CardContent className="pt-6">
               <form onSubmit={submit} className="space-y-5">
@@ -274,12 +276,14 @@ export default function ContractorApplyPage() {
                 <div className="flex items-center justify-between pt-2">
                   <a href="/" className="text-sm text-muted-foreground hover:text-foreground">{t('← Tillbaka till inloggning')}</a>
                   <Button type="submit" disabled={submitting}>
-                    {submitting ? 'Skickar...' : t('Skicka ansökan')}
+                    {submitting ? t('Skickar...') : t('Skicka ansökan')}
                   </Button>
                 </div>
               </form>
             </CardContent>
           </Card>
+          <LanguageSwitch className="mt-4" />
+          </>
         )}
       </div>
     </div>

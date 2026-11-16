@@ -6,6 +6,12 @@ import * as store from '@/services/dataStore';
 import * as api from '@/services/api';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { errorMessage } from '@/lib/utils';
+import { getLanguage, setLanguage } from '@/i18n';
+
+/** Apply the account's language (reloads the page once if it differs). */
+function applyUserLanguage(user: { language?: 'sv' | 'en' } | null | undefined) {
+  if (user?.language && user.language !== getLanguage()) setLanguage(user.language);
+}
 import { t } from '@/i18n';
 
 interface AuthContextType {
@@ -47,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             try {
               const { user, mustChangePassword: mcp, sessionTimeoutMinutes: sto } = await api.getMe();
               setCurrentUser(user);
+              applyUserLanguage(user);
               setMustChangePassword(mcp);
               if (sto) setSessionTimeoutMinutes(sto);
               if (!mcp) await store.refreshAll({ maxAgeMs: 30_000 });
@@ -84,6 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const res = await api.login(email, password);
         setCurrentUser(res.user);
+        applyUserLanguage(res.user);
         setMustChangePassword(res.mustChangePassword);
         if (res.sessionTimeoutMinutes) setSessionTimeoutMinutes(res.sessionTimeoutMinutes);
         // Nothing can be loaded until a forced password change is done.
@@ -149,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // The server validates against the configurable password policy.
       const res = await api.changePassword(newPassword, currentPassword);
       setCurrentUser(res.user);
+      applyUserLanguage(res.user);
       setMustChangePassword(false);
       await store.refreshAll();
     } else {
@@ -172,6 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (store.isApiMode()) {
       api.getMe().then(({ user, mustChangePassword: mcp }) => {
         setCurrentUser(user);
+        applyUserLanguage(user);
         setMustChangePassword(mcp);
       }).catch(() => {});
     } else {

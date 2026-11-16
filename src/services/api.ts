@@ -192,7 +192,7 @@ export function updateUser(id: string, data: Partial<User & { password?: string 
   return put(`/users/${id}`, data);
 }
 
-export function updateMe(data: Partial<Pick<User, 'full_name' | 'first_name' | 'last_name' | 'phone' | 'title' | 'department' | 'substitute_id' | 'substitute_from' | 'substitute_to'>>): Promise<{ user: User }> {
+export function updateMe(data: Partial<Pick<User, 'full_name' | 'first_name' | 'last_name' | 'phone' | 'title' | 'department' | 'substitute_id' | 'substitute_from' | 'substitute_to' | 'language' | 'email_prefs'>>): Promise<{ user: User }> {
   return put('/auth/me', data);
 }
 
@@ -531,7 +531,7 @@ export function deleteOrgUnit(id: string): Promise<void> {
 // ============= SETTINGS =============
 
 export interface SystemSettings {
-  branding?: { appName?: string; subtitle?: string; primaryColor?: string; logoUrl?: string; selfRegistration?: boolean };
+  branding?: { appName?: string; subtitle?: string; primaryColor?: string; logoUrl?: string; selfRegistration?: boolean; emailAvailable?: boolean };
   notifications?: { expiryWarningDays?: number[]; emailEnabled?: boolean };
   security?: { sessionTimeoutMinutes?: number; maxLoginAttempts?: number; lockoutMinutes?: number; twoFactorRequired?: boolean };
   passwordPolicy?: { minLength?: number; requireUpper?: boolean; requireLower?: boolean; requireDigit?: boolean; requireSymbol?: boolean };

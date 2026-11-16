@@ -10,6 +10,7 @@ import * as api from '@/services/api';
 import { toast } from 'sonner';
 import { errorMessage } from '@/lib/utils';
 import { t } from '@/i18n';
+import { LanguageSwitch } from '@/components/layout/LanguageSwitch';
 
 export default function ResetPasswordPage() {
   const { appName, logoUrl } = useBranding();
@@ -49,7 +50,7 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>{t('Ogiltig länk')}</CardTitle>
@@ -66,7 +67,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
@@ -105,6 +106,7 @@ export default function ResetPasswordPage() {
           </form>
         </CardContent>
       </Card>
+      <LanguageSwitch className="mt-4" />
     </div>
   );
 }

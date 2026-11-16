@@ -14,8 +14,8 @@ import { t } from '@/i18n';
 const HEADERS = ['email', 'fornamn', 'efternamn', 'telefon', 'befattning', 'avdelning', 'foretag', 'chef_email', 'roller'];
 const MAX_ROWS = 500;
 const EXAMPLE = [
-  { email: 'anna.berg@foretag.se', fornamn: 'Anna', efternamn: 'Berg', telefon: '070-123 45 67', befattning: t('Driftchef'), avdelning: t('Drift'), foretag: '', chef_email: '', roller: t('Linjechef|Anställd') },
-  { email: 'erik.lund@foretag.se', fornamn: 'Erik', efternamn: 'Lund', telefon: '', befattning: t('Tekniker'), avdelning: t('Drift'), foretag: '', chef_email: 'anna.berg@foretag.se', roller: t('Anställd') },
+  { email: 'anna.berg@foretag.se', fornamn: t('Anna'), efternamn: t('Berg'), telefon: '070-123 45 67', befattning: t('Driftchef'), avdelning: t('Drift'), foretag: '', chef_email: '', roller: t('Linjechef|Anställd') },
+  { email: 'erik.lund@foretag.se', fornamn: t('Erik'), efternamn: t('Lund'), telefon: '', befattning: t('Tekniker'), avdelning: t('Drift'), foretag: '', chef_email: 'anna.berg@foretag.se', roller: t('Anställd') },
 ];
 
 const STATUS = {
@@ -102,7 +102,7 @@ export function UserImportDialog({ open, onOpenChange, onImported }: Props) {
               <Button onClick={() => fileRef.current?.click()}><FileUp className="mr-2 h-4 w-4" />{t('Välj fil')}</Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Kolumner: {HEADERS.join(', ')}. Roller skrivs som t.ex. <code>{t('Linjechef|Anställd')}</code> {t('(tom = Anställd).')} <code>chef_email</code> {t('kan peka på en befintlig användare eller någon i samma fil.')}
+              {t('Kolumner:')} {HEADERS.join(', ')}. Roller skrivs som t.ex. <code>{t('Linjechef|Anställd')}</code> {t('(tom = Anställd).')} <code>chef_email</code> {t('kan peka på en befintlig användare eller någon i samma fil.')}
             </p>
             {problem && <p className="text-sm text-destructive">{problem}</p>}
             {rows.length > 0 && (
@@ -176,7 +176,7 @@ export function UserImportDialog({ open, onOpenChange, onImported }: Props) {
           ) : (
             <>
               <Button variant="outline" onClick={() => close(false)}>{t('Avbryt')}</Button>
-              <Button onClick={runImport} disabled={busy || rows.length === 0}>{busy ? 'Importerar…' : t('Importera {v0} användare', { v0: rows.length || '' }).replace('  ', ' ')}</Button>
+              <Button onClick={runImport} disabled={busy || rows.length === 0}>{busy ? t('Importerar…') : t('Importera {v0} användare', { v0: rows.length || '' }).replace('  ', ' ')}</Button>
             </>
           )}
         </DialogFooter>

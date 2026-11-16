@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useBranding } from '@/context/BrandingContext';
 import * as api from '@/services/api';
 import { t } from '@/i18n';
+import { LanguageSwitch } from '@/components/layout/LanguageSwitch';
 
 export default function ForgotPasswordPage() {
   const { appName, logoUrl } = useBranding();
@@ -26,7 +27,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
@@ -70,7 +71,7 @@ export default function ForgotPasswordPage() {
                 />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Skickar...' : t('Skicka återställningslänk')}
+                {loading ? t('Skickar...') : t('Skicka återställningslänk')}
               </Button>
               <div className="text-center text-sm">
                 <Link to="/" className="text-primary hover:underline">
@@ -81,6 +82,7 @@ export default function ForgotPasswordPage() {
           )}
         </CardContent>
       </Card>
+      <LanguageSwitch className="mt-4" />
     </div>
   );
 }

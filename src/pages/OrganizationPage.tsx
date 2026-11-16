@@ -68,7 +68,7 @@ function OrgUnitCard({ node, depth, memberCount, canEdit, onEdit, onAddChild, on
           <p className="text-sm font-medium text-foreground">{node.name}</p>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className={`text-xs ${TYPE_STYLES[node.type]}`}>{ORG_UNIT_LABELS[node.type]}</Badge>
-            <span className="text-xs text-muted-foreground">Chef: {manager ? manager.full_name : tr('Ej utsedd')}</span>
+            <span className="text-xs text-muted-foreground">{tr('Chef:')} {manager ? manager.full_name : tr('Ej utsedd')}</span>
             <span className="text-xs text-muted-foreground">· {memberCount(node.id)} medarbetare</span>
           </div>
         </div>

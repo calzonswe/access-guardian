@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bell, Moon, Sun, Monitor, LogOut, User as UserIcon, Check, Search } from 'lucide-react';
+import { Bell, Moon, Sun, Monitor, LogOut, User as UserIcon, Check, Search, Languages } from 'lucide-react';
 import { GlobalSearch } from './GlobalSearch';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import * as store from '@/services/dataStore';
 import * as api from '@/services/api';
-import { t } from '@/i18n';
+import { t, getLanguage, setLanguage, type Language } from '@/i18n';
 
 const PAGE_TITLES: [prefix: string, title: string][] = [
   ['/applications', t('Ansökningar')],
@@ -51,6 +51,13 @@ export function AppHeader() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+  const changeLanguage = async (lang: Language) => {
+    if (lang === getLanguage()) return;
+    try {
+      if (store.isApiMode() && currentUser) await store.updateOwnProfile(currentUser.id, { language: lang });
+    } catch { /* still switch locally */ }
+    setLanguage(lang);
+  };
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 
   if (!currentUser) return null;
@@ -176,6 +183,15 @@ export function AppHeader() {
           <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => navigate('/profile')}>
             <UserIcon className="h-4 w-4" />{t('Min profil')}
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{t('Språk')}</DropdownMenuLabel>
+          {(['sv', 'en'] as const).map(lang => (
+            <DropdownMenuItem key={lang} lang={lang} className="cursor-pointer gap-2" onClick={() => changeLanguage(lang)}>
+              <Languages className="h-4 w-4" />
+              <span className="flex-1">{lang === 'sv' ? 'Svenska' : 'English'}</span>
+              {getLanguage() === lang && <Check className="h-4 w-4 text-primary" />}
+            </DropdownMenuItem>
+          ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem className="cursor-pointer gap-2 text-destructive focus:text-destructive" onClick={logout}>
             <LogOut className="h-4 w-4" />{t('Logga ut')}

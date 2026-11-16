@@ -357,7 +357,7 @@ export async function updateUser(id: string, data: Partial<Omit<StoredUser, 'id'
 }
 
 /** Update the logged-in user's own profile (self-service, not admin user management). */
-export async function updateOwnProfile(id: string, data: Partial<Pick<User, 'full_name' | 'first_name' | 'last_name' | 'phone' | 'title' | 'department' | 'substitute_id' | 'substitute_from' | 'substitute_to'>>): Promise<void> {
+export async function updateOwnProfile(id: string, data: Partial<Pick<User, 'full_name' | 'first_name' | 'last_name' | 'phone' | 'title' | 'department' | 'substitute_id' | 'substitute_from' | 'substitute_to' | 'language' | 'email_prefs'>>): Promise<void> {
   if (_apiMode) {
     await api.updateMe(data);
     return;

@@ -116,7 +116,7 @@ export default function FacilityAccessPage() {
             </CardHeader>
             <CardContent>
               {rows.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">{loading ? 'Laddar…' : t('Ingen har tillträde som matchar urvalet.')}</p>
+                <p className="py-8 text-center text-sm text-muted-foreground">{loading ? t('Laddar…') : t('Ingen har tillträde som matchar urvalet.')}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>

@@ -25,20 +25,25 @@ const defaultFiles = [
 const files = argFiles.length ? argFiles.map(f => path.resolve(f)) : defaultFiles;
 
 const SWEDISH = /[åäöÅÄÖ]/;
+// Language names are always shown in their own language.
+const NEVER_TRANSLATE = new Set(['Svenska', 'English', 'Språk / Language']);
 const UI_ATTRS = new Set(['placeholder', 'title', 'aria-label', 'alt', 'label', 'description', 'emptyText']);
 const CODE_KEYS = new Set(['value', 'url', 'key', 'id', 'type', 'variant', 'className', 'icon', 'href', 'to', 'path', 'role', 'status', 'name', 'action', 'target_type', 'mimeType', 'accept', 'method', 'side', 'align', 'activeClassName']);
 const looksLikeCode = (s) =>
   /^[\w\-:/.#[\]()%!>&=,@*+]+( [\w\-:/.#[\]()%!>&=,@*+]+)*$/.test(s) && !SWEDISH.test(s) && !/^[A-ZÅÄÖ][a-zåäö]+( |$)/.test(s)
   || /^(\/|https?:|#|\.|mailto:)/.test(s)
   || /^[a-z]+([A-Z_][a-z]+)+$/.test(s); // camelCase/snake identifiers
+// A capitalised word with trailing punctuation ("Laddar...", "Klart!") is text, not code.
+const isWordWithPunctuation = (s) => /^[A-ZÅÄÖ][a-zåäö]+[.!?…:]+$/.test(s);
 
 /** Is this text something a person reads? */
 function isUiText(s, strong) {
   const trimmed = s.trim();
   if (!/[A-Za-zÅÄÖåäö]/.test(trimmed)) return false;
-  if (looksLikeCode(trimmed)) return false;
+  if (NEVER_TRANSLATE.has(trimmed)) return false;
+  if (looksLikeCode(trimmed) && !isWordWithPunctuation(trimmed)) return false;
   if (strong) return true;                      // JSX text / UI attribute
-  return SWEDISH.test(trimmed) || /^[A-ZÅÄÖ][a-zåäö]+\b/.test(trimmed) && /\s/.test(trimmed) || /^[A-ZÅÄÖ][a-zåäö]{2,}$/.test(trimmed);
+  return SWEDISH.test(trimmed) || /^[A-ZÅÄÖ][a-zåäö]+\b/.test(trimmed) && /\s/.test(trimmed) || /^[A-ZÅÄÖ][a-zåäö]{2,}$/.test(trimmed) || isWordWithPunctuation(trimmed);
 }
 
 const q = (s) => `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n')}'`;
@@ -71,6 +76,8 @@ for (const file of files) {
     if (ts.isElementAccessExpression(p)) return true;
     if (ts.isBinaryExpression(p) && [ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken, ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsToken].includes(p.operatorToken.kind)) return true;
     if (ts.isCaseClause(p)) return true;
+    // Values assigned by key (headers['Authorization'] = `Bearer ${token}`) are data.
+    if (ts.isBinaryExpression(p) && p.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isElementAccessExpression(p.left)) return true;
     if (ts.isLiteralTypeNode(p)) return true;
     if (ts.isCallExpression(p) && ts.isIdentifier(p.expression) && ['cn', 'clsx', 'require', 'useParams'].includes(p.expression.text)) return true;
     if (ts.isCallExpression(p) && ts.isPropertyAccessExpression(p.expression) && ['getItem', 'setItem', 'removeItem', 'querySelector', 'get', 'set', 'has', 'startsWith', 'endsWith', 'includes', 'split', 'join', 'replace', 'test', 'addEventListener'].includes(p.expression.name.text)) return true;
@@ -144,7 +151,11 @@ for (const file of files) {
   for (const e of edits) if (!kept.some(k => e.start >= k.start && e.end <= k.end)) kept.push(e);
   let out = src;
   for (const e of kept) out = out.slice(0, e.start) + e.text + out.slice(e.end);
-  if (!/from '@\/i18n'/.test(out)) {
+  const existing = out.match(/import \{([^}]*)\} from '@\/i18n';/);
+  const wanted = fn === 't' ? 't' : 't as tr';
+  if (existing && !new RegExp(`\\b${fn === 't' ? 't' : 'tr'}\\b`).test(existing[1])) {
+    out = out.replace(existing[0], `import {${existing[1].replace(/\s*$/, '')}, ${wanted} } from '@/i18n';`);
+  } else if (!existing) {
     const imp = fn === 't' ? "import { t } from '@/i18n';\n" : "import { t as tr } from '@/i18n';\n";
     const lastImport = [...out.matchAll(/^import [^;]+;$/gm)].pop();
     out = lastImport ? out.slice(0, lastImport.index + lastImport[0].length) + '\n' + imp.trimEnd() + out.slice(lastImport.index + lastImport[0].length) : imp + out;

@@ -14,6 +14,7 @@ import { SubstituteCard } from '@/components/users/SubstituteCard';
 import { toast } from 'sonner';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
 import { t, locale } from '@/i18n';
+import { LanguageAndEmailCard } from '@/components/users/LanguageAndEmailCard';
 
 export default function ProfilePage() {
   useDataRefresh();
@@ -105,7 +106,7 @@ export default function ProfilePage() {
                 <div className="flex gap-1">
                   <Button variant="ghost" size="sm" onClick={() => setEditing(false)}><X className="h-4 w-4" /></Button>
                   <Button size="sm" onClick={handleSaveEdit} disabled={saving}>
-                    <Save className="mr-2 h-4 w-4" />{saving ? 'Sparar...' : t('Spara')}
+                    <Save className="mr-2 h-4 w-4" />{saving ? t('Sparar...') : t('Spara')}
                   </Button>
                 </div>
               )}
@@ -168,6 +169,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
+        <LanguageAndEmailCard user={currentUser} onSaved={refreshUser} />
         {currentUser.roles.includes('line_manager') && <SubstituteCard user={currentUser} onSaved={refreshUser} />}
 
         <Card>

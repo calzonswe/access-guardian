@@ -38,6 +38,8 @@ export interface User {
   substitute_from?: string | null; // 'YYYY-MM-DD', inclusive
   substitute_to?: string | null;
   substituting_for?: string[];     // Only on the logged-in user: managers they stand in for
+  language?: 'sv' | 'en';          // Only on the logged-in user
+  email_prefs?: { action?: boolean; status?: boolean; expiry?: boolean };
 }
 
 export interface Facility {

@@ -15,7 +15,7 @@ export default function MyAccessPage() {
   const { currentUser } = useAuth();
   const { loading } = useDataRefresh();
   if (!currentUser) return null;
-  if (loading) return <div className="flex items-center justify-center p-8 text-muted-foreground">Laddar...</div>;
+  if (loading) return <div className="flex items-center justify-center p-8 text-muted-foreground">{t('Laddar...')}</div>;
 
   const applications = store.getApplications();
   const requirements = store.getRelevantRequirements(currentUser.id);

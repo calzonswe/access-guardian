@@ -103,7 +103,7 @@ export function BulkActionBar({ selected, onClear, onDone }: Props) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDenyOpen(false)} disabled={busy}>{t('Avbryt')}</Button>
-            <Button variant="destructive" onClick={() => run('deny')} disabled={busy || !reason.trim()}>{busy ? 'Nekar…' : t('Neka {n}', { n })}</Button>
+            <Button variant="destructive" onClick={() => run('deny')} disabled={busy || !reason.trim()}>{busy ? t('Nekar…') : t('Neka {n}', { n })}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

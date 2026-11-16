@@ -147,7 +147,7 @@ export default function AreasPage() {
 
       {facilities.length === 0 ? (
         <Card><CardContent className="py-16 text-center text-muted-foreground">
-          {loading ? 'Laddar…' : routeFacilityId
+          {loading ? tr('Laddar…') : routeFacilityId
             ? tr('Anläggningen finns inte, eller så har du inte behörighet att hantera den.')
             : tr('Skapa en anläggning först')}
         </CardContent></Card>

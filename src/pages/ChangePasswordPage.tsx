@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useAuth } from '@/context/AuthContext';
 import { errorMessage } from '@/lib/utils';
 import { t } from '@/i18n';
+import { LanguageSwitch } from '@/components/layout/LanguageSwitch';
 
 export default function ChangePasswordPage() {
   const { changePassword, logout } = useAuth();
@@ -35,7 +36,7 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
@@ -81,6 +82,7 @@ export default function ChangePasswordPage() {
           </form>
         </CardContent>
       </Card>
+      <LanguageSwitch className="mt-4" />
     </div>
   );
 }

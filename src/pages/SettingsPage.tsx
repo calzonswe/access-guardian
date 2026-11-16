@@ -38,7 +38,7 @@ const DEFAULT_SETTINGS: SystemSettings = {
   notifications: { emailEnabled: true, warning30: true, warning7: true, warning1: true, expiryWarningDays: [30, 7, 1], remindAfterDays: 3, escalateAfterDays: 7 },
   security: { sessionTimeoutMinutes: 30, maxLoginAttempts: 5, lockoutMinutes: 15, twoFactorRequired: false },
   passwordPolicy: { minLength: 8, requireUpper: true, requireLower: true, requireDigit: true, requireSymbol: true },
-  general: { organizationName: t('Företaget AB'), language: t('Svenska'), selfRegistration: true },
+  general: { organizationName: t('Företaget AB'), language: 'Svenska', selfRegistration: true },
   auth: { localEnabled: true, entraEnabled: false, entraTenantId: '', entraClientId: '', samlEnabled: false },
 };
 
@@ -119,7 +119,7 @@ export default function SettingsPage() {
         {settingsLoaded && (
           <Button onClick={handleSaveSettings} disabled={saving}>
             <Save className="mr-2 h-4 w-4" />
-            {saving ? 'Sparar...' : t('Spara inställningar')}
+            {saving ? t('Sparar...') : t('Spara inställningar')}
           </Button>
         )}
       </div>
@@ -503,7 +503,7 @@ function SystemStatusTab() {
         <CardContent className="space-y-4">
           {error && <p className="text-sm text-destructive">{error}</p>}
           {!status ? (
-            <p className="text-sm text-muted-foreground">{loading ? 'Laddar...' : '–'}</p>
+            <p className="text-sm text-muted-foreground">{loading ? t('Laddar...') : '–'}</p>
           ) : (
             <div className="grid gap-4 md:grid-cols-3">
               <div className="rounded-lg border border-border p-4 space-y-2">
@@ -528,8 +528,8 @@ function SystemStatusTab() {
                 {status.email.enabled ? (
                   <div className="space-y-0.5 text-xs text-muted-foreground">
                     <p>{status.email.host}:{status.email.port}{status.email.secure ? ' (TLS)' : ''}</p>
-                    <p>Status: {status.email.verified ? t('Verifierad') : t('Ej verifierad')}</p>
-                    {status.email.lastError && <p className="text-destructive">Fel: {status.email.lastError}</p>}
+                    <p>{t('Status:')} {status.email.verified ? t('Verifierad') : t('Ej verifierad')}</p>
+                    {status.email.lastError && <p className="text-destructive">{t('Fel:')} {status.email.lastError}</p>}
                     <p>{t('Senast skickat:')} {formatRelative(status.email.lastSentAt)}</p>
                   </div>
                 ) : (
@@ -545,8 +545,8 @@ function SystemStatusTab() {
                 </div>
                 <div className="space-y-0.5 text-xs text-muted-foreground">
                   <p>{t('Node')} {status.server.nodeVersion} ({status.server.env})</p>
-                  <p>Uptime: {Math.floor(status.server.uptimeSeconds / 3600)}h {Math.floor((status.server.uptimeSeconds % 3600) / 60)}m</p>
-                  {status.server.version && <p>Version: {status.server.version}</p>}
+                  <p>{t('Uptime:')} {Math.floor(status.server.uptimeSeconds / 3600)}h {Math.floor((status.server.uptimeSeconds % 3600) / 60)}m</p>
+                  {status.server.version && <p>{t('Version:')} {status.server.version}</p>}
                 </div>
               </div>
             </div>
@@ -574,13 +574,13 @@ function SystemStatusTab() {
           <CardContent className="space-y-2 text-sm">
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Status:</span>
+                <span className="text-muted-foreground">{t('Status:')}</span>
                 <Badge variant={status.expiryJob.enabled ? 'secondary' : 'outline'}>
                   {status.expiryJob.enabled ? t('Aktiverat') : t('Avstängt')}
                 </Badge>
               </div>
               <div>
-                <span className="text-muted-foreground">Intervall:</span>{' '}
+                <span className="text-muted-foreground">{t('Intervall:')}</span>{' '}
                 {status.expiryJob.intervalMs ? `${Math.round(status.expiryJob.intervalMs / 60000)} min` : '–'}
               </div>
               <div>

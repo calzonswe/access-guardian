@@ -179,15 +179,15 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div><span className="text-muted-foreground">{t('Sökande:')}</span> <span className="font-medium">{applicant?.full_name ?? '–'}</span></div>
             <div><span className="text-muted-foreground">{t('Anläggning:')}</span> <span className="font-medium">{facility?.name ?? '–'}</span></div>
-            <div><span className="text-muted-foreground">Startdatum:</span> <span className="font-medium">{application.start_date}</span></div>
-            <div><span className="text-muted-foreground">Slutdatum:</span> <span className="font-medium">{application.end_date ?? t('Tillsvidare')}</span></div>
+            <div><span className="text-muted-foreground">{t('Startdatum:')}</span> <span className="font-medium">{application.start_date}</span></div>
+            <div><span className="text-muted-foreground">{t('Slutdatum:')}</span> <span className="font-medium">{application.end_date ?? t('Tillsvidare')}</span></div>
           </div>
           {areas.length > 0 && (
             <div><p className="text-sm text-muted-foreground mb-1">{t('Begärda områden:')}</p><div className="flex flex-wrap gap-1">{areas.map(a => <Badge key={a.id} variant="outline" className="text-xs">{a.name}</Badge>)}</div></div>
           )}
           {application.attachments && application.attachments.length > 0 && (
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Bilagor:</p>
+              <p className="text-sm text-muted-foreground mb-1">{t('Bilagor:')}</p>
               <div className="space-y-1">
                 {application.attachments.map(att => (
                   <button
@@ -231,7 +231,7 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
             <ApplicationHistory applicationId={application.id} />
           ) : (
             <div className="space-y-1 text-xs text-muted-foreground">
-              <p>Skapad: {new Date(application.created_at).toLocaleString(locale())}</p>
+              <p>{t('Skapad:')} {new Date(application.created_at).toLocaleString(locale())}</p>
               {application.manager_approved_at && <p className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-success" />{t('Chef godkänd:')} {new Date(application.manager_approved_at).toLocaleString(locale())}</p>}
               {application.facility_approved_at && <p className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-success" />{t('Anläggning godkänd:')} {new Date(application.facility_approved_at).toLocaleString(locale())}</p>}
             </div>

@@ -179,7 +179,7 @@ export default function LogsPage() {
           {rows.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <ScrollText className="h-12 w-12 text-muted-foreground/40 mb-4" aria-hidden="true" />
-              <p className="text-muted-foreground">{fetching || loading ? 'Laddar…' : tr('Inga loggposter matchar filtret')}</p>
+              <p className="text-muted-foreground">{fetching || loading ? tr('Laddar…') : tr('Inga loggposter matchar filtret')}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
