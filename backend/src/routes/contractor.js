@@ -147,10 +147,12 @@ router.post('/apply', async (req, res) => {
       const hash = await bcrypt.hash(tempPassword, 12);
       const fullName = `${first_name} ${last_name}`.trim().slice(0, 255);
       const { rows: created } = await client.query(
-        `INSERT INTO users (email, full_name, first_name, last_name, password_hash, phone, contact_person_id, company, is_active, must_change_password)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,true,true) RETURNING id`,
+        `INSERT INTO users (email, full_name, first_name, last_name, password_hash, phone, contact_person_id, company, is_active, must_change_password, language)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,true,true,$9) RETURNING id`,
         [email, fullName, String(first_name).slice(0, 128), String(last_name).slice(0, 128), hash,
-         phone ? String(phone).slice(0, 50) : null, sponsor.id, String(company).slice(0, 255)]
+         phone ? String(phone).slice(0, 50) : null, sponsor.id, String(company).slice(0, 255),
+         // The language the form was filled in becomes the account's language.
+         String(req.headers['x-language'] || '').toLowerCase() === 'en' ? 'en' : 'sv']
       );
       contractorId = created[0].id;
       await client.query(

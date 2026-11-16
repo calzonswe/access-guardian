@@ -79,6 +79,11 @@ router.post('/login', async (req, res) => {
     }
 
     await recordSuccess(email);
+    const headerLang = String(req.headers['x-language'] || '').toLowerCase();
+    if (!user.language_set && LANGS.includes(headerLang) && headerLang !== user.language) {
+      await pool.query('UPDATE users SET language = $1 WHERE id = $2', [headerLang, user.id]);
+      user.language = headerLang;
+    }
     const { sessionTimeoutMinutes } = await getSecuritySettings();
     const token = signToken(
       { id: user.id, email: user.email, roles: roles.filter(Boolean) },
@@ -291,6 +296,19 @@ router.put('/me', authMiddleware, async (req, res) => {
       vals.push(v);
       updates.push(`${name} = $${vals.length}`);
     }
+    if (body.language !== undefined) {
+      if (!LANGS.includes(body.language)) return res.status(400).json({ error: 'Ogiltigt språk' });
+      vals.push(body.language); updates.push(`language = $${vals.length}`);
+      updates.push('language_set = true');
+    }
+    if (body.email_prefs !== undefined) {
+      const p = body.email_prefs;
+      if (!p || typeof p !== 'object' || Array.isArray(p)) return res.status(400).json({ error: 'Ogiltiga e-postinställningar' });
+      const clean = {};
+      for (const k of EMAIL_KEYS) if (typeof p[k] === 'boolean') clean[k] = p[k];
+      vals.push(JSON.stringify(clean)); updates.push(`email_prefs = $${vals.length}::jsonb`);
+    }
+
     // Line managers set their own substitute during absence.
     const sendsSubstitute = ['substitute_id', 'substitute_from', 'substitute_to'].some(k => body[k] !== undefined);
     if (sendsSubstitute) {
@@ -320,8 +338,16 @@ router.put('/me', authMiddleware, async (req, res) => {
 
 /** The logged-in user's own view: mapUser plus whom they stand in for. */
 async function selfView(row) {
-  return { ...mapUser(row), substituting_for: await getAbsentManagerIdsFor(pool, row.id) };
+  return {
+    ...mapUser(row),
+    substituting_for: await getAbsentManagerIdsFor(pool, row.id),
+    language: row.language === 'en' ? 'en' : 'sv',
+    email_prefs: row.email_prefs || {},
+  };
 }
+
+const LANGS = ['sv', 'en'];
+const EMAIL_KEYS = ['action', 'status', 'expiry'];
 
 function mapUser(row) {
   let roles = [];

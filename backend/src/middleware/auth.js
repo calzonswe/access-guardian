@@ -45,7 +45,7 @@ export async function authMiddleware(req, res, next) {
     // Always load fresh state from the database: deactivated users, revoked
     // roles and tokens issued before a password change must stop working.
     const { rows } = await pool.query(
-      `SELECT u.is_active, u.must_change_password, u.password_changed_at,
+      `SELECT u.is_active, u.must_change_password, u.password_changed_at, u.language,
               COALESCE(array_agg(ur.role::text) FILTER (WHERE ur.role IS NOT NULL), '{}'::text[]) AS roles
          FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id
         WHERE u.id = $1 GROUP BY u.id`,
@@ -68,6 +68,7 @@ export async function authMiddleware(req, res, next) {
       id: decoded.id,
       email: decoded.email,
       roles,
+      language: u.language === 'en' ? 'en' : 'sv',
     };
     next();
   } catch {

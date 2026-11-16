@@ -157,7 +157,7 @@ async function notifyApprovers(appId, scope, newStatus, actorId) {
     : APPROVER_MESSAGES[newStatus];
   for (const uid of ids) {
     if (uid === actorId) continue;
-    await notifyUser(pool, uid, { title, message, type: 'action_required', link: `/applications/${appId}` });
+    await notifyUser(pool, uid, { title, message, type: 'action_required', link: `/applications/${appId}`, category: 'action' });
   }
 }
 
@@ -510,6 +510,7 @@ router.put('/:id', async (req, res) => {
       const tm = titleMap[newStatus];
       if (tm && scope.applicantId !== req.user.id) {
         await notifyUser(pool, scope.applicantId, {
+          category: 'status',
           title: tm[0], message: tm[1],
           type: newStatus === 'denied' || newStatus === 'expired' ? 'warning' : 'info',
           link: `/applications/${appId}`,

@@ -19,6 +19,7 @@ import { sendMailToUser, isEmailEnabled, htmlEscape } from '../services/email.js
 import { logger } from '../services/logger.js';
 import { notificationEmailsEnabled, getReminderSettings } from '../services/settings.js';
 import { reminderAction, approverIdsFor, activeAdministratorIds } from '../services/approvers.js';
+import { wantsEmail } from '../services/notify.js';
 import { getApplicationScope } from '../routes/applications.js';
 
 const DEFAULT_WARNING_DAYS = [30, 7, 1];
@@ -54,7 +55,7 @@ async function getWarningDays() {
   return DEFAULT_WARNING_DAYS;
 }
 
-async function notifyOnce(client, { userId, title, message, type, link, email = true }) {
+async function notifyOnce(client, { userId, title, message, type, link, email = true, category }) {
   // Skip if we already created an identical notification recently (48h window)
   const { rowCount } = await client.query(
     `SELECT 1 FROM notifications
@@ -70,7 +71,7 @@ async function notifyOnce(client, { userId, title, message, type, link, email = 
     [userId, title, message, type, link || null]
   );
   // Fire-and-forget email (no await on commit path)
-  if (email && isEmailEnabled() && await notificationEmailsEnabled()) {
+  if (email && await wantsEmail(client, userId, category)) {
     sendMailToUser(userId, {
       subject: title,
       title,
@@ -98,6 +99,7 @@ async function processExpiredApplications(client) {
       [r.applicant_id, r.id, 'Åtkomst har gått ut automatiskt']
     );
     await notifyOnce(client, {
+          category: 'expiry',
       userId: r.applicant_id,
       title: 'Åtkomst utgången',
       message: 'Din åtkomst till anläggningen har gått ut.',
@@ -124,6 +126,7 @@ async function processExpiredRequirements(client) {
       [r.user_id, r.id, 'Kravet har gått ut automatiskt']
     );
     await notifyOnce(client, {
+          category: 'expiry',
       userId: r.user_id,
       title: 'Krav utgånget',
       message: 'Ett av dina krav har gått ut. Förnya det för att behålla åtkomst.',
@@ -147,6 +150,7 @@ async function processUpcomingApplications(client, warningDays) {
     );
     for (const r of rows) {
       const created = await notifyOnce(client, {
+          category: 'expiry',
         userId: r.applicant_id,
         title: `Åtkomst går ut om ${days} dag${days === 1 ? '' : 'ar'}`,
         message: `Din åtkomst löper ut ${new Date(r.end_date).toLocaleDateString('sv-SE')}. Förnya i god tid via knappen Förläng.`,
@@ -173,6 +177,7 @@ async function processUpcomingRequirements(client, warningDays) {
     );
     for (const r of rows) {
       const created = await notifyOnce(client, {
+          category: 'expiry',
         userId: r.user_id,
         title: `Krav går ut om ${days} dag${days === 1 ? '' : 'ar'}`,
         message: `Kravet "${r.req_name}" löper ut ${new Date(r.expires_at).toLocaleDateString('sv-SE')}.`,
@@ -215,6 +220,7 @@ async function processStuckApplications(client, settings) {
       const { ids } = await approverIdsFor(client, scope, app.status);
       for (const uid of ids) {
         await notifyOnce(client, {
+          category: 'action',
           userId: uid,
           title: 'Påminnelse: ansökan väntar på ditt beslut',
           message: `En tillträdesansökan har ${STATUS_LABELS[app.status]} i ${days} dagar.`,
@@ -227,6 +233,7 @@ async function processStuckApplications(client, settings) {
     } else {
       for (const uid of await activeAdministratorIds(client)) {
         await notifyOnce(client, {
+          category: 'action',
           userId: uid,
           title: `Ansökan har väntat i ${days} dagar`,
           message: `En tillträdesansökan har ${STATUS_LABELS[app.status]} i ${days} dagar utan beslut.`,

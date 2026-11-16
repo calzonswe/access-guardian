@@ -401,6 +401,7 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
         'SELECT DISTINCT owner_id FROM facilities WHERE id = ANY($1) AND owner_id IS NOT NULL', [facilityIds]);
       for (const o of owners) {
         await notifyUser(pool, o.owner_id, {
+          category: 'status',
           title: 'Tillträde återkallat – kontot inaktiverat',
           message: `${pub.full_name} har inaktiverats och tillträdet till din anläggning har återkallats.`,
           type: 'warning',
@@ -414,6 +415,7 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
         `SELECT COUNT(*)::int AS n FROM applications WHERE applicant_id = $1 AND status = 'pending_manager'`, [targetId]);
       if (waiting[0].n > 0) {
         await notifyUser(pool, newManagerId, {
+          category: 'action',
           title: 'Ansökningar väntar på din attestering',
           message: `Du är nu närmaste chef för ${pub.full_name}, som har ${waiting[0].n} ansökan/ansökningar som väntar på attestering.`,
           type: 'action_required',
