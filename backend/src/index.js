@@ -24,6 +24,7 @@ import { startExpiryScheduler, runExpiryJob, getExpiryStats } from './jobs/expir
 import { getEmailStatus, isEmailEnabled } from './services/email.js';
 import { logger } from './services/logger.js';
 import { getAllSettings } from './services/settings.js';
+import { translateResponses } from './services/i18n.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,6 +37,8 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
+// Error/message texts follow the user's language (Swedish source, English on request).
+app.use(translateResponses);
 
 // Health check (both paths for nginx proxy and direct access)
 async function healthHandler(_req, res) {
@@ -80,6 +83,8 @@ app.get('/api/settings/branding', async (_req, res) => {
       appName: b.appName, subtitle: b.subtitle, logoUrl: b.logoUrl, primaryColor: b.primaryColor,
       // lets the login page hide the contractor link when the form is off
       selfRegistration: s?.general?.selfRegistration !== false,
+      // whether notification e-mails can go out at all (SMTP configured and switched on)
+      emailAvailable: isEmailEnabled() && s?.notifications?.emailEnabled !== false,
     });
   } catch {
     res.status(500).json({ error: 'Internt serverfel' });

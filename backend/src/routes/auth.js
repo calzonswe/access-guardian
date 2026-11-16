@@ -6,6 +6,7 @@ import { signToken, authMiddleware } from '../middleware/auth.js';
 import { createRateLimit } from '../middleware/rateLimit.js';
 import { audit } from '../services/audit.js';
 import { sendMail, isEmailEnabled, htmlEscape } from '../services/email.js';
+import { translate } from '../services/i18n.js';
 import { getSecuritySettings, getPasswordPolicy, validatePassword } from '../services/settings.js';
 import { checkLock, recordFailure, recordSuccess } from '../services/loginAttempts.js';
 import { validateSubstitute, getAbsentManagerIdsFor } from '../services/substitutes.js';
@@ -157,13 +158,14 @@ router.post('/forgot-password', forgotLimiter, async (req, res) => {
       return res.json({ success: true });
     }
     const { rows } = await pool.query(
-      'SELECT id, email, full_name FROM users WHERE LOWER(email) = LOWER($1) AND is_active = true',
+      'SELECT id, email, full_name, language FROM users WHERE LOWER(email) = LOWER($1) AND is_active = true',
       [email]
     );
     if (rows.length === 0) {
       return res.json({ success: true });
     }
     const user = rows[0];
+    const lang = user.language === 'en' ? 'en' : 'sv';
     const raw = randomBytes(32).toString('hex');
     const tokenHash = hashToken(raw);
     const expires = new Date(Date.now() + RESET_TOKEN_TTL_MIN * 60 * 1000);
@@ -184,7 +186,12 @@ router.post('/forgot-password', forgotLimiter, async (req, res) => {
         to: user.email,
         subject: 'Återställ ditt lösenord',
         title: 'Återställ ditt lösenord',
-        body: `<p>Hej ${htmlEscape(user.full_name || '')},</p><p>Klicka på knappen nedan för att välja ett nytt lösenord. Länken gäller i ${RESET_TOKEN_TTL_MIN} minuter.</p><p>Om du inte begärt återställning kan du ignorera detta meddelande.</p>`,
+        body: [
+          `Hej ${user.full_name || ''},`,
+          `Klicka på knappen nedan för att välja ett nytt lösenord. Länken gäller i ${RESET_TOKEN_TTL_MIN} minuter.`,
+          'Om du inte begärt återställning kan du ignorera detta meddelande.',
+        ].map(p => `<p>${htmlEscape(translate(p, lang))}</p>`).join(''),
+        lang,
         ctaLabel: 'Återställ lösenord',
         ctaUrl: link,
       }).catch(() => {});

@@ -20,6 +20,7 @@ import { logger } from '../services/logger.js';
 import { notificationEmailsEnabled, getReminderSettings } from '../services/settings.js';
 import { reminderAction, approverIdsFor, activeAdministratorIds } from '../services/approvers.js';
 import { wantsEmail } from '../services/notify.js';
+import { translate, userLanguage } from '../services/i18n.js';
 import { getApplicationScope } from '../routes/applications.js';
 
 const DEFAULT_WARNING_DAYS = [30, 7, 1];
@@ -56,6 +57,9 @@ async function getWarningDays() {
 }
 
 async function notifyOnce(client, { userId, title, message, type, link, email = true, category }) {
+  const lang = await userLanguage(client, userId).catch(() => 'sv');
+  title = translate(title, lang);
+  message = translate(message, lang);
   // Skip if we already created an identical notification recently (48h window)
   const { rowCount } = await client.query(
     `SELECT 1 FROM notifications

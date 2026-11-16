@@ -4,6 +4,7 @@ import { pool } from '../db.js';
 import { requireRole, getManagedUserIds, VALID_ROLES } from '../middleware/rbac.js';
 import { audit } from '../services/audit.js';
 import { sendMail, isEmailEnabled, htmlEscape } from '../services/email.js';
+import { translate, requestLanguage } from '../services/i18n.js';
 import { getPasswordPolicy, validatePassword } from '../services/settings.js';
 import { getSubstitutedReportIds, validateSubstitute } from '../services/substitutes.js';
 import { notifyUser } from '../services/notify.js';
@@ -256,7 +257,10 @@ router.post('/', requireRole('administrator'), async (req, res) => {
           to: email,
           subject: 'Välkommen till Access Guardian',
           title: 'Ditt konto har skapats',
-          body: `<p>Hej ${htmlEscape(full_name)},</p><p>Ett konto har skapats åt dig. Klicka på knappen nedan för att välja ditt lösenord. Länken gäller i 24 timmar.</p>`,
+          // New accounts are created in Swedish; the welcome mail follows the admin's language.
+          body: [`Hej ${full_name},`, 'Ett konto har skapats åt dig. Klicka på knappen nedan för att välja ditt lösenord. Länken gäller i 24 timmar.']
+            .map(p => `<p>${htmlEscape(translate(p, requestLanguage(req)))}</p>`).join(''),
+          lang: requestLanguage(req),
           ctaLabel: 'Välj lösenord',
           ctaUrl: link,
         }).catch(() => {});

@@ -2,6 +2,7 @@
 import { pool } from '../db.js';
 import { sendMailToUser, isEmailEnabled, htmlEscape } from './email.js';
 import { notificationEmailsEnabled } from './settings.js';
+import { translate, userLanguage } from './i18n.js';
 
 /**
  * E-mail categories a user can switch off (users.email_prefs):
@@ -27,6 +28,10 @@ export async function wantsEmail(db, userId, category) {
 
 export async function notifyUser(db, userId, { title, message, type = 'info', link, category }) {
   if (!userId) return;
+  // Stored (and mailed) in the recipient's language.
+  const lang = await userLanguage(db || pool, userId).catch(() => 'sv');
+  title = translate(title, lang);
+  message = translate(message, lang);
   try {
     await db.query(
       `INSERT INTO notifications (user_id, title, message, type, read, link)
@@ -43,6 +48,7 @@ export async function notifyUser(db, userId, { title, message, type = 'info', li
       body: `<p>${htmlEscape(message)}</p>`,
       ctaLabel: link ? 'Öppna i Access Guardian' : undefined,
       ctaUrl: link,
+      lang,
     }).catch(() => {});
   }
 }

@@ -12,6 +12,7 @@ import { issueCaptcha, verifyCaptcha } from '../services/captcha.js';
 import { expandAreaAncestors } from '../services/areaTree.js';
 import { isSelfRegistrationEnabled } from '../services/settings.js';
 import { generateTempPassword } from '../services/userImport.js';
+import { translate, userLanguage } from '../services/i18n.js';
 
 const router = Router();
 
@@ -210,13 +211,14 @@ router.post('/apply', async (req, res) => {
       );
     }
 
-    // ---- Notify sponsor ----
+    // ---- Notify sponsor (in the sponsor's language) ----
+    const sponsorLang = await userLanguage(client, sponsor.id);
     await client.query(
       `INSERT INTO notifications (user_id, title, message, type, link)
        VALUES ($1,$2,$3,'action_required',$4)`,
       [sponsor.id,
-       'Ny entreprenörsansökan att granska',
-       `${first_name} ${last_name} (${company}) har skickat in en tillträdesansökan som väntar på ditt godkännande.`,
+       translate('Ny entreprenörsansökan att granska', sponsorLang),
+       translate(`${first_name} ${last_name} (${company}) har skickat in en tillträdesansökan som väntar på ditt godkännande.`, sponsorLang),
        `/applications`]
     );
 
