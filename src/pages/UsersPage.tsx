@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ROLE_LABELS, type AppRole } from '@/types/rbac';
 import * as store from '@/services/dataStore';
+import { errorMessage } from '@/lib/utils';
+import * as api from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import type { User } from '@/types/rbac';
@@ -71,9 +73,22 @@ export default function UsersPage() {
   };
 
   const handleToggleActive = async (u: User) => {
-    await store.updateUser(u.id, { is_active: !u.is_active });
-    toast.success(u.is_active ? 'Användare inaktiverad' : 'Användare aktiverad');
-    reloadPaged();
+    try {
+      if (u.is_active && store.isApiMode()) {
+        // Deactivation revokes approved access and withdraws pending applications.
+        const preview = await api.getDeactivationPreview(u.id);
+        const effects = [
+          preview.approved > 0 ? `${preview.approved} godkända tillträden återkallas` : '',
+          preview.pending > 0 ? `${preview.pending} väntande ansökningar dras tillbaka` : '',
+        ].filter(Boolean).join(' och ');
+        if (!confirm(`Inaktivera ${u.full_name}?${effects ? `\n\n${effects}.` : ''}\n\nKontot kan aktiveras igen, men tillträden återställs inte.`)) return;
+      }
+      await store.updateUser(u.id, { is_active: !u.is_active });
+      toast.success(u.is_active ? 'Användare inaktiverad' : 'Användare aktiverad');
+      reloadPaged();
+    } catch (err) {
+      toast.error(errorMessage(err, 'Kunde inte ändra användarens status'));
+    }
   };
 
   const canManageRequirements = currentUser.roles.includes('administrator') ||

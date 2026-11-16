@@ -11,6 +11,7 @@ import * as store from '@/services/dataStore';
 import { downloadAttachment } from '@/services/api';
 import { notifyApplicationStatusChange } from '@/services/notifications';
 import { canActOn, canRenew } from '@/lib/applicationRules';
+import { ApplicationHistory } from '@/components/applications/ApplicationHistory';
 import { subordinateIds } from '@/hooks/useActionableApplications';
 import type { Application, ApplicationStatus } from '@/types/rbac';
 import { errorMessage } from '@/lib/utils';
@@ -144,7 +145,7 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Ansökningsdetaljer</DialogTitle>
         </DialogHeader>
@@ -225,11 +226,15 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3"><p className="text-sm font-medium text-destructive mb-1">Avslag</p><p className="text-sm text-foreground">{application.denied_reason}</p></div>
           )}
           <Separator />
-          <div className="space-y-1 text-xs text-muted-foreground">
-            <p>Skapad: {new Date(application.created_at).toLocaleString('sv-SE')}</p>
-            {application.manager_approved_at && <p className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-success" />Chef godkänd: {new Date(application.manager_approved_at).toLocaleString('sv-SE')}</p>}
-            {application.facility_approved_at && <p className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-success" />Anläggning godkänd: {new Date(application.facility_approved_at).toLocaleString('sv-SE')}</p>}
-          </div>
+          {store.isApiMode() ? (
+            <ApplicationHistory applicationId={application.id} />
+          ) : (
+            <div className="space-y-1 text-xs text-muted-foreground">
+              <p>Skapad: {new Date(application.created_at).toLocaleString('sv-SE')}</p>
+              {application.manager_approved_at && <p className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-success" />Chef godkänd: {new Date(application.manager_approved_at).toLocaleString('sv-SE')}</p>}
+              {application.facility_approved_at && <p className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-success" />Anläggning godkänd: {new Date(application.facility_approved_at).toLocaleString('sv-SE')}</p>}
+            </div>
+          )}
           {canApprove && (
             <>
               <Separator />

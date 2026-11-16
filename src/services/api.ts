@@ -190,8 +190,28 @@ export function updateUser(id: string, data: Partial<User & { password?: string 
   return put(`/users/${id}`, data);
 }
 
-export function updateMe(data: Partial<Pick<User, 'full_name' | 'first_name' | 'last_name' | 'phone' | 'title' | 'department'>>): Promise<{ user: User }> {
+export function updateMe(data: Partial<Pick<User, 'full_name' | 'first_name' | 'last_name' | 'phone' | 'title' | 'department' | 'substitute_id' | 'substitute_from' | 'substitute_to'>>): Promise<{ user: User }> {
   return put('/auth/me', data);
+}
+
+export function getManagerCandidates(): Promise<{ id: string; full_name: string }[]> {
+  return get('/users/managers');
+}
+
+export function getDeactivationPreview(id: string): Promise<{ approved: number; pending: number }> {
+  return get(`/users/${id}/deactivation-preview`);
+}
+
+export interface ImportResult {
+  row: number;
+  email: string;
+  status: 'created' | 'skipped' | 'error';
+  message?: string;
+  temp_password?: string;
+}
+
+export function importUsers(rows: Record<string, string>[]): Promise<{ results: ImportResult[] }> {
+  return post('/users/import', { rows });
 }
 
 export function deleteUser(id: string): Promise<void> {
@@ -287,6 +307,18 @@ export function getApplicationsPaged(params: ApplicationPageParams): Promise<Pag
   if (params.search) q.set('search', params.search);
   if (params.status && params.status !== 'all') q.set('status', params.status);
   return get<PagedResult<Application>>(`/applications?${q.toString()}`);
+}
+
+export interface HistoryEntry {
+  id: string;
+  action: string;
+  created_at: string;
+  actor_name: string | null;
+  details: string | null;
+}
+
+export function getApplicationHistory(id: string): Promise<HistoryEntry[]> {
+  return get(`/applications/${id}/history`);
 }
 
 export function getApplication(id: string): Promise<Application> {
@@ -425,6 +457,17 @@ export function analyzeLogs(body: { question: string; from?: string; to?: string
 
 export function getLogAnalysisStatus(): Promise<{ configured: boolean }> {
   return get('/logs/analyze/status');
+}
+
+export interface LogPageParams { page: number; pageSize: number; q?: string; from?: string; to?: string; action?: string }
+
+export function getLogsPage(p: LogPageParams): Promise<{ items: (SystemLog & { actor_name?: string | null })[]; total: number; page: number; pageSize: number }> {
+  const qs = new URLSearchParams({ page: String(p.page), pageSize: String(p.pageSize) });
+  if (p.q) qs.set('q', p.q);
+  if (p.from) qs.set('from', p.from);
+  if (p.to) qs.set('to', p.to);
+  if (p.action && p.action !== 'all') qs.set('action', p.action);
+  return get(`/logs?${qs.toString()}`);
 }
 
 export function getLogs(): Promise<SystemLog[]> {

@@ -10,6 +10,7 @@ import { Shield, CheckCircle, XCircle, Clock, Lock, Pencil, Save, X } from 'luci
 import { useAuth } from '@/context/AuthContext';
 import { ROLE_LABELS } from '@/types/rbac';
 import * as store from '@/services/dataStore';
+import { SubstituteCard } from '@/components/users/SubstituteCard';
 import { toast } from 'sonner';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
 
@@ -165,6 +166,8 @@ export default function ProfilePage() {
             )}
           </CardContent>
         </Card>
+
+        {currentUser.roles.includes('line_manager') && <SubstituteCard user={currentUser} onSaved={refreshUser} />}
 
         <Card>
           <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Lock className="h-4 w-4" />Byt lösenord</CardTitle></CardHeader>

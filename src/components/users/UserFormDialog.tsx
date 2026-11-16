@@ -39,6 +39,9 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
   const [managerId, setManagerId] = useState('');
   const [contactPersonId, setContactPersonId] = useState('');
   const [orgUnitId, setOrgUnitId] = useState('');
+  const [substituteId, setSubstituteId] = useState('');
+  const [substituteFrom, setSubstituteFrom] = useState('');
+  const [substituteTo, setSubstituteTo] = useState('');
   const [policy, setPolicy] = useState<api.PasswordPolicy>(DEFAULT_POLICY);
 
   useEffect(() => {
@@ -61,7 +64,11 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
         setManagerId(editUser.manager_id || '');
         setContactPersonId(editUser.contact_person_id || '');
         setOrgUnitId(editUser.org_unit_id || '');
+        setSubstituteId(editUser.substitute_id || '');
+        setSubstituteFrom((editUser.substitute_from || '').slice(0, 10));
+        setSubstituteTo((editUser.substitute_to || '').slice(0, 10));
       } else {
+        setSubstituteId(''); setSubstituteFrom(''); setSubstituteTo('');
         setFirstName(''); setLastName(''); setEmail(''); setPhone('');
         setPassword(''); setRoles(['employee']); setTitle('');
         setCompany(''); setDepartment(''); setManagerId(''); setContactPersonId(''); setOrgUnitId('');
@@ -107,6 +114,10 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
         manager_id: managerId || null,
         contact_person_id: isContractor ? contactPersonId || null : null,
         org_unit_id: orgUnitId || null,
+        // Substitute only applies to line managers; clear it otherwise.
+        substitute_id: roles.includes('line_manager') ? substituteId || null : null,
+        substitute_from: roles.includes('line_manager') && substituteId ? substituteFrom || null : null,
+        substitute_to: roles.includes('line_manager') && substituteId ? substituteTo || null : null,
       };
       if (password.trim()) { updateData.password = password; updateData.must_change_password = true; }
       await store.updateUser(editUser.id, updateData);
@@ -233,6 +244,25 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {editUser && roles.includes('line_manager') && (
+            <div className="space-y-3 rounded-lg border border-border p-3">
+              <Label className="block">Ersättare vid frånvaro</Label>
+              <Select value={substituteId || '__none__'} onValueChange={v => setSubstituteId(v === '__none__' ? '' : v)}>
+                <SelectTrigger aria-label="Ersättare"><SelectValue placeholder="Ingen ersättare" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Ingen ersättare</SelectItem>
+                  {managers.filter(u => u.id !== editUser.id && u.roles.includes('line_manager')).map(u => (
+                    <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1"><Label htmlFor="uf-sub-from" className="text-xs">Från (valfritt)</Label><Input id="uf-sub-from" type="date" value={substituteFrom} onChange={e => setSubstituteFrom(e.target.value)} disabled={!substituteId} /></div>
+                <div className="space-y-1"><Label htmlFor="uf-sub-to" className="text-xs">Till och med (valfritt)</Label><Input id="uf-sub-to" type="date" value={substituteTo} onChange={e => setSubstituteTo(e.target.value)} disabled={!substituteId} /></div>
+              </div>
             </div>
           )}
 
