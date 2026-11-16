@@ -346,7 +346,7 @@ async function fetchApplication(db, appId) {
 router.post('/', async (req, res) => {
   const client = await pool.connect();
   try {
-    let { applicant_id, facility_id, area_ids, status, start_date, end_date, has_exception, exception_justification } = req.body || {};
+    let { applicant_id, facility_id, area_ids, status, start_date, end_date, has_exception, exception_justification, renewed_from_id } = req.body || {};
     const isPrivileged = req.user.roles.includes('administrator');
     if (!isPrivileged || !applicant_id) applicant_id = req.user.id;
     // New applications start as a draft or are submitted directly to the manager.
@@ -360,11 +360,21 @@ router.post('/', async (req, res) => {
     const areaErr = await validateAreas(client, facility_id, area_ids || []);
     if (areaErr) return res.status(400).json({ error: areaErr });
 
+    // A renewal may only point at an earlier application of the same applicant.
+    let renewedFrom = null;
+    if (renewed_from_id) {
+      const { rows: prev } = await client.query(
+        `SELECT id FROM applications WHERE id = $1 AND applicant_id = $2 AND status IN ('approved', 'expired')`,
+        [renewed_from_id, applicant_id]
+      );
+      renewedFrom = prev[0]?.id || null;
+    }
+
     await client.query('BEGIN');
     const { rows } = await client.query(
-      `INSERT INTO applications (applicant_id, facility_id, status, start_date, end_date, has_exception, exception_justification)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [applicant_id, facility_id, status, start_date, end_date || null, !!has_exception, has_exception ? exception_justification || null : null]
+      `INSERT INTO applications (applicant_id, facility_id, status, start_date, end_date, has_exception, exception_justification, renewed_from_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [applicant_id, facility_id, status, start_date, end_date || null, !!has_exception, has_exception ? exception_justification || null : null, renewedFrom]
     );
     const app = rows[0];
     const expandedAreaIds = await expandAreaAncestors(client, area_ids || []);
@@ -459,6 +469,10 @@ router.put('/:id', async (req, res) => {
     let idx = 1;
     const addField = (name, val) => { if (val !== undefined) { updates.push(`${name} = $${idx++}`); vals.push(val); } };
     addField('status', newStatus);
+    if (newStatus !== undefined) {
+      // A new status restarts the reminder clock (see reminderAction).
+      updates.push('status_changed_at = now()', 'reminded_at = NULL', 'escalated_at = NULL');
+    }
     addField('facility_id', body.facility_id);
     addField('start_date', body.start_date);
     addField('end_date', body.end_date === '' ? null : body.end_date);
