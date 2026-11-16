@@ -8,6 +8,7 @@ import { audit } from '../services/audit.js';
 import { sendMail, isEmailEnabled, htmlEscape } from '../services/email.js';
 import { getSecuritySettings, getPasswordPolicy, validatePassword } from '../services/settings.js';
 import { checkLock, recordFailure, recordSuccess } from '../services/loginAttempts.js';
+import { validateSubstitute } from '../services/substitutes.js';
 
 const router = Router();
 
@@ -290,6 +291,16 @@ router.put('/me', authMiddleware, async (req, res) => {
       vals.push(v);
       updates.push(`${name} = $${vals.length}`);
     }
+    // Line managers set their own substitute during absence.
+    const sendsSubstitute = ['substitute_id', 'substitute_from', 'substitute_to'].some(k => body[k] !== undefined);
+    if (sendsSubstitute) {
+      if (!req.user.roles.includes('line_manager')) {
+        return res.status(403).json({ error: 'Endast linjechefer kan ange ersättare' });
+      }
+      const sub = await validateSubstitute(pool, req.user.id, body);
+      if (sub.error) return res.status(400).json({ error: sub.error });
+      for (const [k, v] of Object.entries(sub.value)) { vals.push(v); updates.push(`${k} = $${vals.length}`); }
+    }
     if (updates.length > 0) {
       vals.push(req.user.id);
       await pool.query(`UPDATE users SET ${updates.join(', ')} WHERE id = $${vals.length}`, vals);
@@ -329,6 +340,9 @@ function mapUser(row) {
     company: row.company,
     is_active: row.is_active,
     created_at: row.created_at,
+    substitute_id: row.substitute_id || null,
+    substitute_from: row.substitute_from || null,
+    substitute_to: row.substitute_to || null,
   };
 }
 

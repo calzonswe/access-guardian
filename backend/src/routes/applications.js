@@ -6,6 +6,7 @@ import { getOrgManagerForUser } from './org.js';
 import { audit } from '../services/audit.js';
 import { expandAreaAncestors } from '../services/areaTree.js';
 import { notificationEmailsEnabled } from '../services/settings.js';
+import { getActiveSubstituteId, getSubstitutedReportIds } from '../services/substitutes.js';
 
 // Notify a user both in-app and via email (best-effort)
 async function notifyUser(client, userId, { title, message, type, link }) {
@@ -94,6 +95,10 @@ export async function getApplicationAccess(user, scope) {
       const managed = await getManagedUserIds(user.id);
       isApprovingManager = managed.includes(scope.applicantId);
     }
+    // An active substitute stands in for the applicant's manager.
+    if (!isApprovingManager && scope.managerId) {
+      isApprovingManager = (await getActiveSubstituteId(pool, scope.managerId)) === user.id;
+    }
   }
   const isFacilityStaff = (roles.includes('facility_owner') || roles.includes('facility_admin')) &&
     await isFacilityAdminOrOwner(user.id, scope.facilityId);
@@ -166,7 +171,7 @@ async function notifyApprovers(appId, scope, newStatus, actorId) {
   let title = '';
   let message = '';
   if (newStatus === 'pending_manager') {
-    recipients = [scope.managerId, scope.contactPersonId].filter(Boolean);
+    recipients = [scope.managerId, scope.contactPersonId, await getActiveSubstituteId(pool, scope.managerId)].filter(Boolean);
     title = 'Ny ansökan att attestera';
     message = 'En tillträdesansökan väntar på ditt godkännande.';
     if (recipients.length === 0) {
@@ -294,6 +299,8 @@ router.get('/', async (req, res) => {
       );
       userFacilities.forEach(r => facilityIds.push(r.id));
     }
+    // Direct reports of managers this user currently stands in for
+    (await getSubstitutedReportIds(pool, userId)).forEach(id => applicantIds.add(id));
     // Contractors that this user sponsors (contact_person_id)
     const { rows: sponsored } = await pool.query(
       `SELECT id FROM users WHERE contact_person_id = $1`,

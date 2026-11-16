@@ -5,12 +5,13 @@ import { requireRole, getManagedUserIds, VALID_ROLES } from '../middleware/rbac.
 import { audit } from '../services/audit.js';
 import { sendMail, isEmailEnabled, htmlEscape } from '../services/email.js';
 import { getPasswordPolicy, validatePassword } from '../services/settings.js';
+import { getSubstitutedReportIds, validateSubstitute } from '../services/substitutes.js';
 
 const router = Router();
 
 const USER_SELECT = `SELECT u.id, u.email, u.full_name, u.first_name, u.last_name, u.department,
               u.title, u.phone, u.manager_id, u.contact_person_id, u.company, u.org_unit_id,
-              u.is_active, u.created_at,
+              u.is_active, u.created_at, u.substitute_id, u.substitute_from, u.substitute_to,
               array_agg(ur.role::text) FILTER (WHERE ur.role IS NOT NULL) AS roles
        FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id`;
 
@@ -73,6 +74,9 @@ router.get('/', async (req, res) => {
       managed.forEach(id => visibleIds.add(id));
     }
 
+    // Substitutes see the direct reports of the managers they stand in for
+    (await getSubstitutedReportIds(pool, req.user.id)).forEach(id => visibleIds.add(id));
+
     // Sponsors (contact persons) see the contractors they sponsor
     const { rows: sponsored } = await pool.query('SELECT id FROM users WHERE contact_person_id = $1', [req.user.id]);
     sponsored.forEach(r => visibleIds.add(r.id));
@@ -119,6 +123,20 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Line managers that can be chosen as substitutes (id + name only).
+router.get('/managers', async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT DISTINCT u.id, u.full_name FROM users u JOIN user_roles r ON r.user_id = u.id
+        WHERE u.is_active = true AND r.role = 'line_manager' ORDER BY u.full_name`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internt serverfel' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const targetId = req.params.id;
@@ -128,7 +146,7 @@ router.get('/:id', async (req, res) => {
         'SELECT 1 FROM users WHERE id = $1 AND contact_person_id = $2',
         [targetId, req.user.id]
       );
-      let allowed = rel.length > 0;
+      let allowed = rel.length > 0 || (await getSubstitutedReportIds(pool, req.user.id)).includes(targetId);
       if (!allowed && req.user.roles.includes('line_manager')) {
         const managed = await getManagedUserIds(req.user.id);
         allowed = managed.includes(targetId);
@@ -298,6 +316,9 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
     addField('company', company !== undefined ? (company || '').slice(0, 255) : undefined);
     addField('is_active', is_active);
     if (org_unit_id !== undefined) addField('org_unit_id', org_unit_id || null);
+    const sub = await validateSubstitute(client, targetId, req.body || {});
+    if (sub.error) { await client.query('ROLLBACK'); return res.status(400).json({ error: sub.error }); }
+    for (const [k, v] of Object.entries(sub.value)) addField(k, v);
 
     if (password) {
       const policy = await getPasswordPolicy();
