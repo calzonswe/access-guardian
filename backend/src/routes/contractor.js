@@ -6,11 +6,12 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { randomUUID, randomBytes } from 'crypto';
+import { randomUUID } from 'crypto';
 import { pool } from '../db.js';
 import { issueCaptcha, verifyCaptcha } from '../services/captcha.js';
 import { expandAreaAncestors } from '../services/areaTree.js';
 import { isSelfRegistrationEnabled } from '../services/settings.js';
+import { generateTempPassword } from '../services/userImport.js';
 
 const router = Router();
 
@@ -51,23 +52,6 @@ function sanitizeFileName(name) {
 }
 function isValidEmail(e) {
   return typeof e === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) && e.length <= 255;
-}
-function generateTempPassword() {
-  // 12 chars: ensure upper, lower, digit and symbol so it passes change-password rules
-  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-  const lower = 'abcdefghijkmnpqrstuvwxyz';
-  const digits = '23456789';
-  const symbols = '!@#$%&*';
-  const all = upper + lower + digits + symbols;
-  const buf = randomBytes(12);
-  const out = [upper[buf[0] % upper.length], lower[buf[1] % lower.length], digits[buf[2] % digits.length], symbols[buf[3] % symbols.length]];
-  for (let i = 4; i < 12; i++) out.push(all[buf[i] % all.length]);
-  // shuffle
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = randomBytes(1)[0] % (i + 1);
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out.join('');
 }
 
 // GET /api/contractor/facilities — public list of facilities + areas for the form

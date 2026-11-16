@@ -7,6 +7,7 @@ import { sendMail, isEmailEnabled, htmlEscape } from '../services/email.js';
 import { getPasswordPolicy, validatePassword } from '../services/settings.js';
 import { getSubstitutedReportIds, validateSubstitute } from '../services/substitutes.js';
 import { notifyUser } from '../services/notify.js';
+import { validateImportRow, generateTempPassword } from '../services/userImport.js';
 
 const router = Router();
 
@@ -430,6 +431,94 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
     res.status(500).json({ error: 'Internt serverfel' });
   } finally {
     client.release();
+  }
+});
+
+const MAX_IMPORT_ROWS = 500;
+
+// POST /api/users/import  { rows: [{ email, fornamn, efternamn, telefon, befattning,
+// avdelning, foretag, chef_email, roller }] }
+// Creates new users with temporary passwords (must change at first login).
+// Existing e-mail addresses are skipped. Managers are linked in a second pass,
+// so a manager may appear anywhere in the file. Temporary passwords are only
+// returned in this response; they are never stored in plain text or logged.
+router.post('/import', requireRole('administrator'), async (req, res) => {
+  const rows = Array.isArray(req.body?.rows) ? req.body.rows : null;
+  if (!rows || rows.length === 0) return res.status(400).json({ error: 'Inga rader att importera' });
+  if (rows.length > MAX_IMPORT_ROWS) return res.status(400).json({ error: `Max ${MAX_IMPORT_ROWS} rader per import` });
+
+  const results = [];
+  const createdByEmail = new Map(); // email -> { id, result }
+  const seen = new Set();
+  try {
+    for (let i = 0; i < rows.length; i++) {
+      const rowNo = i + 1;
+      const check = validateImportRow(rows[i] || {});
+      if (!check.ok) {
+        results.push({ row: rowNo, email: String(rows[i]?.email ?? ''), status: 'error', message: check.error });
+        continue;
+      }
+      const v = check.value;
+      if (seen.has(v.email)) {
+        results.push({ row: rowNo, email: v.email, status: 'error', message: 'E-postadressen finns flera gånger i filen' });
+        continue;
+      }
+      seen.add(v.email);
+      const { rows: existing } = await pool.query('SELECT 1 FROM users WHERE LOWER(email) = $1', [v.email]);
+      if (existing.length > 0) {
+        results.push({ row: rowNo, email: v.email, status: 'skipped', message: 'Användaren finns redan' });
+        continue;
+      }
+      const tempPassword = generateTempPassword();
+      // Cost 10 (not 12): the password must be changed at first login anyway,
+      // and a 500-row import stays well under a minute.
+      const hash = await bcrypt.hash(tempPassword, 10);
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const { rows: created } = await client.query(
+          `INSERT INTO users (email, full_name, first_name, last_name, password_hash, department, title, phone, company, is_active, must_change_password)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true,true) RETURNING id`,
+          [v.email, v.full_name, v.first_name, v.last_name, hash, v.department, v.title, v.phone, v.company]
+        );
+        for (const role of v.roles) {
+          await client.query('INSERT INTO user_roles (user_id, role) VALUES ($1, $2)', [created[0].id, role]);
+        }
+        await client.query('COMMIT');
+        const result = { row: rowNo, email: v.email, status: 'created', temp_password: tempPassword };
+        results.push(result);
+        createdByEmail.set(v.email, { id: created[0].id, managerEmail: v.manager_email, result });
+        await audit({ req, action: 'user_created', targetId: created[0].id, targetType: 'user', details: `Import: ${v.email}, roller: ${v.roles.join(',')}` });
+      } catch (err) {
+        await client.query('ROLLBACK').catch(() => {});
+        console.error('[import] row failed', err.message);
+        results.push({ row: rowNo, email: v.email, status: 'error', message: 'Kunde inte skapa användaren' });
+      } finally {
+        client.release();
+      }
+    }
+
+    // Second pass: link managers (existing users or users created above).
+    for (const { id, managerEmail, result } of createdByEmail.values()) {
+      if (!managerEmail) continue;
+      let managerId = createdByEmail.get(managerEmail)?.id;
+      if (!managerId) {
+        const { rows: m } = await pool.query('SELECT id FROM users WHERE LOWER(email) = $1', [managerEmail]);
+        managerId = m[0]?.id;
+      }
+      if (!managerId || managerId === id) {
+        result.message = 'Skapad, men chefen hittades inte';
+        continue;
+      }
+      await pool.query('UPDATE users SET manager_id = $1 WHERE id = $2', [managerId, id]);
+    }
+
+    const count = (st) => results.filter(r => r.status === st).length;
+    await audit({ req, action: 'user_created', targetType: 'user', details: `CSV-import: ${count('created')} skapade, ${count('skipped')} fanns redan, ${count('error')} fel` });
+    res.json({ results });
+  } catch (err) {
+    console.error('[import] failed', err);
+    res.status(500).json({ error: 'Internt serverfel', results });
   }
 });
 
