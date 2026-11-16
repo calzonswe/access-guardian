@@ -6,6 +6,7 @@ import { audit } from '../services/audit.js';
 import { sendMail, isEmailEnabled, htmlEscape } from '../services/email.js';
 import { getPasswordPolicy, validatePassword } from '../services/settings.js';
 import { getSubstitutedReportIds, validateSubstitute } from '../services/substitutes.js';
+import { notifyUser } from '../services/notify.js';
 
 const router = Router();
 
@@ -287,6 +288,11 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
       return res.status(400).json({ error: 'Det måste finnas minst en aktiv administratör' });
     }
 
+    const { rows: beforeRows } = await client.query(
+      'SELECT is_active, manager_id FROM users WHERE id = $1 FOR UPDATE', [targetId]);
+    if (beforeRows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Ej hittad' }); }
+    const before = beforeRows[0];
+
     const updates = [];
     const vals = [];
     let idx = 1;
@@ -341,6 +347,31 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
         await client.query('INSERT INTO user_roles (user_id, role) VALUES ($1, $2)', [targetId, role]);
       }
     }
+
+    // Deactivation closes the account's access: approved access is revoked and
+    // pending applications are withdrawn, in the same transaction.
+    let revoked = [];
+    let withdrawn = [];
+    if (before.is_active && is_active === false) {
+      ({ rows: revoked } = await client.query(
+        `UPDATE applications
+            SET status = 'expired', revoked_at = now(), revoked_by = $2, revoke_reason = 'Kontot inaktiverat',
+                status_changed_at = now(), reminded_at = NULL, escalated_at = NULL
+          WHERE applicant_id = $1 AND status = 'approved'
+          RETURNING id, facility_id`,
+        [targetId, req.user.id]
+      ));
+      ({ rows: withdrawn } = await client.query(
+        `UPDATE applications
+            SET status = 'denied', denied_reason = 'Ansökan återkallad – kontot inaktiverat',
+                status_changed_at = now(), reminded_at = NULL, escalated_at = NULL
+          WHERE applicant_id = $1 AND status IN ('draft', 'pending_manager', 'pending_facility', 'pending_exception')
+          RETURNING id`,
+        [targetId]
+      ));
+    }
+    const newManagerId = manager_id !== undefined ? (manager_id || null) : before.manager_id;
+    const managerChanged = !!newManagerId && newManagerId !== before.manager_id;
     await client.query('COMMIT');
 
     // Return updated user
@@ -355,7 +386,43 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
     if (is_active !== undefined) changed.push(`aktiv=${is_active}`);
     if (password) changed.push('lösenord');
     await audit({ req, action: 'user_updated', targetId, targetType: 'user', details: changed.join('; ') || 'profiluppdatering' });
-    res.json({ ...pub, roles: pub.roles || [] });
+
+    // ----- Post-commit side effects -----
+    for (const r of revoked) {
+      await audit({ req, action: 'access_revoked', targetId: r.id, targetType: 'application', details: 'Kontot inaktiverat' });
+    }
+    for (const w of withdrawn) {
+      await audit({ req, action: 'application_denied', targetId: w.id, targetType: 'application', details: 'Ansökan återkallad – kontot inaktiverat' });
+    }
+    if (revoked.length > 0) {
+      const facilityIds = [...new Set(revoked.map(r => r.facility_id))];
+      const { rows: owners } = await pool.query(
+        'SELECT DISTINCT owner_id FROM facilities WHERE id = ANY($1) AND owner_id IS NOT NULL', [facilityIds]);
+      for (const o of owners) {
+        await notifyUser(pool, o.owner_id, {
+          title: 'Tillträde återkallat – kontot inaktiverat',
+          message: `${pub.full_name} har inaktiverats och tillträdet till din anläggning har återkallats.`,
+          type: 'warning',
+          link: '/applications',
+        });
+      }
+    }
+    let notifiedManager = false;
+    if (managerChanged) {
+      const { rows: waiting } = await pool.query(
+        `SELECT COUNT(*)::int AS n FROM applications WHERE applicant_id = $1 AND status = 'pending_manager'`, [targetId]);
+      if (waiting[0].n > 0) {
+        await notifyUser(pool, newManagerId, {
+          title: 'Ansökningar väntar på din attestering',
+          message: `Du är nu närmaste chef för ${pub.full_name}, som har ${waiting[0].n} ansökan/ansökningar som väntar på attestering.`,
+          type: 'action_required',
+          link: '/applications',
+        });
+        notifiedManager = true;
+      }
+      await audit({ req, action: 'user_updated', targetId, targetType: 'user', details: `Ny närmaste chef: ${newManagerId}` });
+    }
+    res.json({ ...pub, roles: pub.roles || [], side_effects: { revoked: revoked.length, withdrawn: withdrawn.length, notified_manager: notifiedManager } });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     console.error(err);
@@ -363,6 +430,22 @@ router.put('/:id', requireRole('administrator'), async (req, res) => {
     res.status(500).json({ error: 'Internt serverfel' });
   } finally {
     client.release();
+  }
+});
+
+// How many applications a deactivation would affect (for the confirmation dialog).
+router.get('/:id/deactivation-preview', requireRole('administrator'), async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT COUNT(*) FILTER (WHERE status = 'approved')::int AS approved,
+              COUNT(*) FILTER (WHERE status IN ('draft', 'pending_manager', 'pending_facility', 'pending_exception'))::int AS pending
+         FROM applications WHERE applicant_id = $1`,
+      [req.params.id]
+    );
+    res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internt serverfel' });
   }
 });
 

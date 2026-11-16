@@ -1,35 +1,11 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
 import { isFacilityAdminOrOwner, getManagedUserIds } from '../middleware/rbac.js';
-import { sendMailToUser, isEmailEnabled, htmlEscape } from '../services/email.js';
 import { getOrgManagerForUser } from './org.js';
 import { audit } from '../services/audit.js';
 import { expandAreaAncestors } from '../services/areaTree.js';
-import { notificationEmailsEnabled } from '../services/settings.js';
+import { notifyUser } from '../services/notify.js';
 import { getActiveSubstituteId, getSubstitutedReportIds } from '../services/substitutes.js';
-
-// Notify a user both in-app and via email (best-effort)
-async function notifyUser(client, userId, { title, message, type, link }) {
-  if (!userId) return;
-  try {
-    await client.query(
-      `INSERT INTO notifications (user_id, title, message, type, read, link)
-       VALUES ($1,$2,$3,$4,false,$5)`,
-      [userId, title, message, type, link || null]
-    );
-  } catch (err) {
-    console.warn('[applications] notify insert failed:', err.message);
-  }
-  if (isEmailEnabled() && await notificationEmailsEnabled()) {
-    sendMailToUser(userId, {
-      subject: title,
-      title,
-      body: `<p>${htmlEscape(message)}</p>`,
-      ctaLabel: link ? 'Öppna ansökan' : undefined,
-      ctaUrl: link,
-    }).catch(() => {});
-  }
-}
 
 const router = Router();
 
