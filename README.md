@@ -94,7 +94,7 @@ och allt loggas. Krav som utbildningar och säkerhetsprövningar följs upp auto
 | **119** API-kontroller | hela flödet och behörigheterna, mot riktig databas ([scripts/smoke-test.mjs](scripts/smoke-test.mjs)) |
 | **62** enhetstester | 31 i backend (statusregler, ersättare, påminnelser, import, e-postval, översättning), 31 i frontend |
 | **2** teman | ljust och mörkt, plus "följ systemet" |
-| **2** språk | svenska och engelska (cirka 1 100 översatta texter) |
+| **2** språk | svenska och engelska (cirka 950 översatta texter) |
 
 ---
 

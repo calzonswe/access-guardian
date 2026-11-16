@@ -45,13 +45,13 @@
   - `PUT /api/auth/me` accepts `language` (`sv`/`en`) and `email_prefs` (an object of booleans for the three keys); `/auth/me` and the login responses return both.
   - Login stores `X-Language` as the user's language if it is `en` and the account is still `sv` with no explicit choice (`language_set = false`).
 
-- [ ] Write a failing test: `shouldEmail({}, 'action')` is true; `{action:false}` with `'action'` is false; `{action:false}` with `'status'` is true; any prefs with no category are true.
-- [ ] Write the migration: `language`, `language_set BOOLEAN DEFAULT false`, `email_prefs JSONB DEFAULT '{}'`.
-- [ ] Implement `shouldEmail` and give every `notifyUser`/`notifyOnce` call a category:
+- [x] Write a failing test: `shouldEmail({}, 'action')` is true; `{action:false}` with `'action'` is false; `{action:false}` with `'status'` is true; any prefs with no category are true.
+- [x] Write the migration: `language`, `language_set BOOLEAN DEFAULT false`, `email_prefs JSONB DEFAULT '{}'`.
+- [x] Implement `shouldEmail` and give every `notifyUser`/`notifyOnce` call a category:
   - **`action`:** approvers, reminders, escalation, manager change, the no-approver fallback.
   - **`status`:** applicant status changes, deactivation notices to owners.
   - **`expiry`:** the expiry job's warnings and expiries.
-- [ ] Run the tests (all pass), then commit.
+- [x] Run the tests (all pass), then commit.
 
 ### Task 2: Bulk decisions (#10)
 
@@ -64,14 +64,14 @@
   - `nextApproveStatus(app: Application): ApplicationStatus | null`. It maps `pending_manager` to `pending_exception` when `has_exception`, otherwise to `pending_facility`; `pending_facility` and `pending_exception` map to `approved`; anything else maps to null. The dialog's `handleApprove` uses it.
   - `ApplicationTable` gains optional `selectable?: (app) => boolean`, `selectedIds?: Set<string>` and `onToggleSelect?: (id) => void`.
 
-- [ ] Add tests for `nextApproveStatus`, then implement it.
-- [ ] Add checkboxes in the table and the phone cards; clicking a checkbox must not open the row.
-- [ ] Add the bulk bar:
+- [x] Add tests for `nextApproveStatus`, then implement it.
+- [x] Add checkboxes in the table and the phone cards; clicking a checkbox must not open the row.
+- [x] Add the bulk bar:
   - It shows "{n} markerade", Godkänn, Neka (a dialog with a required reason) and Avmarkera.
   - It runs sequentially and finishes with a toast "{ok} klara, {failed} misslyckades", with the first failure's reason.
   - It keeps the failed items selected and reloads the list.
-- [ ] Add "Markera alla att hantera" to the list header when any visible row is selectable.
-- [ ] Run `tsc`, lint and the tests, then commit.
+- [x] Add "Markera alla att hantera" to the list header when any visible row is selectable.
+- [x] Run `tsc`, lint and the tests, then commit.
 
 ### Task 3: Global search (#25)
 
@@ -85,11 +85,11 @@
   - `matches(query: string, ...fields: (string|undefined)[]): boolean`: every query word appears in the joined fields.
   - `<GlobalSearch open onOpenChange />`. `AppHeader` holds the open state, registers Ctrl/⌘+K, and shows a "Sök…" button with a shortcut hint (an icon only on phones).
 
-- [ ] Write tests: `normalize('Östra Lagret')` → `'ostra lagret'`; `matches('lag ost', 'Östra Lagret')` → true; `matches('nord', 'Lager Syd')` → false.
-- [ ] Implement:
+- [x] Write tests: `normalize('Östra Lagret')` → `'ostra lagret'`; `matches('lag ost', 'Östra Lagret')` → true; `matches('nord', 'Lager Syd')` → false.
+- [x] Implement:
   - **Groups:** Sidor, Ansökningar, Personer and Anläggningar, with at most 5 each; navigation follows the spec.
   - **Keyboard:** ↑/↓/Enter/Esc, with the active option shown via `aria-activedescendant`.
-- [ ] Run `tsc`, lint and the tests, then commit.
+- [x] Run `tsc`, lint and the tests, then commit.
 
 ### Task 4: Backend translation layer (#28)
 
@@ -105,14 +105,14 @@
   - `buildHtml({ title, body, ctaLabel, ctaUrl, lang })` translates the footer and the call-to-action label.
   - Response hook: `res.json` translates the `error` and `message` string fields when the language is `en`.
 
-- [ ] Write the tests:
+- [x] Write the tests:
   - An exact key translates.
   - A pattern `'Max {n} rader per import'` turns `'Max 500 rader per import'` into `'At most 500 rows per import'`.
   - Unknown text passes through.
   - Every dictionary key containing `{` compiles.
   - `buildHtml` with `lang 'en'` contains the English footer.
-- [ ] Build the dictionary from every Swedish user-facing string in `backend/src`: errors, notification titles and messages, and e-mail texts. List them with `grep -rhoE "(error|title|message|subject|ctaLabel|body): ['\`][^'\`]+" backend/src`.
-- [ ] Run the tests, `node --check` and the smoke test, then commit.
+- [x] Build the dictionary from every Swedish user-facing string in `backend/src`: errors, notification titles and messages, and e-mail texts. List them with `grep -rhoE "(error|title|message|subject|ctaLabel|body): ['\`][^'\`]+" backend/src`.
+- [x] Run the tests, `node --check` and the smoke test, then commit.
 
 ### Task 5: Frontend translation core and string wrapping (#28)
 
@@ -132,16 +132,16 @@
   - `locale(): 'sv-SE'|'en-GB'`.
   - `api.ts` sends `X-Language` on every request.
 
-- [ ] Write the core module with tests: interpolation; a missing translation falls back to Swedish; the scan of all `t('…')` and `t("…")` keys in `src` finds every key in `en.ts`.
-- [ ] Write a codemod using the TypeScript compiler API to wrap Swedish-looking strings:
+- [x] Write the core module with tests: interpolation; a missing translation falls back to Swedish; the scan of all `t('…')` and `t("…")` keys in `src` finds every key in `en.ts`.
+- [x] Write a codemod using the TypeScript compiler API to wrap Swedish-looking strings:
   - JSX text, and string literals in JSX attributes (`placeholder`, `title`, `aria-label`, `label`).
   - Calls to `toast.*`, `confirm` and `setError`.
   - Object literal values in label maps such as `STATUS_MAP` and `ROLE_LABELS`.
   - Template literals are reported for manual conversion.
-- [ ] Run the codemod and review the diff per file; convert the reported template literals by hand.
-- [ ] Generate a list of keys missing from `en.ts`, write the English values, and make the test pass.
-- [ ] Replace `toLocaleString('sv-SE')` / `toLocaleDateString('sv-SE')` with `formatDateTime` and `formatDate`.
-- [ ] Run `tsc`, lint, the tests and the build, then commit.
+- [x] Run the codemod and review the diff per file; convert the reported template literals by hand.
+- [x] Generate a list of keys missing from `en.ts`, write the English values, and make the test pass.
+- [x] Replace `toLocaleString('sv-SE')` / `toLocaleDateString('sv-SE')` with `formatDateTime` and `formatDate`.
+- [x] Run `tsc`, lint, the tests and the build, then commit.
 
 ### Task 6: Language and e-mail settings UI (#26, #28)
 
@@ -153,27 +153,27 @@
   - `src/context/AuthContext.tsx` (apply the user's language on login/me)
   - `src/services/api.ts` and `dataStore.ts` (`updateOwnProfile` accepts `language` and `email_prefs`)
 
-- [ ] Implement the language switch: choosing a language in the app saves it to the account; on the public pages it is saved in the browser only.
-- [ ] Implement the e-mail card with three switches, disabled with a note when e-mail is unavailable (`GET /settings/branding` gains `emailAvailable`).
-- [ ] Run `tsc`, lint and the tests, then commit.
+- [x] Implement the language switch: choosing a language in the app saves it to the account; on the public pages it is saved in the browser only.
+- [x] Implement the e-mail card with three switches, disabled with a note when e-mail is unavailable (`GET /settings/branding` gains `emailAvailable`).
+- [x] Run `tsc`, lint and the tests, then commit.
 
 ### Task 7: Smoke checks
 
 **Files:**
 - Modify: `scripts/smoke-test.mjs`
 
-- [ ] **E-mail settings:** `email_prefs` are saved and returned.
-- [ ] **Language:**
+- [x] **E-mail settings:** `email_prefs` are saved and returned.
+- [x] **Language:**
   - `language: 'en'` is saved.
   - An English user's 403 error is in English, and an approval notification created for them has an English title.
   - A Swedish user still gets Swedish.
-- [ ] **Bulk-style approval:** two sequential PUTs; one the user may decide (200) and one they may not (403).
-- [ ] Run on a fresh stack and expect all to pass, then commit.
+- [x] **Bulk-style approval:** two sequential PUTs; one the user may decide (200) and one they may not (403).
+- [x] Run on a fresh stack and expect all to pass, then commit.
 
 ### Task 8: Browser verification and docs
 
-- [ ] **Crawl** all roles in English:
+- [x] **Crawl** all roles in English:
   - 0 console errors.
   - Collect visible text containing `åäö`, excluding seeded names; expect none from the UI chrome.
-- [ ] **Screenshots** of the bulk bar, the search palette, the e-mail card and the language switch, in light and dark.
-- [ ] **Docs:** update the README (features, settings, languages) and `CLAUDE.md` (i18n convention: wrap every new user-facing string in `t()`; the scan test enforces it). Then commit.
+- [x] **Screenshots** of the bulk bar, the search palette, the e-mail card and the language switch, in light and dark.
+- [x] **Docs:** update the README (features, settings, languages) and `CLAUDE.md` (i18n convention: wrap every new user-facing string in `t()`; the scan test enforces it). Then commit.
