@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChevronRight, Inbox } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useNavigate } from 'react-router-dom';
 import type { Application, ApplicationStatus } from '@/types/rbac';
 import * as store from '@/services/dataStore';
@@ -20,16 +21,37 @@ interface Props {
   applications: Application[];
   title?: string;
   onRowClick?: (app: Application) => void;
+  /** Bulk selection: which rows get a checkbox, which are selected, and the toggle. */
+  selectable?: (app: Application) => boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  /** Extra content on the right of the card title (e.g. "Markera alla"). */
+  headerAction?: React.ReactNode;
 }
 
-export function ApplicationTable({ applications, title = 'Ansökningar', onRowClick }: Props) {
+export function ApplicationTable({ applications, title = 'Ansökningar', onRowClick, selectable, selectedIds, onToggleSelect, headerAction }: Props) {
   const navigate = useNavigate();
   // Rows always open the application: the caller's handler, or the deep link.
   const open = (app: Application) => (onRowClick ? onRowClick(app) : navigate(`/applications/${app.id}`));
+  const withSelection = !!(selectable && selectedIds && onToggleSelect);
+  const selectBox = (app: Application, name: string) => {
+    if (!withSelection) return null;
+    if (!selectable!(app)) return <span className="inline-block h-4 w-4" aria-hidden="true" />;
+    return (
+      <Checkbox
+        checked={selectedIds!.has(app.id)}
+        onCheckedChange={() => onToggleSelect!(app.id)}
+        onClick={e => e.stopPropagation()}
+        onKeyDown={e => e.stopPropagation()}
+        aria-label={`Markera ansökan från ${name}`}
+      />
+    );
+  };
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
         <CardTitle className="text-lg">{title}</CardTitle>
+        {headerAction}
       </CardHeader>
       <CardContent>
         {applications.length === 0 ? (
@@ -46,11 +68,12 @@ export function ApplicationTable({ applications, title = 'Ansökningar', onRowCl
               const facility = store.getFacility(app.facility_id);
               const status = STATUS_MAP[app.status];
               return (
-                <li key={app.id}>
+                <li key={app.id} className="flex items-center gap-2">
+                  {selectBox(app, user?.full_name ?? 'okänd')}
                   <button
                     type="button"
                     onClick={() => open(app)}
-                    className="flex w-full items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-muted/50"
+                    className="flex min-w-0 flex-1 items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-muted/50"
                   >
                     <div className="min-w-0 flex-1 space-y-1">
                       <p className="truncate text-sm font-medium text-foreground">{facility?.name ?? '–'}</p>
@@ -74,6 +97,7 @@ export function ApplicationTable({ applications, title = 'Ansökningar', onRowCl
           <Table>
             <TableHeader>
               <TableRow>
+                {withSelection && <TableHead className="w-10"><span className="sr-only">Markera</span></TableHead>}
                 <TableHead>Sökande</TableHead>
                 <TableHead>Anläggning</TableHead>
                 <TableHead>Status</TableHead>
@@ -97,6 +121,7 @@ export function ApplicationTable({ applications, title = 'Ansökningar', onRowCl
                     onClick={() => open(app)}
                     onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(app); } }}
                   >
+                    {withSelection && <TableCell className="w-10" onClick={e => e.stopPropagation()}>{selectBox(app, user?.full_name ?? 'okänd')}</TableCell>}
                     <TableCell className="font-medium">{user?.full_name ?? '–'}</TableCell>
                     <TableCell>{facility?.name ?? '–'}</TableCell>
                     <TableCell>

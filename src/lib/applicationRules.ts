@@ -3,7 +3,7 @@
  * They mirror the backend's TRANSITIONS table; the backend always has the
  * final say, these only decide what to show.
  */
-import type { Application, Facility, User } from '@/types/rbac';
+import type { Application, ApplicationStatus, Facility, User } from '@/types/rbac';
 
 export interface RuleContext {
   facility?: Facility;
@@ -79,4 +79,11 @@ export function renewalStartDate(app: Application, today: Date = new Date()): st
   const [y, m, d] = app.end_date.slice(0, 10).split('-').map(Number);
   const next = isoDay(new Date(y, m - 1, d + 1));
   return next > t ? next : t;
+}
+
+/** The status an approval moves an application to (null when there is nothing to approve). */
+export function nextApproveStatus(app: Application): ApplicationStatus | null {
+  if (app.status === 'pending_manager') return app.has_exception ? 'pending_exception' : 'pending_facility';
+  if (app.status === 'pending_facility' || app.status === 'pending_exception') return 'approved';
+  return null;
 }

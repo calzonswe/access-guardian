@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import * as store from '@/services/dataStore';
 import { downloadAttachment } from '@/services/api';
 import { notifyApplicationStatusChange } from '@/services/notifications';
-import { canActOn, canRenew } from '@/lib/applicationRules';
+import { canActOn, canRenew, nextApproveStatus } from '@/lib/applicationRules';
 import { ApplicationHistory } from '@/components/applications/ApplicationHistory';
 import { subordinateIds } from '@/hooks/useActionableApplications';
 import type { Application, ApplicationStatus } from '@/types/rbac';
@@ -92,11 +92,11 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
     let newStatus: ApplicationStatus = application.status;
     const updates: Partial<Application> = {};
     if (application.status === 'pending_manager') {
-      newStatus = application.has_exception ? 'pending_exception' : 'pending_facility';
+      newStatus = nextApproveStatus(application) ?? newStatus;
       updates.manager_approved_at = new Date().toISOString();
       updates.manager_approved_by = currentUser.id;
     } else if (application.status === 'pending_facility' || application.status === 'pending_exception') {
-      newStatus = 'approved';
+      newStatus = nextApproveStatus(application) ?? newStatus;
       updates.facility_approved_at = new Date().toISOString();
       updates.facility_approved_by = currentUser.id;
       if (application.has_exception) { updates.exception_approved_at = new Date().toISOString(); updates.exception_approved_by = currentUser.id; }

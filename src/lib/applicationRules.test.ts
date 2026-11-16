@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canActOn, canRenew, activeAccessFor } from '@/lib/applicationRules';
+import { canActOn, canRenew, activeAccessFor, nextApproveStatus } from '@/lib/applicationRules';
 import type { Application, Facility, User } from '@/types/rbac';
 
 const user = (id: string, roles: User['roles'], extra: Partial<User> = {}): User =>
@@ -61,5 +61,20 @@ describe('activeAccessFor', () => {
       app({ id: 'other', status: 'approved', facility_id: 'f2', start_date: '2026-01-01' }),
     ];
     expect(activeAccessFor(apps, 'f1', today).map(a => a.id)).toEqual(['ok', 'open']);
+  });
+});
+
+describe('nextApproveStatus', () => {
+  it('routes the manager step by has_exception', () => {
+    expect(nextApproveStatus(app({ status: 'pending_manager' }))).toBe('pending_facility');
+    expect(nextApproveStatus(app({ status: 'pending_manager', has_exception: true }))).toBe('pending_exception');
+  });
+  it('approves at the facility and exception steps', () => {
+    expect(nextApproveStatus(app({ status: 'pending_facility' }))).toBe('approved');
+    expect(nextApproveStatus(app({ status: 'pending_exception', has_exception: true }))).toBe('approved');
+  });
+  it('has nothing to approve otherwise', () => {
+    expect(nextApproveStatus(app({ status: 'draft' }))).toBeNull();
+    expect(nextApproveStatus(app({ status: 'approved' }))).toBeNull();
   });
 });

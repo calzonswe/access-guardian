@@ -16,6 +16,7 @@ import { useDataRefresh } from '@/hooks/useDataRefresh';
 import { usePersistentState } from '@/hooks/usePersistentState';
 import { useActionableApplications } from '@/hooks/useActionableApplications';
 import { canRenew } from '@/lib/applicationRules';
+import { BulkActionBar } from '@/components/applications/BulkActionBar';
 import { errorMessage } from '@/lib/utils';
 
 const PAGE_SIZE = 10;
@@ -52,6 +53,20 @@ export default function ApplicationsPage() {
   const [search, setSearch] = usePersistentState('applications:search', '');
   const [statusFilter, setStatusFilter] = usePersistentState<string>('applications:status', 'all');
   const actionable = useActionableApplications(currentUser);
+  const actionableIds = useMemo(() => new Set(actionable.map(a => a.id)), [actionable]);
+  // Bulk selection only ever contains applications the user can decide on.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setSelectedIds(prev => {
+      const next = new Set([...prev].filter(id => actionableIds.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [actionableIds]);
+  const toggleSelect = (id: string) => setSelectedIds(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   // "Att hantera" is computed from the cached applications, not the server page.
   const showActionable = statusFilter === 'actionable';
   const [page, setPage] = useState(1);
@@ -210,7 +225,32 @@ export default function ApplicationsPage() {
         </Select>
       </div>
 
-      <ApplicationTable applications={paged} onRowClick={setSelectedApp} />
+      <ApplicationTable
+        applications={paged}
+        onRowClick={setSelectedApp}
+        selectable={app => actionableIds.has(app.id)}
+        selectedIds={selectedIds}
+        onToggleSelect={toggleSelect}
+        headerAction={(() => {
+          const visible = paged.filter(a => actionableIds.has(a.id));
+          if (visible.length === 0) return null;
+          const allOn = visible.every(a => selectedIds.has(a.id));
+          return (
+            <Button variant="outline" size="sm" onClick={() => setSelectedIds(prev => {
+              const next = new Set(prev);
+              visible.forEach(a => (allOn ? next.delete(a.id) : next.add(a.id)));
+              return next;
+            })}>
+              {allOn ? 'Avmarkera alla' : `Markera alla att hantera (${visible.length})`}
+            </Button>
+          );
+        })()}
+      />
+      <BulkActionBar
+        selected={actionable.filter(a => selectedIds.has(a.id))}
+        onClear={() => setSelectedIds(new Set())}
+        onDone={failedIds => { setSelectedIds(new Set(failedIds)); reloadPaged(); }}
+      />
 
       {/* Pagination */}
       {totalPages > 1 && (
