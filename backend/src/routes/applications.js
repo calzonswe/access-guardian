@@ -300,6 +300,30 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// GET /api/applications/:id/history: the audit trail of one application
+// (status changes, edits, attachments), oldest first. Same view rule as the application.
+router.get('/:id/history', async (req, res) => {
+  try {
+    const scope = await getApplicationScope(req.params.id);
+    if (!scope) return res.status(404).json({ error: 'Ej hittad' });
+    const access = await getApplicationAccess(req.user, scope);
+    if (!access.canView) return res.status(403).json({ error: 'Otillräckliga rättigheter' });
+    const { rows } = await pool.query(
+      `SELECT l.id, l.action, l.created_at, l.details, u.full_name AS actor_name
+         FROM system_logs l LEFT JOIN users u ON u.id = l.actor_id
+        WHERE l.target_id = $1::uuid
+           OR (l.target_type = 'attachment' AND l.details LIKE 'Ansökan: ' || $1::text || '%')
+        ORDER BY l.created_at ASC
+        LIMIT 500`,
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internt serverfel' });
+  }
+});
+
 async function fetchApplication(db, appId) {
   const { rows } = await db.query(`${APP_SELECT} WHERE a.id = $1 GROUP BY a.id`, [appId]);
   return rows[0] ? mapApp(rows[0]) : null;
