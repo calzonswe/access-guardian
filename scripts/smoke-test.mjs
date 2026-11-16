@@ -354,6 +354,33 @@ async function main() {
   const lf = await call('GET', `/logs?page=1&pageSize=50&from=${dayOffset(1)}`, admin);
   check('log date filter excludes everything after today', lf.status === 200 && lf.data.total === 0);
 
+  // ========== Language, e-mail settings, bulk-style decisions ==========
+  const prefs = await call('PUT', '/auth/me', m, { email_prefs: { action: false, status: true, bogus: true } });
+  check('e-mail settings are saved (unknown keys dropped)', prefs.status === 200
+    && prefs.data.user.email_prefs.action === false && prefs.data.user.email_prefs.status === true && !('bogus' in prefs.data.user.email_prefs), JSON.stringify(prefs.data?.user?.email_prefs));
+  check('invalid language rejected', (await call('PUT', '/auth/me', m, { language: 'de' })).status === 400);
+  const toEn = await call('PUT', '/auth/me', eNow, { language: 'en' });
+  check('language is saved on the account', toEn.status === 200 && toEn.data.user.language === 'en');
+  const enErr = await call('PUT', `/applications/${id1}`, eNow, { status: 'approved' });
+  check('English user gets English errors', enErr.status === 403 && /permission|role/i.test(enErr.data.error), JSON.stringify(enErr.data));
+  const svErr = await call('PUT', `/applications/${id1}`, m, { status: 'approved' });
+  check('Swedish user still gets Swedish errors', svErr.status === 403 && /[åäö]/.test(svErr.data.error), JSON.stringify(svErr.data));
+  const enApp = await call('POST', '/applications', eNow, { facility_id: fId, status: 'pending_manager', start_date: dayOffset(60) });
+  await call('PUT', `/applications/${enApp.data.id}`, m, { status: 'pending_facility' });
+  const enNotifs = await call('GET', '/notifications', eNow);
+  check('notifications are stored in the recipient\'s language', enNotifs.data.some(n => n.link === `/applications/${enApp.data.id}` && n.title === 'Application forwarded'),
+    JSON.stringify(enNotifs.data.filter(n => n.link === `/applications/${enApp.data.id}`).map(n => n.title)));
+  const anonEn = await fetch(BASE + '/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Language': 'en' }, body: JSON.stringify({ email: 'nobody@x.se', password: 'x' }) });
+  check('signed-out requests follow X-Language', (await anonEn.json()).error === 'Incorrect e-mail or password');
+  await call('PUT', '/auth/me', eNow, { language: 'sv' });
+
+  // bulk = one normal request per application: decidable ones pass, others are refused
+  const b1 = await call('POST', '/applications', eNow, { facility_id: fId, status: 'pending_manager', start_date: dayOffset(70) });
+  const b2 = await call('POST', '/applications', c, { facility_id: fId, status: 'pending_manager', start_date: dayOffset(70) });
+  const bulk = [await call('PUT', `/applications/${b1.data.id}`, m, { status: 'denied', denied_reason: 'Massnekad' }),
+                await call('PUT', `/applications/${b2.data.id}`, fa, { status: 'denied', denied_reason: 'Massnekad' })];
+  check('bulk run: decidable item succeeds, others are refused', bulk[0].status === 200 && bulk[1].status === 403, JSON.stringify(bulk.map(r => r.status)));
+
   // ---------- Audit log ----------
   const logs = await call('GET', '/logs?page=1&pageSize=200', admin);
   const actions = new Set(logs.data.items.map(l => l.action));
