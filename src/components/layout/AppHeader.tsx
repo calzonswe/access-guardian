@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Bell, Moon, Sun, Monitor, LogOut, User as UserIcon, Check } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Bell, Moon, Sun, Monitor, LogOut, User as UserIcon, Check, Search } from 'lucide-react';
+import { GlobalSearch } from './GlobalSearch';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,17 @@ export function AppHeader() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [, setRefresh] = useState(0);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Ctrl+K / ⌘K opens search from anywhere.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSearchOpen(o => !o); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 
   if (!currentUser) return null;
 
@@ -74,6 +86,15 @@ export function AppHeader() {
       <SidebarTrigger className="text-muted-foreground hover:text-foreground" aria-label="Visa eller dölj menyn" title="Visa eller dölj menyn" />
       <span className="truncate text-sm font-medium text-foreground">{pageTitle}</span>
       <div className="flex-1" />
+
+      <Button variant="outline" onClick={() => setSearchOpen(true)} aria-label="Sök" title="Sök"
+        className="h-9 gap-2 px-2 text-muted-foreground sm:w-56 sm:justify-start sm:px-3">
+        <Search className="h-4 w-4" />
+        <span className="hidden text-sm sm:inline">Sök…</span>
+        <kbd className="ml-auto hidden rounded border border-border bg-muted px-1.5 font-sans text-[10px] sm:inline">{isMac ? '⌘K' : 'Ctrl K'}</kbd>
+      </Button>
+      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+
 
       {/* Notifications dropdown */}
       <DropdownMenu>

@@ -1,12 +1,10 @@
-import {
-  LayoutDashboard, Building2, Shield, FileText,
-  Users, ScrollText, Settings, Bell, Network, ChevronDown, UserCircle
-} from 'lucide-react';
+import { ChevronDown, Shield } from 'lucide-react';
+import { navItemsFor } from './navItems';
 import { NavLink } from '@/components/NavLink';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useBranding } from '@/context/BrandingContext';
-import { ROLE_LABELS, type AppRole } from '@/types/rbac';
+import { ROLE_LABELS } from '@/types/rbac';
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
@@ -15,31 +13,6 @@ import {
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-
-interface NavItem {
-  title: string;
-  url: string;
-  icon: React.ComponentType<{ className?: string }>;
-  roles: AppRole[] | 'all';
-  children?: NavItem[];
-}
-
-const navItems: NavItem[] = [
-  { title: 'Översikt', url: '/', icon: LayoutDashboard, roles: 'all' },
-  { title: 'Ansökningar', url: '/applications', icon: FileText, roles: 'all' },
-  {
-    title: 'Anläggningar', url: '/facilities', icon: Building2,
-    roles: ['administrator', 'facility_owner', 'facility_admin'],
-  },
-  { title: 'Krav', url: '/requirements', icon: Shield, roles: ['administrator', 'facility_owner', 'facility_admin', 'line_manager'] },
-  { title: 'Användare', url: '/users', icon: Users, roles: ['administrator'] },
-  { title: 'Organisation', url: '/organization', icon: Network, roles: ['administrator'] },
-  { title: 'Mitt team', url: '/team', icon: Users, roles: ['line_manager'] },
-  { title: 'Min åtkomst', url: '/my-access', icon: Shield, roles: ['employee', 'contractor'] },
-  { title: 'Aviseringar', url: '/notifications', icon: Bell, roles: 'all' },
-  { title: 'Systemlogg', url: '/logs', icon: ScrollText, roles: ['administrator'] },
-  { title: 'Inställningar', url: '/settings', icon: Settings, roles: ['administrator'] },
-];
 
 import { useActionableApplications } from '@/hooks/useActionableApplications';
 
@@ -55,9 +28,7 @@ export function AppSidebar() {
 
   if (!currentUser) return null;
 
-  const filteredItems = navItems.filter(item =>
-    item.roles === 'all' || item.roles.some(r => currentUser.roles.includes(r))
-  );
+  const filteredItems = navItemsFor(currentUser.roles);
 
   const roleLabels = currentUser.roles.map(r => ROLE_LABELS[r]).join(', ');
 
