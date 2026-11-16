@@ -9,18 +9,19 @@ import * as api from '@/services/api';
 import { parseCsv, toCsv } from '@/lib/csv';
 import { errorMessage } from '@/lib/utils';
 import type { ImportResult } from '@/services/api';
+import { t } from '@/i18n';
 
 const HEADERS = ['email', 'fornamn', 'efternamn', 'telefon', 'befattning', 'avdelning', 'foretag', 'chef_email', 'roller'];
 const MAX_ROWS = 500;
 const EXAMPLE = [
-  { email: 'anna.berg@foretag.se', fornamn: 'Anna', efternamn: 'Berg', telefon: '070-123 45 67', befattning: 'Driftchef', avdelning: 'Drift', foretag: '', chef_email: '', roller: 'Linjechef|Anställd' },
-  { email: 'erik.lund@foretag.se', fornamn: 'Erik', efternamn: 'Lund', telefon: '', befattning: 'Tekniker', avdelning: 'Drift', foretag: '', chef_email: 'anna.berg@foretag.se', roller: 'Anställd' },
+  { email: 'anna.berg@foretag.se', fornamn: 'Anna', efternamn: 'Berg', telefon: '070-123 45 67', befattning: t('Driftchef'), avdelning: t('Drift'), foretag: '', chef_email: '', roller: t('Linjechef|Anställd') },
+  { email: 'erik.lund@foretag.se', fornamn: 'Erik', efternamn: 'Lund', telefon: '', befattning: t('Tekniker'), avdelning: t('Drift'), foretag: '', chef_email: 'anna.berg@foretag.se', roller: t('Anställd') },
 ];
 
 const STATUS = {
-  created: { label: 'Skapad', className: 'status-badge-approved' },
-  skipped: { label: 'Fanns redan', className: 'status-badge-neutral' },
-  error: { label: 'Fel', className: 'status-badge-denied' },
+  created: { label: t('Skapad'), className: 'status-badge-approved' },
+  skipped: { label: t('Fanns redan'), className: 'status-badge-neutral' },
+  error: { label: t('Fel'), className: 'status-badge-denied' },
 } as const;
 
 function download(name: string, text: string) {
@@ -58,9 +59,9 @@ export function UserImportDialog({ open, onOpenChange, onImported }: Props) {
     setFileName(file.name);
     const { headers, rows: parsed } = parseCsv(await file.text());
     const missing = ['email', 'fornamn', 'efternamn'].filter(h => !headers.includes(h));
-    if (missing.length) { setRows([]); setProblem(`Kolumner saknas: ${missing.join(', ')}. Utgå från mallen.`); return; }
-    if (parsed.length === 0) { setRows([]); setProblem('Filen innehåller inga rader.'); return; }
-    if (parsed.length > MAX_ROWS) { setRows([]); setProblem(`Filen har ${parsed.length} rader. Max ${MAX_ROWS} per import – dela upp filen.`); return; }
+    if (missing.length) { setRows([]); setProblem(t('Kolumner saknas: {v0}. Utgå från mallen.', { v0: missing.join(', ') })); return; }
+    if (parsed.length === 0) { setRows([]); setProblem(t('Filen innehåller inga rader.')); return; }
+    if (parsed.length > MAX_ROWS) { setRows([]); setProblem(t('Filen har {count} rader. Max {MAX_ROWS} per import – dela upp filen.', { count: parsed.length, MAX_ROWS })); return; }
     setRows(parsed);
   };
 
@@ -70,10 +71,10 @@ export function UserImportDialog({ open, onOpenChange, onImported }: Props) {
       const { results: res } = await api.importUsers(rows);
       setResults(res);
       const created = res.filter(r => r.status === 'created').length;
-      toast.success(`${created} användare skapade`);
+      toast.success(t('{created} användare skapade', { created }));
       onImported();
     } catch (err) {
-      toast.error(errorMessage(err, 'Importen misslyckades'));
+      toast.error(errorMessage(err, t('Importen misslyckades')));
     } finally {
       setBusy(false);
     }
@@ -85,9 +86,9 @@ export function UserImportDialog({ open, onOpenChange, onImported }: Props) {
     <Dialog open={open} onOpenChange={close}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Importera användare</DialogTitle>
+          <DialogTitle>{t('Importera användare')}</DialogTitle>
           <DialogDescription>
-            Ladda upp en CSV-fil (spara från Excel som "CSV UTF-8"). Nya användare får ett tillfälligt lösenord och måste byta det vid första inloggningen. E-postadresser som redan finns hoppas över.
+            {t('Ladda upp en CSV-fil (spara från Excel som "CSV UTF-8"). Nya användare får ett tillfälligt lösenord och måste byta det vid första inloggningen. E-postadresser som redan finns hoppas över.')}
           </DialogDescription>
         </DialogHeader>
 
@@ -95,34 +96,34 @@ export function UserImportDialog({ open, onOpenChange, onImported }: Props) {
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={() => download('anvandarimport-mall.csv', toCsv(EXAMPLE, HEADERS))}>
-                <Download className="mr-2 h-4 w-4" />Ladda ner mall
+                <Download className="mr-2 h-4 w-4" />{t('Ladda ner mall')}
               </Button>
               <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={onFile} id="user-import-file" />
-              <Button onClick={() => fileRef.current?.click()}><FileUp className="mr-2 h-4 w-4" />Välj fil</Button>
+              <Button onClick={() => fileRef.current?.click()}><FileUp className="mr-2 h-4 w-4" />{t('Välj fil')}</Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Kolumner: {HEADERS.join(', ')}. Roller skrivs som t.ex. <code>Linjechef|Anställd</code> (tom = Anställd). <code>chef_email</code> kan peka på en befintlig användare eller någon i samma fil.
+              Kolumner: {HEADERS.join(', ')}. Roller skrivs som t.ex. <code>{t('Linjechef|Anställd')}</code> {t('(tom = Anställd).')} <code>chef_email</code> {t('kan peka på en befintlig användare eller någon i samma fil.')}
             </p>
             {problem && <p className="text-sm text-destructive">{problem}</p>}
             {rows.length > 0 && (
               <div className="space-y-2">
-                <p className="text-sm text-foreground"><strong>{fileName}</strong>: {rows.length} rader. Förhandsvisning:</p>
+                <p className="text-sm text-foreground"><strong>{fileName}</strong>: {rows.length} {t('rader. Förhandsvisning:')}</p>
                 <div className="overflow-x-auto rounded-md border border-border">
                   <Table>
-                    <TableHeader><TableRow><TableHead>E-post</TableHead><TableHead>Namn</TableHead><TableHead>Roller</TableHead><TableHead>Chef</TableHead></TableRow></TableHeader>
+                    <TableHeader><TableRow><TableHead>E-post</TableHead><TableHead>{t('Namn')}</TableHead><TableHead>{t('Roller')}</TableHead><TableHead>{t('Chef')}</TableHead></TableRow></TableHeader>
                     <TableBody>
                       {rows.slice(0, 10).map((r, i) => (
                         <TableRow key={i}>
                           <TableCell>{r.email}</TableCell>
                           <TableCell>{`${r.fornamn || ''} ${r.efternamn || ''}`.trim()}</TableCell>
-                          <TableCell>{r.roller || 'Anställd'}</TableCell>
+                          <TableCell>{r.roller || t('Anställd')}</TableCell>
                           <TableCell>{r.chef_email || '–'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </div>
-                {rows.length > 10 && <p className="text-xs text-muted-foreground">…och {rows.length - 10} rader till.</p>}
+                {rows.length > 10 && <p className="text-xs text-muted-foreground">{t('…och')} {rows.length - 10} rader till.</p>}
               </div>
             )}
           </div>
@@ -139,19 +140,19 @@ export function UserImportDialog({ open, onOpenChange, onImported }: Props) {
               <div className="flex items-start gap-2 rounded-md border border-warning/25 bg-warning/10 p-3 text-sm text-foreground">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
                 <div className="space-y-2">
-                  <p><strong>Lösenorden visas bara nu.</strong> Ladda ner resultatfilen och lämna lösenorden till respektive person på ett säkert sätt.</p>
+                  <p><strong>{t('Lösenorden visas bara nu.')}</strong> {t('Ladda ner resultatfilen och lämna lösenorden till respektive person på ett säkert sätt.')}</p>
                   <Button size="sm" onClick={() => download('anvandarimport-resultat.csv', toCsv(
                     results.map(r => ({ rad: String(r.row), email: r.email, status: STATUS[r.status].label, meddelande: r.message || '', tillfalligt_losenord: r.temp_password || '' })),
                     ['rad', 'email', 'status', 'meddelande', 'tillfalligt_losenord'],
                   ))}>
-                    <Download className="mr-2 h-4 w-4" />Ladda ner resultat med lösenord
+                    <Download className="mr-2 h-4 w-4" />{t('Ladda ner resultat med lösenord')}
                   </Button>
                 </div>
               </div>
             )}
             <div className="max-h-72 overflow-auto rounded-md border border-border">
               <Table>
-                <TableHeader><TableRow><TableHead>Rad</TableHead><TableHead>E-post</TableHead><TableHead>Resultat</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>{t('Rad')}</TableHead><TableHead>E-post</TableHead><TableHead>{t('Resultat')}</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {results.map(r => (
                     <TableRow key={r.row}>
@@ -171,11 +172,11 @@ export function UserImportDialog({ open, onOpenChange, onImported }: Props) {
 
         <DialogFooter>
           {results ? (
-            <Button onClick={() => close(false)}>Klar</Button>
+            <Button onClick={() => close(false)}>{t('Klar')}</Button>
           ) : (
             <>
-              <Button variant="outline" onClick={() => close(false)}>Avbryt</Button>
-              <Button onClick={runImport} disabled={busy || rows.length === 0}>{busy ? 'Importerar…' : `Importera ${rows.length || ''} användare`.replace('  ', ' ')}</Button>
+              <Button variant="outline" onClick={() => close(false)}>{t('Avbryt')}</Button>
+              <Button onClick={runImport} disabled={busy || rows.length === 0}>{busy ? 'Importerar…' : t('Importera {v0} användare', { v0: rows.length || '' }).replace('  ', ' ')}</Button>
             </>
           )}
         </DialogFooter>

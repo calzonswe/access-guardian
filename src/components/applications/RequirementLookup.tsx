@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import * as store from '@/services/dataStore';
 import { checkRequirements } from '@/lib/requirements';
 import { RequirementChecklist } from '@/components/applications/RequirementChecklist';
+import { t } from '@/i18n';
 
 /** "Vad krävs?": pick a facility and areas, see which requirements you meet. */
 export function RequirementLookup({ userId }: { userId: string }) {
@@ -29,20 +30,20 @@ export function RequirementLookup({ userId }: { userId: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2"><ListChecks className="h-4 w-4 text-primary" />Vad krävs?</CardTitle>
-        <CardDescription>Se vilka krav som gäller innan du ansöker, och vilka du redan uppfyller.</CardDescription>
+        <CardTitle className="text-lg flex items-center gap-2"><ListChecks className="h-4 w-4 text-primary" />{t('Vad krävs?')}</CardTitle>
+        <CardDescription>{t('Se vilka krav som gäller innan du ansöker, och vilka du redan uppfyller.')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2 max-w-sm">
-          <Label htmlFor="req-lookup-facility">Anläggning</Label>
+          <Label htmlFor="req-lookup-facility">{t('Anläggning')}</Label>
           <Select value={facilityId} onValueChange={v => { setFacilityId(v); setAreaIds([]); }}>
-            <SelectTrigger id="req-lookup-facility"><SelectValue placeholder="Välj anläggning" /></SelectTrigger>
+            <SelectTrigger id="req-lookup-facility"><SelectValue placeholder={t('Välj anläggning')} /></SelectTrigger>
             <SelectContent>{facilities.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         {areas.length > 0 && (
           <fieldset className="space-y-2">
-            <legend className="text-sm font-medium text-foreground">Områden (valfritt)</legend>
+            <legend className="text-sm font-medium text-foreground">{t('Områden (valfritt)')}</legend>
             <div className="flex flex-wrap gap-x-4 gap-y-2">
               {areas.map(a => (
                 <label key={a.id} className="flex items-center gap-2 text-sm">
@@ -56,7 +57,7 @@ export function RequirementLookup({ userId }: { userId: string }) {
             </div>
           </fieldset>
         )}
-        {facilityId && <RequirementChecklist checks={checks} emptyText="Inga krav för det valda." />}
+        {facilityId && <RequirementChecklist checks={checks} emptyText={t('Inga krav för det valda.')} />}
       </CardContent>
     </Card>
   );

@@ -13,6 +13,7 @@ import * as store from '@/services/dataStore';
 import { SubstituteCard } from '@/components/users/SubstituteCard';
 import { toast } from 'sonner';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
+import { t, locale } from '@/i18n';
 
 export default function ProfilePage() {
   useDataRefresh();
@@ -46,7 +47,7 @@ export default function ProfilePage() {
   };
 
   const handleSaveEdit = async () => {
-    if (!editFullName.trim()) { toast.error('Namn krävs'); return; }
+    if (!editFullName.trim()) { toast.error(t('Namn krävs')); return; }
     setSaving(true);
     try {
       const parts = editFullName.trim().split(/\s+/);
@@ -62,9 +63,9 @@ export default function ProfilePage() {
       });
       refreshUser();
       setEditing(false);
-      toast.success('Profil uppdaterad');
+      toast.success(t('Profil uppdaterad'));
     } catch (err) {
-      toast.error('Kunde inte spara profil');
+      toast.error(t('Kunde inte spara profil'));
     } finally {
       setSaving(false);
     }
@@ -72,39 +73,39 @@ export default function ProfilePage() {
 
   const handleChangePassword = async () => {
     setPwError('');
-    if (newPassword !== confirmPassword) { setPwError('Lösenorden matchar inte'); return; }
+    if (newPassword !== confirmPassword) { setPwError(t('Lösenorden matchar inte')); return; }
     try {
       await changePassword(newPassword, currentPassword);
-      toast.success('Lösenordet har ändrats');
+      toast.success(t('Lösenordet har ändrats'));
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err) {
-      setPwError(err instanceof Error ? err.message : 'Kunde inte byta lösenord');
+      setPwError(err instanceof Error ? err.message : t('Kunde inte byta lösenord'));
     }
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Min profil</h1>
-        <p className="text-sm text-muted-foreground mt-1">Dina uppgifter och kravuppfyllnad</p>
+        <h1 className="text-2xl font-semibold text-foreground">{t('Min profil')}</h1>
+        <p className="text-sm text-muted-foreground mt-1">{t('Dina uppgifter och kravuppfyllnad')}</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Uppgifter</CardTitle>
+              <CardTitle className="text-lg">{t('Uppgifter')}</CardTitle>
               {!editing ? (
                 <Button variant="ghost" size="sm" onClick={startEdit}>
-                  <Pencil className="mr-2 h-4 w-4" />Redigera
+                  <Pencil className="mr-2 h-4 w-4" />{t('Redigera')}
                 </Button>
               ) : (
                 <div className="flex gap-1">
                   <Button variant="ghost" size="sm" onClick={() => setEditing(false)}><X className="h-4 w-4" /></Button>
                   <Button size="sm" onClick={handleSaveEdit} disabled={saving}>
-                    <Save className="mr-2 h-4 w-4" />{saving ? 'Sparar...' : 'Spara'}
+                    <Save className="mr-2 h-4 w-4" />{saving ? 'Sparar...' : t('Spara')}
                   </Button>
                 </div>
               )}
@@ -114,50 +115,50 @@ export default function ProfilePage() {
             {editing ? (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Namn</Label>
+                  <Label>{t('Namn')}</Label>
                   <Input value={editFullName} onChange={e => setEditFullName(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Telefon</Label>
+                  <Label>{t('Telefon')}</Label>
                   <Input value={editPhone} onChange={e => setEditPhone(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Befattning</Label>
+                  <Label>{t('Befattning')}</Label>
                   <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Organisation / Enhet</Label>
+                  <Label>{t('Organisation / Enhet')}</Label>
                   <Input value={editDepartment} onChange={e => setEditDepartment(e.target.value)} />
                 </div>
               </div>
             ) : (
               <>
                 <div className="grid grid-cols-2 gap-y-3 text-sm">
-                  <span className="text-muted-foreground">Namn</span>
+                  <span className="text-muted-foreground">{t('Namn')}</span>
                   <span className="font-medium text-foreground">{currentUser.full_name}</span>
                   <span className="text-muted-foreground">E-post</span>
                   <span className="font-medium text-foreground">{currentUser.email}</span>
                   {currentUser.phone && (<>
-                    <span className="text-muted-foreground">Telefon</span>
+                    <span className="text-muted-foreground">{t('Telefon')}</span>
                     <span className="font-medium text-foreground">{currentUser.phone}</span>
                   </>)}
                   {currentUser.title && (<>
-                    <span className="text-muted-foreground">Befattning</span>
+                    <span className="text-muted-foreground">{t('Befattning')}</span>
                     <span className="font-medium text-foreground">{currentUser.title}</span>
                   </>)}
                   {currentUser.company && (<>
-                    <span className="text-muted-foreground">Företag</span>
+                    <span className="text-muted-foreground">{t('Företag')}</span>
                     <span className="font-medium text-foreground">{currentUser.company}</span>
                   </>)}
                   {currentUser.department && (<>
-                    <span className="text-muted-foreground">Organisation / Enhet</span>
+                    <span className="text-muted-foreground">{t('Organisation / Enhet')}</span>
                     <span className="font-medium text-foreground">{currentUser.department}</span>
                   </>)}
                   {manager && (<>
-                    <span className="text-muted-foreground">Närmaste chef</span>
+                    <span className="text-muted-foreground">{t('Närmaste chef')}</span>
                     <span className="font-medium text-foreground">{manager.full_name}</span>
                   </>)}
-                  <span className="text-muted-foreground">Roller</span>
+                  <span className="text-muted-foreground">{t('Roller')}</span>
                   <div className="flex flex-wrap gap-1">
                     {currentUser.roles.map(r => <Badge key={r} variant="secondary" className="text-xs">{ROLE_LABELS[r]}</Badge>)}
                   </div>
@@ -170,24 +171,24 @@ export default function ProfilePage() {
         {currentUser.roles.includes('line_manager') && <SubstituteCard user={currentUser} onSaved={refreshUser} />}
 
         <Card>
-          <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Lock className="h-4 w-4" />Byt lösenord</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Lock className="h-4 w-4" />{t('Byt lösenord')}</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {store.isApiMode() && (
               <div className="space-y-2">
-                <Label>Nuvarande lösenord</Label>
+                <Label>{t('Nuvarande lösenord')}</Label>
                 <Input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} autoComplete="current-password" />
               </div>
             )}
             <div className="space-y-2">
-              <Label>Nytt lösenord</Label>
-              <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Minst 8 tecken" />
+              <Label>{t('Nytt lösenord')}</Label>
+              <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder={t('Minst 8 tecken')} />
             </div>
             <div className="space-y-2">
-              <Label>Bekräfta lösenord</Label>
+              <Label>{t('Bekräfta lösenord')}</Label>
               <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
             </div>
             {pwError && <p className="text-sm text-destructive">{pwError}</p>}
-            <Button onClick={handleChangePassword} disabled={!newPassword || !confirmPassword || (store.isApiMode() && !currentPassword)}>Byt lösenord</Button>
+            <Button onClick={handleChangePassword} disabled={!newPassword || !confirmPassword || (store.isApiMode() && !currentPassword)}>{t('Byt lösenord')}</Button>
           </CardContent>
         </Card>
       </div>
@@ -197,7 +198,7 @@ export default function ProfilePage() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Shield className="h-4 w-4" />
-              Kravuppfyllnad
+              {t('Kravuppfyllnad')}
               <Badge variant="outline" className="ml-auto">{fulfilledCount} / {requirements.length}</Badge>
             </CardTitle>
           </CardHeader>
@@ -205,7 +206,7 @@ export default function ProfilePage() {
             <Progress value={progress} className="h-2" />
             <div className="space-y-2">
               {requirements.length === 0 && (
-                <p className="text-sm text-muted-foreground">Inga krav är kopplade till dina ansökningar.</p>
+                <p className="text-sm text-muted-foreground">{t('Inga krav är kopplade till dina ansökningar.')}</p>
               )}
               {requirements.map(req => {
                 const ur = userReqs.find(u => u.requirement_id === req.id);
@@ -222,7 +223,7 @@ export default function ProfilePage() {
                     {fulfilled && ur?.expires_at && (
                       <Badge variant="outline" className="text-xs">
                         <Clock className="h-3 w-3 mr-1" />
-                        Utgår {new Date(ur.expires_at).toLocaleDateString('sv-SE')}
+                        {t('Utgår')} {new Date(ur.expires_at).toLocaleDateString(locale())}
                       </Badge>
                     )}
                   </div>

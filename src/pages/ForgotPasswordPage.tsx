@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useBranding } from '@/context/BrandingContext';
 import * as api from '@/services/api';
+import { t } from '@/i18n';
 
 export default function ForgotPasswordPage() {
   const { appName, logoUrl } = useBranding();
@@ -38,9 +39,9 @@ export default function ForgotPasswordPage() {
             )}
           </div>
           <div>
-            <CardTitle className="text-2xl">Återställ lösenord</CardTitle>
+            <CardTitle className="text-2xl">{t('Återställ lösenord')}</CardTitle>
             <CardDescription className="mt-1">
-              Vi skickar en återställningslänk till din e-post.
+              {t('Vi skickar en återställningslänk till din e-post.')}
             </CardDescription>
           </div>
         </CardHeader>
@@ -48,11 +49,10 @@ export default function ForgotPasswordPage() {
           {submitted ? (
             <div className="space-y-4 text-sm">
               <p>
-                Om e-postadressen finns i systemet skickas en återställningslänk
-                inom kort. Kontrollera även skräpposten.
+                {t('Om e-postadressen finns i systemet skickas en återställningslänk inom kort. Kontrollera även skräpposten.')}
               </p>
               <Link to="/" className="block text-center text-primary hover:underline">
-                Tillbaka till inloggning
+                {t('Tillbaka till inloggning')}
               </Link>
             </div>
           ) : (
@@ -70,11 +70,11 @@ export default function ForgotPasswordPage() {
                 />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Skickar...' : 'Skicka återställningslänk'}
+                {loading ? 'Skickar...' : t('Skicka återställningslänk')}
               </Button>
               <div className="text-center text-sm">
                 <Link to="/" className="text-primary hover:underline">
-                  Tillbaka till inloggning
+                  {t('Tillbaka till inloggning')}
                 </Link>
               </div>
             </form>

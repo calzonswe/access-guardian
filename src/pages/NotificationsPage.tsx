@@ -7,11 +7,12 @@ import * as store from '@/services/dataStore';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
+import { t as tr, locale } from '@/i18n';
 
 const TYPE_CONFIG: Record<string, { icon: typeof Bell; className: string; label: string }> = {
-  info: { icon: Info, className: 'text-primary', label: 'Information' },
-  warning: { icon: AlertTriangle, className: 'text-warning', label: 'Varning' },
-  action_required: { icon: Bell, className: 'text-destructive', label: 'Åtgärd krävs' },
+  info: { icon: Info, className: 'text-primary', label: tr('Information') },
+  warning: { icon: AlertTriangle, className: 'text-warning', label: tr('Varning') },
+  action_required: { icon: Bell, className: 'text-destructive', label: tr('Åtgärd krävs') },
 };
 
 export default function NotificationsPage() {
@@ -30,7 +31,7 @@ export default function NotificationsPage() {
   const markAllRead = async () => {
     await store.markAllNotificationsRead(currentUser.id);
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    toast.success('Alla aviseringar markerade som lästa');
+    toast.success(tr('Alla aviseringar markerade som lästa'));
   };
 
   const markRead = async (id: string) => {
@@ -46,17 +47,17 @@ export default function NotificationsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Aviseringar</h1>
+          <h1 className="text-2xl font-semibold text-foreground">{tr('Aviseringar')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {unread.length > 0 ? `${unread.length} olästa aviseringar` : 'Inga olästa aviseringar'}
+            {unread.length > 0 ? tr('{count} olästa aviseringar', { count: unread.length }) : tr('Inga olästa aviseringar')}
           </p>
         </div>
-        {unread.length > 0 && <Button variant="outline" size="sm" onClick={markAllRead}>Markera alla som lästa</Button>}
+        {unread.length > 0 && <Button variant="outline" size="sm" onClick={markAllRead}>{tr('Markera alla som lästa')}</Button>}
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant={onlyUnread ? 'default' : 'outline'} onClick={() => setOnlyUnread(v => !v)}>Endast olästa</Button>
+        <Button size="sm" variant={onlyUnread ? 'default' : 'outline'} onClick={() => setOnlyUnread(v => !v)}>{tr('Endast olästa')}</Button>
         {['all', 'info', 'warning', 'action_required'].map(t => (
-          <Button key={t} size="sm" variant={typeFilter === t ? 'default' : 'outline'} onClick={() => setTypeFilter(t)}>{t === 'all' ? 'Alla typer' : TYPE_CONFIG[t].label}</Button>
+          <Button key={t} size="sm" variant={typeFilter === t ? 'default' : 'outline'} onClick={() => setTypeFilter(t)}>{t === 'all' ? tr('Alla typer') : TYPE_CONFIG[t].label}</Button>
         ))}
       </div>
       <div className="space-y-3">
@@ -64,7 +65,7 @@ export default function NotificationsPage() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <CheckCircle className="h-12 w-12 text-muted-foreground/40 mb-4" />
-              <p className="text-lg font-medium text-muted-foreground">Inga aviseringar</p>
+              <p className="text-lg font-medium text-muted-foreground">{tr('Inga aviseringar')}</p>
             </CardContent>
           </Card>
         ) : (
@@ -78,14 +79,14 @@ export default function NotificationsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-foreground">{notif.title}</p>
-                      {!notif.read && <Badge className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0">Ny</Badge>}
+                      {!notif.read && <Badge className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0">{tr('Ny')}</Badge>}
                     </div>
                     <p className="text-sm text-muted-foreground mt-0.5">{notif.message}</p>
-                    <p className="text-xs text-muted-foreground/60 mt-1">{new Date(notif.created_at).toLocaleString('sv-SE')}</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">{new Date(notif.created_at).toLocaleString(locale())}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {!notif.read && (
-                      <Button variant="ghost" size="icon" aria-label="Markera som läst" className="h-7 w-7" onClick={() => markRead(notif.id)} title="Markera som läst">
+                      <Button variant="ghost" size="icon" aria-label={tr('Markera som läst')} className="h-7 w-7" onClick={() => markRead(notif.id)} title={tr('Markera som läst')}>
                         <Check className="h-3 w-3" />
                       </Button>
                     )}

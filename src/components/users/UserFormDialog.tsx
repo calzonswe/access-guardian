@@ -10,6 +10,7 @@ import { flattenOrgUnits, ORG_UNIT_LABELS } from '@/types/organization';
 import * as store from '@/services/dataStore';
 import * as api from '@/services/api';
 import { toast } from 'sonner';
+import { t } from '@/i18n';
 
 const ALL_ROLES: AppRole[] = ['administrator', 'facility_owner', 'facility_admin', 'line_manager', 'employee', 'contractor'];
 
@@ -83,18 +84,18 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
   const isContractor = roles.includes('contractor');
 
   const handleSave = async () => {
-    if (!firstName.trim() || !lastName.trim()) { toast.error('Förnamn och efternamn krävs'); return; }
-    if (!email.trim()) { toast.error('E-post krävs'); return; }
-    if (!editUser && !password.trim()) { toast.error('Lösenord krävs för nya användare'); return; }
+    if (!firstName.trim() || !lastName.trim()) { toast.error(t('Förnamn och efternamn krävs')); return; }
+    if (!email.trim()) { toast.error(t('E-post krävs')); return; }
+    if (!editUser && !password.trim()) { toast.error(t('Lösenord krävs för nya användare')); return; }
     if (password.trim()) {
       const err = api.validatePasswordAgainstPolicy(password, policy);
       if (err) { toast.error(err); return; }
     }
-    if (roles.length === 0) { toast.error('Välj minst en roll'); return; }
-    if (isContractor && !contactPersonId) { toast.error('Kontaktperson krävs för entreprenörer'); return; }
+    if (roles.length === 0) { toast.error(t('Välj minst en roll')); return; }
+    if (isContractor && !contactPersonId) { toast.error(t('Kontaktperson krävs för entreprenörer')); return; }
 
     const existing = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.id !== editUser?.id);
-    if (existing) { toast.error('E-postadressen används redan'); return; }
+    if (existing) { toast.error(t('E-postadressen används redan')); return; }
 
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
@@ -121,8 +122,8 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
       };
       if (password.trim()) { updateData.password = password; updateData.must_change_password = true; }
       await store.updateUser(editUser.id, updateData);
-      store.addLog({ action: 'user_updated', actor_id: currentUserId, target_id: editUser.id, target_type: 'user', details: `Användare uppdaterad: ${fullName}` });
-      toast.success('Användare uppdaterad');
+      store.addLog({ action: 'user_updated', actor_id: currentUserId, target_id: editUser.id, target_type: 'user', details: t('Användare uppdaterad: {fullName}', { fullName }) });
+      toast.success(t('Användare uppdaterad'));
     } else {
       const u = await store.createUser({
         first_name: firstName.trim(),
@@ -140,8 +141,8 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
         is_active: true,
         password,
       });
-      store.addLog({ action: 'user_created', actor_id: currentUserId, target_id: u.id, target_type: 'user', details: `Ny användare skapad: ${fullName}` });
-      toast.success(`Användare skapad.`);
+      store.addLog({ action: 'user_created', actor_id: currentUserId, target_id: u.id, target_type: 'user', details: t('Ny användare skapad: {fullName}', { fullName }) });
+      toast.success(t('Användare skapad.'));
     }
     onOpenChange(false);
     onSaved();
@@ -154,57 +155,57 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>{editUser ? 'Redigera användare' : 'Ny användare'}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editUser ? t('Redigera användare') : t('Ny användare')}</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Förnamn *</Label>
-              <Input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Anna" />
+              <Label>{t('Förnamn *')}</Label>
+              <Input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder={t('Anna')} />
             </div>
             <div className="space-y-2">
-              <Label>Efternamn *</Label>
-              <Input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Andersson" />
+              <Label>{t('Efternamn *')}</Label>
+              <Input value={lastName} onChange={e => setLastName(e.target.value)} placeholder={t('Andersson')} />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>E-post *</Label>
-              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="anna@företag.se" />
+              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('anna@företag.se')} />
             </div>
             <div className="space-y-2">
-              <Label>Telefonnummer</Label>
+              <Label>{t('Telefonnummer')}</Label>
               <Input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+46 70 123 45 67" />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>{editUser ? 'Nytt lösenord (lämna tomt för att behålla)' : 'Lösenord *'}</Label>
+            <Label>{editUser ? t('Nytt lösenord (lämna tomt för att behålla)') : t('Lösenord *')}</Label>
             <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={editUser ? '••••••••' : ''} />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Befattning</Label>
+              <Label>{t('Befattning')}</Label>
               <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="t.ex. Projektledare" />
             </div>
             <div className="space-y-2">
-              <Label>Företag</Label>
-              <Input value={company} onChange={e => setCompany(e.target.value)} placeholder="Företaget AB" />
+              <Label>{t('Företag')}</Label>
+              <Input value={company} onChange={e => setCompany(e.target.value)} placeholder={t('Företaget AB')} />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Organisation / Enhet</Label>
+              <Label>{t('Organisation / Enhet')}</Label>
               <Input value={department} onChange={e => setDepartment(e.target.value)} placeholder="t.ex. Drift" />
             </div>
             <div className="space-y-2">
-              <Label>Närmaste chef</Label>
+              <Label>{t('Närmaste chef')}</Label>
               <Select value={managerId || '__none__'} onValueChange={v => setManagerId(v === '__none__' ? '' : v)}>
-                <SelectTrigger><SelectValue placeholder="Välj chef" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('Välj chef')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">Ingen</SelectItem>
+                  <SelectItem value="__none__">{t('Ingen')}</SelectItem>
                   {managers.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -212,11 +213,11 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
           </div>
 
           <div className="space-y-2">
-            <Label>Placering i organisationen</Label>
+            <Label>{t('Placering i organisationen')}</Label>
             <Select value={orgUnitId || '__none__'} onValueChange={v => setOrgUnitId(v === '__none__' ? '' : v)}>
-              <SelectTrigger><SelectValue placeholder="Välj enhet" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t('Välj enhet')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">Ingen placering</SelectItem>
+                <SelectItem value="__none__">{t('Ingen placering')}</SelectItem>
                 {orgOptions.map(({ unit, depth }) => (
                   <SelectItem key={unit.id} value={unit.id}>
                     {'\u00A0'.repeat(depth * 3)}{unit.name} ({ORG_UNIT_LABELS[unit.type]})
@@ -225,19 +226,19 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
               </SelectContent>
             </Select>
             {orgOptions.length === 0 && (
-              <p className="text-xs text-muted-foreground">Skapa organisationsstrukturen under Organisation först.</p>
+              <p className="text-xs text-muted-foreground">{t('Skapa organisationsstrukturen under Organisation först.')}</p>
             )}
           </div>
 
           {/* Contact person for contractors */}
           {isContractor && (
             <div className="space-y-2 rounded-lg border border-border p-3 bg-muted/30">
-              <Label>Kontaktperson (intern sponsor) *</Label>
+              <Label>{t('Kontaktperson (intern sponsor) *')}</Label>
               <p className="text-xs text-muted-foreground mb-1">
-                En intern anställd som ansvarar för entreprenören
+                {t('En intern anställd som ansvarar för entreprenören')}
               </p>
               <Select value={contactPersonId} onValueChange={setContactPersonId}>
-                <SelectTrigger><SelectValue placeholder="Välj kontaktperson" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('Välj kontaktperson')} /></SelectTrigger>
                 <SelectContent>
                   {internalContacts.map(u => (
                     <SelectItem key={u.id} value={u.id}>{u.full_name} – {u.email}</SelectItem>
@@ -249,25 +250,25 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
 
           {editUser && roles.includes('line_manager') && (
             <div className="space-y-3 rounded-lg border border-border p-3">
-              <Label className="block">Ersättare vid frånvaro</Label>
+              <Label className="block">{t('Ersättare vid frånvaro')}</Label>
               <Select value={substituteId || '__none__'} onValueChange={v => setSubstituteId(v === '__none__' ? '' : v)}>
-                <SelectTrigger aria-label="Ersättare"><SelectValue placeholder="Ingen ersättare" /></SelectTrigger>
+                <SelectTrigger aria-label={t('Ersättare')}><SelectValue placeholder={t('Ingen ersättare')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">Ingen ersättare</SelectItem>
+                  <SelectItem value="__none__">{t('Ingen ersättare')}</SelectItem>
                   {managers.filter(u => u.id !== editUser.id && u.roles.includes('line_manager')).map(u => (
                     <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1"><Label htmlFor="uf-sub-from" className="text-xs">Från (valfritt)</Label><Input id="uf-sub-from" type="date" value={substituteFrom} onChange={e => setSubstituteFrom(e.target.value)} disabled={!substituteId} /></div>
-                <div className="space-y-1"><Label htmlFor="uf-sub-to" className="text-xs">Till och med (valfritt)</Label><Input id="uf-sub-to" type="date" value={substituteTo} onChange={e => setSubstituteTo(e.target.value)} disabled={!substituteId} /></div>
+                <div className="space-y-1"><Label htmlFor="uf-sub-from" className="text-xs">{t('Från (valfritt)')}</Label><Input id="uf-sub-from" type="date" value={substituteFrom} onChange={e => setSubstituteFrom(e.target.value)} disabled={!substituteId} /></div>
+                <div className="space-y-1"><Label htmlFor="uf-sub-to" className="text-xs">{t('Till och med (valfritt)')}</Label><Input id="uf-sub-to" type="date" value={substituteTo} onChange={e => setSubstituteTo(e.target.value)} disabled={!substituteId} /></div>
               </div>
             </div>
           )}
 
           <div className="space-y-2">
-            <Label>Roller</Label>
+            <Label>{t('Roller')}</Label>
             <div className="grid grid-cols-2 gap-2">
               {ALL_ROLES.map(role => (
                 <div key={role} className="flex items-center gap-2">
@@ -279,8 +280,8 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
-          <Button onClick={handleSave}>{editUser ? 'Spara' : 'Skapa användare'}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('Avbryt')}</Button>
+          <Button onClick={handleSave}>{editUser ? t('Spara') : t('Skapa användare')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

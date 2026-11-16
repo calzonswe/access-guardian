@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import * as store from '@/services/dataStore';
+import { t } from '@/i18n';
 
 interface BrandingState {
   appName: string;
@@ -21,7 +22,7 @@ interface BrandingContextType extends BrandingState {
 
 const defaults: BrandingState = {
   appName: 'RBAC Access',
-  subtitle: 'Tillträdeshantering',
+  subtitle: t('Tillträdeshantering'),
   logoUrl: '',
   primaryColor: '#2563eb',
   selfRegistration: true,

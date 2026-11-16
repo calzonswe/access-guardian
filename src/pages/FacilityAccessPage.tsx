@@ -14,6 +14,7 @@ import { useDataRefresh } from '@/hooks/useDataRefresh';
 import { usePersistentState } from '@/hooks/usePersistentState';
 import { activeAccessFor, daysLeft, isoDay } from '@/lib/applicationRules';
 import { toCsv } from '@/lib/csv';
+import { t } from '@/i18n';
 
 const ALL = 'all';
 
@@ -63,8 +64,8 @@ export default function FacilityAccessPage() {
     const headers = ['namn', 'epost', 'foretag', 'omraden', 'giltig_fran', 'giltig_till', 'godkand_av'];
     const data = rows.map(({ app, person }) => ({
       namn: person?.full_name || '', epost: person?.email || '', foretag: person?.company || '',
-      omraden: areaNames(app.area_ids || []) || 'Hela anläggningen',
-      giltig_fran: app.start_date.slice(0, 10), giltig_till: app.end_date ? app.end_date.slice(0, 10) : 'Tillsvidare',
+      omraden: areaNames(app.area_ids || []) || t('Hela anläggningen'),
+      giltig_fran: app.start_date.slice(0, 10), giltig_till: app.end_date ? app.end_date.slice(0, 10) : t('Tillsvidare'),
       godkand_av: approverName(app.facility_approved_by || app.exception_approved_by),
     }));
     const blob = new Blob(['﻿' + toCsv(data, headers)], { type: 'text/csv;charset=utf-8' });
@@ -73,7 +74,7 @@ export default function FacilityAccessPage() {
     a.download = `aktiva-tilltraden-${(facility?.name || 'anlaggning').replace(/\s+/g, '-').toLowerCase()}-${isoDay(today)}.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
-    toast.success('Listan exporterad');
+    toast.success(t('Listan exporterad'));
   };
 
   return (
@@ -81,29 +82,29 @@ export default function FacilityAccessPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Button variant="ghost" size="sm" asChild className="mb-2 -ml-2 text-muted-foreground">
-            <Link to="/facilities"><ArrowLeft className="mr-1 h-4 w-4" />Tillbaka till anläggningar</Link>
+            <Link to="/facilities"><ArrowLeft className="mr-1 h-4 w-4" />{t('Tillbaka till anläggningar')}</Link>
           </Button>
-          <h1 className="text-2xl font-semibold text-foreground">Aktiva tillträden{facility ? ` – ${facility.name}` : ''}</h1>
-          <p className="text-sm text-muted-foreground mt-1">Personer med godkänt tillträde som gäller i dag, {isoDay(today)}.</p>
+          <h1 className="text-2xl font-semibold text-foreground">{t('Aktiva tillträden')}{facility ? ` – ${facility.name}` : ''}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t('Personer med godkänt tillträde som gäller i dag,')} {isoDay(today)}.</p>
         </div>
         {canSee && rows.length > 0 && (
-          <Button variant="outline" onClick={exportCsv}><Download className="mr-2 h-4 w-4" />Exportera</Button>
+          <Button variant="outline" onClick={exportCsv}><Download className="mr-2 h-4 w-4" />{t('Exportera')}</Button>
         )}
       </div>
 
       {!loading && (!facility || !canSee) ? (
-        <Card><CardContent className="py-16 text-center text-muted-foreground">Anläggningen finns inte, eller så har du inte behörighet att se dess tillträden.</CardContent></Card>
+        <Card><CardContent className="py-16 text-center text-muted-foreground">{t('Anläggningen finns inte, eller så har du inte behörighet att se dess tillträden.')}</CardContent></Card>
       ) : (
         <>
           <div className="flex flex-col gap-3 sm:flex-row">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-              <Input placeholder="Sök namn, e-post eller företag…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9" aria-label="Sök" />
+              <Input placeholder={t('Sök namn, e-post eller företag…')} value={search} onChange={e => setSearch(e.target.value)} className="pl-9" aria-label={t('Sök')} />
             </div>
             <Select value={areaFilter} onValueChange={setAreaFilter}>
-              <SelectTrigger className="w-full sm:w-[220px]" aria-label="Område"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[220px]" aria-label={t('Område')}><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>Alla områden</SelectItem>
+                <SelectItem value={ALL}>{t('Alla områden')}</SelectItem>
                 {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -115,18 +116,18 @@ export default function FacilityAccessPage() {
             </CardHeader>
             <CardContent>
               {rows.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">{loading ? 'Laddar…' : 'Ingen har tillträde som matchar urvalet.'}</p>
+                <p className="py-8 text-center text-sm text-muted-foreground">{loading ? 'Laddar…' : t('Ingen har tillträde som matchar urvalet.')}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Person</TableHead>
-                        <TableHead>Företag</TableHead>
-                        <TableHead>Områden</TableHead>
-                        <TableHead>Giltig från</TableHead>
-                        <TableHead>Giltig till</TableHead>
-                        <TableHead>Godkänd av</TableHead>
+                        <TableHead>{t('Person')}</TableHead>
+                        <TableHead>{t('Företag')}</TableHead>
+                        <TableHead>{t('Områden')}</TableHead>
+                        <TableHead>{t('Giltig från')}</TableHead>
+                        <TableHead>{t('Giltig till')}</TableHead>
+                        <TableHead>{t('Godkänd av')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -137,12 +138,12 @@ export default function FacilityAccessPage() {
                             <div className="text-xs text-muted-foreground">{person?.email}</div>
                           </TableCell>
                           <TableCell>{person?.company || '–'}</TableCell>
-                          <TableCell className="max-w-[16rem]">{areaNames(app.area_ids || []) || <span className="text-muted-foreground">Hela anläggningen</span>}</TableCell>
+                          <TableCell className="max-w-[16rem]">{areaNames(app.area_ids || []) || <span className="text-muted-foreground">{t('Hela anläggningen')}</span>}</TableCell>
                           <TableCell className="whitespace-nowrap">{app.start_date.slice(0, 10)}</TableCell>
                           <TableCell className="whitespace-nowrap">
-                            {app.end_date ? app.end_date.slice(0, 10) : 'Tillsvidare'}
+                            {app.end_date ? app.end_date.slice(0, 10) : t('Tillsvidare')}
                             {left !== null && left <= 30 && (
-                              <Badge variant="outline" className="ml-2 status-badge-pending">{left === 0 ? 'Går ut i dag' : `${left} dagar kvar`}</Badge>
+                              <Badge variant="outline" className="ml-2 status-badge-pending">{left === 0 ? t('Går ut i dag') : `${left} dagar kvar`}</Badge>
                             )}
                           </TableCell>
                           <TableCell>{approverName(app.facility_approved_by || app.exception_approved_by)}</TableCell>

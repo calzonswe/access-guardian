@@ -1,9 +1,10 @@
 import * as store from '@/services/dataStore';
 import type { Application, ApplicationStatus } from '@/types/rbac';
 import { toast } from 'sonner';
+import { t } from '@/i18n';
 
 function simulateEmail(to: string, subject: string) {
-  console.log(`[E-post] Till: ${to} | Ämne: ${subject}`);
+  console.log(t('[E-post] Till: {to} | Ämne: {subject}', { to, subject }));
   toast.info(`📧 E-post skickad till ${to}`, { description: subject, duration: 4000 });
 }
 
@@ -21,36 +22,36 @@ export function notifyApplicationStatusChange(
   const applicant = store.getUser(application.applicant_id);
   const facility = store.getFacility(application.facility_id);
   const actor = store.getUser(actorId);
-  const facilityName = facility?.name ?? 'okänd anläggning';
-  const actorName = actor?.full_name ?? 'Systemet';
+  const facilityName = facility?.name ?? t('okänd anläggning');
+  const actorName = actor?.full_name ?? t('Systemet');
 
   // Notify applicant
   if (application.applicant_id !== actorId) {
     if (newStatus === 'approved') {
       store.createNotification({
         user_id: application.applicant_id,
-        title: 'Ansökan godkänd',
-        message: `Din ansökan om tillträde till ${facilityName} har godkänts av ${actorName}.`,
+        title: t('Ansökan godkänd'),
+        message: t('Din ansökan om tillträde till {facilityName} har godkänts av {actorName}.', { facilityName, actorName }),
         type: 'info',
         read: false,
         link: '/applications',
       });
-      if (applicant?.email) simulateEmail(applicant.email, `Ansökan godkänd – ${facilityName}`);
+      if (applicant?.email) simulateEmail(applicant.email, t('Ansökan godkänd – {facilityName}', { facilityName }));
     } else if (newStatus === 'denied') {
       store.createNotification({
         user_id: application.applicant_id,
-        title: 'Ansökan nekad',
-        message: `Din ansökan om tillträde till ${facilityName} har nekats av ${actorName}.`,
+        title: t('Ansökan nekad'),
+        message: t('Din ansökan om tillträde till {facilityName} har nekats av {actorName}.', { facilityName, actorName }),
         type: 'warning',
         read: false,
         link: '/applications',
       });
-      if (applicant?.email) simulateEmail(applicant.email, `Ansökan nekad – ${facilityName}`);
+      if (applicant?.email) simulateEmail(applicant.email, t('Ansökan nekad – {facilityName}', { facilityName }));
     } else if (newStatus === 'pending_facility' || newStatus === 'pending_exception') {
       store.createNotification({
         user_id: application.applicant_id,
-        title: 'Ansökan attesterad av chef',
-        message: `Din ansökan om tillträde till ${facilityName} har attesterats och skickats vidare.`,
+        title: t('Ansökan attesterad av chef'),
+        message: t('Din ansökan om tillträde till {facilityName} har attesterats och skickats vidare.', { facilityName }),
         type: 'info',
         read: false,
         link: '/applications',
@@ -69,8 +70,8 @@ export function notifyApplicationStatusChange(
       notifyIds.forEach(userId => {
         store.createNotification({
           user_id: userId,
-          title: 'Ny ansökan att granska',
-          message: `${applicant?.full_name ?? 'En användare'} har ansökt om tillträde till ${facilityName}.${newStatus === 'pending_exception' ? ' Ansökan innehåller avsteg.' : ''}`,
+          title: t('Ny ansökan att granska'),
+          message: t('{v0} har ansökt om tillträde till {facilityName}.{v2}', { v0: applicant?.full_name ?? 'En användare', facilityName, v2: newStatus === 'pending_exception' ? ' Ansökan innehåller avsteg.' : '' }),
           type: 'action_required',
           read: false,
           link: '/applications',
@@ -86,8 +87,8 @@ export function notifyApplicationStatusChange(
     if (managerId && managerId !== actorId) {
       store.createNotification({
         user_id: managerId,
-        title: 'Ny ansökan att attestera',
-        message: `${applicant?.full_name ?? 'En användare'} har skickat en tillträdesansökan till ${facilityName} som väntar på din attestering.`,
+        title: t('Ny ansökan att attestera'),
+        message: t('{v0} har skickat en tillträdesansökan till {facilityName} som väntar på din attestering.', { v0: applicant?.full_name ?? 'En användare', facilityName }),
         type: 'action_required',
         read: false,
         link: '/applications',
@@ -99,8 +100,8 @@ export function notifyApplicationStatusChange(
   if (newStatus === 'expired' && application.status === 'approved') {
     store.createNotification({
       user_id: application.applicant_id,
-      title: 'Tillträde återkallat',
-      message: `Ditt tillträde till ${facilityName} har återkallats av ${actorName}.`,
+      title: t('Tillträde återkallat'),
+      message: t('Ditt tillträde till {facilityName} har återkallats av {actorName}.', { facilityName, actorName }),
       type: 'warning',
       read: false,
       link: '/applications',

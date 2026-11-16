@@ -18,6 +18,7 @@ import { notifyApplicationStatusChange } from '@/services/notifications';
 import * as api from '@/services/api';
 import type { Application } from '@/types/rbac';
 import type { Attachment } from '@/services/api';
+import { t as tr } from '@/i18n';
 
 interface Props {
   open: boolean;
@@ -28,7 +29,7 @@ interface Props {
   onSaved?: () => void;
 }
 
-const SECURITY_LABELS: Record<string, string> = { low: 'Låg', medium: 'Medel', high: 'Hög', critical: 'Kritisk' };
+const SECURITY_LABELS: Record<string, string> = { low: tr('Låg'), medium: tr('Medel'), high: tr('Hög'), critical: tr('Kritisk') };
 
 export function ApplicationFormDialog({ open, onOpenChange, editApplication, templateApplication, onSaved }: Props) {
   const { currentUser } = useAuth();
@@ -121,7 +122,7 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, tem
     const accepted: File[] = [];
     for (const file of Array.from(files)) {
       if (file.size > 10 * 1024 * 1024) {
-        toast.error(`${file.name} är för stor (max 10 MB)`);
+        toast.error(tr('{name} är för stor (max 10 MB)', { name: file.name }));
         continue;
       }
       accepted.push(file);
@@ -139,14 +140,14 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, tem
       await api.deleteAttachment(id);
       setExistingAttachments(prev => prev.filter(a => a.id !== id));
     } catch {
-      toast.error('Kunde inte ta bort bilagan');
+      toast.error(tr('Kunde inte ta bort bilagan'));
     }
   };
 
   const handleSubmit = async () => {
-    if (!facilityId) { toast.error('Välj en anläggning'); return; }
-    if (!startDate) { toast.error('Ange startdatum'); return; }
-    if (hasMissingReqs && !justification.trim()) { toast.error('Motivering krävs vid saknade krav'); return; }
+    if (!facilityId) { toast.error(tr('Välj en anläggning')); return; }
+    if (!startDate) { toast.error(tr('Ange startdatum')); return; }
+    if (hasMissingReqs && !justification.trim()) { toast.error(tr('Motivering krävs vid saknade krav')); return; }
 
     let appId: string;
     try {
@@ -157,7 +158,7 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, tem
           exception_justification: hasMissingReqs ? justification : undefined,
         });
         appId = editApplication.id;
-        toast.success('Ansökan uppdaterad');
+        toast.success(tr('Ansökan uppdaterad'));
       } else {
         const app = await store.createApplication({
           applicant_id: currentUser.id, facility_id: facilityId, area_ids: selectedAreas,
@@ -167,17 +168,17 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, tem
           renewed_from_id: isRenewal ? templateApplication.id : undefined,
         });
         appId = app.id;
-        store.addLog({ action: 'application_created', actor_id: currentUser.id, target_id: app.id, target_type: 'application', details: `Ny ansökan skapad för ${store.getFacility(facilityId)?.name}` });
+        store.addLog({ action: 'application_created', actor_id: currentUser.id, target_id: app.id, target_type: 'application', details: tr('Ny ansökan skapad för {name}', { name: store.getFacility(facilityId)?.name }) });
         notifyApplicationStatusChange(app, 'pending_manager', currentUser.id);
-        toast.success('Ansökan skapad och inskickad');
+        toast.success(tr('Ansökan skapad och inskickad'));
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Kunde inte spara ansökan');
+      toast.error(err instanceof Error ? err.message : tr('Kunde inte spara ansökan'));
       return;
     }
 
     if (!store.isApiMode() && pendingFiles.length > 0) {
-      toast.info('Bilagor kan bara laddas upp när servern används');
+      toast.info(tr('Bilagor kan bara laddas upp när servern används'));
       setPendingFiles([]);
     }
     setUploading(true);
@@ -187,7 +188,7 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, tem
         const att = await api.uploadAttachmentMultipart(appId, pf);
         newAttachments.push(att);
       } catch {
-        toast.error(`Kunde inte ladda upp ${pf.name}`);
+        toast.error(tr('Kunde inte ladda upp {name}', { name: pf.name }));
       }
     }
     setUploading(false);
@@ -208,24 +209,24 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, tem
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetForm(); onOpenChange(o); }}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>{editApplication ? 'Redigera ansökan' : isRenewal ? 'Förläng tillträde' : templateApplication ? 'Ansök igen' : 'Ny tillträdesansökan'}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editApplication ? tr('Redigera ansökan') : isRenewal ? tr('Förläng tillträde') : templateApplication ? tr('Ansök igen') : tr('Ny tillträdesansökan')}</DialogTitle></DialogHeader>
         <div className="space-y-4">
           {!currentUser.manager_id && !currentUser.contact_person_id && (
             <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm text-foreground">
-              Du har ingen närmaste chef registrerad. Ansökan skickas till en administratör för granskning.
+              {tr('Du har ingen närmaste chef registrerad. Ansökan skickas till en administratör för granskning.')}
             </div>
           )}
           <div className="space-y-2">
-            <Label>Anläggning</Label>
+            <Label>{tr('Anläggning')}</Label>
             <Select value={facilityId} onValueChange={v => { setFacilityId(v); setSelectedAreas([]); }}>
-              <SelectTrigger><SelectValue placeholder="Välj anläggning" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={tr('Välj anläggning')} /></SelectTrigger>
               <SelectContent>{facilities.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           {facilityId && areas.length > 0 && (
             <div className="space-y-2">
-              <Label>Områden (valfritt)</Label>
-              <p className="text-xs text-muted-foreground">Väljer du ett underområde inkluderas överordnade områden automatiskt.</p>
+              <Label>{tr('Områden (valfritt)')}</Label>
+              <p className="text-xs text-muted-foreground">{tr('Väljer du ett underområde inkluderas överordnade områden automatiskt.')}</p>
               <div className="space-y-2 rounded-lg border border-border p-3">
                 {areaTree.map(({ area, depth }) => (
                   <div key={area.id} className="flex items-center gap-2" style={{ paddingLeft: depth * 16 }}>
@@ -235,7 +236,7 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, tem
                       onCheckedChange={() => toggleArea(area.id)}
                     />
                     <span className="text-sm">{area.name}</span>
-                    {lockedAreaIds.has(area.id) && <span className="text-xs text-muted-foreground">(krävs)</span>}
+                    {lockedAreaIds.has(area.id) && <span className="text-xs text-muted-foreground">{tr('(krävs)')}</span>}
                     <Badge variant="outline" className="text-xs ml-auto">{SECURITY_LABELS[area.security_level]}</Badge>
                   </div>
                 ))}
@@ -243,24 +244,24 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, tem
             </div>
           )}
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2"><Label>Startdatum</Label><Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
-            <div className="space-y-2"><Label>Slutdatum (valfritt)</Label><Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
+            <div className="space-y-2"><Label>{tr('Startdatum')}</Label><Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
+            <div className="space-y-2"><Label>{tr('Slutdatum (valfritt)')}</Label><Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
           </div>
           {facilityId && (
             <div className="space-y-2 rounded-lg border border-border p-3">
-              <Label className="block">Krav för ditt val</Label>
-              <RequirementChecklist checks={requirementChecks} emptyText="Inga krav för den här anläggningen och de valda områdena." />
+              <Label className="block">{tr('Krav för ditt val')}</Label>
+              <RequirementChecklist checks={requirementChecks} emptyText={tr('Inga krav för den här anläggningen och de valda områdena.')} />
             </div>
           )}
           {hasMissingReqs && (
             <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 space-y-2">
-              <div className="flex items-center gap-2 text-warning"><AlertTriangle className="h-4 w-4" /><span className="text-sm font-medium">Du saknar krav – motivering behövs</span></div>
-              <Textarea placeholder="Motivera varför undantag ska beviljas..." value={justification} onChange={e => setJustification(e.target.value)} />
+              <div className="flex items-center gap-2 text-warning"><AlertTriangle className="h-4 w-4" /><span className="text-sm font-medium">{tr('Du saknar krav – motivering behövs')}</span></div>
+              <Textarea placeholder={tr('Motivera varför undantag ska beviljas...')} value={justification} onChange={e => setJustification(e.target.value)} />
             </div>
           )}
 
           <div className="space-y-2">
-            <Label className="block">Bilagor</Label>
+            <Label className="block">{tr('Bilagor')}</Label>
             {(existingAttachments.length > 0 || pendingFiles.length > 0) && (
               <div className="space-y-1 rounded-lg border border-border p-2">
                 {existingAttachments.map(att => (
@@ -282,14 +283,14 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, tem
             )}
             <input ref={fileInputRef} type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.xls,.xlsx,.txt,.csv" onChange={handleFileChange} className="hidden" id="attachment-input" />
             <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-              <Paperclip className="mr-2 h-4 w-4" />Ladda upp bilagor
+              <Paperclip className="mr-2 h-4 w-4" />{tr('Ladda upp bilagor')}
             </Button>
             <p className="text-xs text-muted-foreground">PDF, bilder, Word/Excel, text/CSV. Max 10 MB per fil.</p>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => { resetForm(); onOpenChange(false); }}>Avbryt</Button>
-          <Button onClick={handleSubmit} disabled={uploading}>{uploading ? 'Laddar upp...' : (editApplication ? 'Spara' : 'Skicka ansökan')}</Button>
+          <Button variant="outline" onClick={() => { resetForm(); onOpenChange(false); }}>{tr('Avbryt')}</Button>
+          <Button onClick={handleSubmit} disabled={uploading}>{uploading ? tr('Laddar upp...') : (editApplication ? tr('Spara') : tr('Skicka ansökan'))}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

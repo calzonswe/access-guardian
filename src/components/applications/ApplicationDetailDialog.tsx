@@ -15,15 +15,16 @@ import { ApplicationHistory } from '@/components/applications/ApplicationHistory
 import { subordinateIds } from '@/hooks/useActionableApplications';
 import type { Application, ApplicationStatus } from '@/types/rbac';
 import { errorMessage } from '@/lib/utils';
+import { t, locale } from '@/i18n';
 
 const STATUS_MAP: Record<ApplicationStatus, { label: string; className: string }> = {
-  draft: { label: 'Utkast', className: 'status-badge-neutral' },
-  pending_manager: { label: 'Väntar på chef', className: 'status-badge-pending' },
-  pending_facility: { label: 'Väntar på anläggning', className: 'status-badge-pending' },
-  pending_exception: { label: 'Avsteg – väntar', className: 'status-badge-pending' },
-  approved: { label: 'Godkänd', className: 'status-badge-approved' },
-  denied: { label: 'Nekad', className: 'status-badge-denied' },
-  expired: { label: 'Utgången / Återkallad', className: 'status-badge-neutral' },
+  draft: { label: t('Utkast'), className: 'status-badge-neutral' },
+  pending_manager: { label: t('Väntar på chef'), className: 'status-badge-pending' },
+  pending_facility: { label: t('Väntar på anläggning'), className: 'status-badge-pending' },
+  pending_exception: { label: t('Avsteg – väntar'), className: 'status-badge-pending' },
+  approved: { label: t('Godkänd'), className: 'status-badge-approved' },
+  denied: { label: t('Nekad'), className: 'status-badge-denied' },
+  expired: { label: t('Utgången / Återkallad'), className: 'status-badge-neutral' },
 };
 
 interface Props {
@@ -54,7 +55,7 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
   const facility = store.getFacility(application.facility_id);
   const areas = store.getAreas().filter(a => application.area_ids.includes(a.id));
   const status = application.status === 'expired'
-    ? { ...STATUS_MAP.expired, label: application.revoked_at ? 'Återkallad' : 'Utgången' }
+    ? { ...STATUS_MAP.expired, label: application.revoked_at ? t('Återkallad') : t('Utgången') }
     : STATUS_MAP[application.status];
 
   const roles = currentUser.roles;
@@ -81,10 +82,10 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
     try {
       await store.updateApplication(application.id, { status: 'pending_manager' });
       await notifyApplicationStatusChange(application, 'pending_manager', currentUser.id);
-      toast.success('Ansökan inskickad');
+      toast.success(t('Ansökan inskickad'));
       onUpdated?.(); onOpenChange(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Kunde inte skicka in ansökan');
+      toast.error(err instanceof Error ? err.message : t('Kunde inte skicka in ansökan'));
     }
   };
 
@@ -104,41 +105,41 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
     updates.status = newStatus;
     try {
       await store.updateApplication(application.id, updates);
-      await store.addLog({ action: newStatus === 'approved' ? 'application_approved_facility' : 'application_approved_manager', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: 'Ansökan godkänd' });
+      await store.addLog({ action: newStatus === 'approved' ? 'application_approved_facility' : 'application_approved_manager', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: t('Ansökan godkänd') });
       await notifyApplicationStatusChange(application, newStatus, currentUser.id);
       toast.success(
-        newStatus === 'pending_facility' ? 'Godkänd – skickad till anläggningen för beslut'
-          : newStatus === 'pending_exception' ? 'Godkänd – skickad till anläggningsägaren för beslut om avsteg'
-            : 'Ansökan godkänd'
+        newStatus === 'pending_facility' ? t('Godkänd – skickad till anläggningen för beslut')
+          : newStatus === 'pending_exception' ? t('Godkänd – skickad till anläggningsägaren för beslut om avsteg')
+            : t('Ansökan godkänd')
       );
       onUpdated?.(); onOpenChange(false);
     } catch (err) {
-      toast.error(errorMessage(err, 'Kunde inte godkänna ansökan'));
+      toast.error(errorMessage(err, t('Kunde inte godkänna ansökan')));
     }
   };
 
   const handleDeny = async () => {
     try {
       await store.updateApplication(application.id, { status: 'denied', denied_reason: denyReason });
-      await store.addLog({ action: 'application_denied', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: `Ansökan nekad: ${denyReason}` });
+      await store.addLog({ action: 'application_denied', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: t('Ansökan nekad: {denyReason}', { denyReason }) });
       await notifyApplicationStatusChange(application, 'denied', currentUser.id);
-      toast.success('Ansökan nekad'); setDenyReason(''); onUpdated?.(); onOpenChange(false);
+      toast.success(t('Ansökan nekad')); setDenyReason(''); onUpdated?.(); onOpenChange(false);
     } catch (err) {
-      toast.error(errorMessage(err, 'Kunde inte neka ansökan'));
+      toast.error(errorMessage(err, t('Kunde inte neka ansökan')));
     }
   };
 
   const handleRevoke = async () => {
-    if (!revokeReason.trim()) { toast.error('Ange en anledning till återkallelsen'); return; }
+    if (!revokeReason.trim()) { toast.error(t('Ange en anledning till återkallelsen')); return; }
     try {
       await store.updateApplication(application.id, { status: 'expired', revoke_reason: revokeReason.trim() });
-      await store.addLog({ action: 'access_revoked', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: `Tillträde återkallat för ${applicant?.full_name ?? 'okänd'} till ${facility?.name ?? 'okänd'}` });
+      await store.addLog({ action: 'access_revoked', actor_id: currentUser.id, target_id: application.id, target_type: 'application', details: t('Tillträde återkallat för {v0} till {v1}', { v0: applicant?.full_name ?? 'okänd', v1: facility?.name ?? 'okänd' }) });
       await notifyApplicationStatusChange({ ...application, status: 'approved' }, 'expired', currentUser.id);
-      toast.success('Tillträde återkallat');
+      toast.success(t('Tillträde återkallat'));
       setRevokeOpen(false); setRevokeReason('');
       onUpdated?.(); onOpenChange(false);
     } catch (err) {
-      toast.error(errorMessage(err, 'Kunde inte återkalla tillträdet'));
+      toast.error(errorMessage(err, t('Kunde inte återkalla tillträdet')));
     }
   };
 
@@ -147,42 +148,42 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Ansökningsdetaljer</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />{t('Ansökningsdetaljer')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Badge variant="outline" className={status.className}>{status.label}</Badge>
             <div className="flex gap-1">
               {onReapply && canRenew(application, currentUser) && (
-                <Button size="sm" onClick={() => onReapply(application)}><RefreshCw className="mr-1 h-4 w-4" />Förläng</Button>
+                <Button size="sm" onClick={() => onReapply(application)}><RefreshCw className="mr-1 h-4 w-4" />{t('Förläng')}</Button>
               )}
               {onReapply && isApplicant && application.status === 'denied' && (
-                <Button size="sm" variant="outline" onClick={() => onReapply(application)}><RotateCcw className="mr-1 h-4 w-4" />Ansök igen</Button>
+                <Button size="sm" variant="outline" onClick={() => onReapply(application)}><RotateCcw className="mr-1 h-4 w-4" />{t('Ansök igen')}</Button>
               )}
               {canSubmit && (
-                <Button size="sm" onClick={handleSubmitDraft}><Send className="mr-1 h-4 w-4" />Skicka in</Button>
+                <Button size="sm" onClick={handleSubmitDraft}><Send className="mr-1 h-4 w-4" />{t('Skicka in')}</Button>
               )}
               {canEdit && (
-                <Button variant="ghost" size="icon" aria-label="Redigera" title="Redigera" onClick={() => onEdit?.(application)}><Pencil className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" aria-label={t('Redigera')} title={t('Redigera')} onClick={() => onEdit?.(application)}><Pencil className="h-4 w-4" /></Button>
               )}
               {canDelete && (
-                <Button variant="ghost" size="icon" aria-label="Ta bort" title="Ta bort" onClick={() => onDelete?.(application)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                <Button variant="ghost" size="icon" aria-label={t('Ta bort')} title={t('Ta bort')} onClick={() => onDelete?.(application)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
               )}
               {canRevoke && (
                 <Button variant="destructive" size="sm" onClick={() => setRevokeOpen(o => !o)}>
-                  <Ban className="mr-1 h-4 w-4" />Återkalla
+                  <Ban className="mr-1 h-4 w-4" />{t('Återkalla')}
                 </Button>
               )}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <div><span className="text-muted-foreground">Sökande:</span> <span className="font-medium">{applicant?.full_name ?? '–'}</span></div>
-            <div><span className="text-muted-foreground">Anläggning:</span> <span className="font-medium">{facility?.name ?? '–'}</span></div>
+            <div><span className="text-muted-foreground">{t('Sökande:')}</span> <span className="font-medium">{applicant?.full_name ?? '–'}</span></div>
+            <div><span className="text-muted-foreground">{t('Anläggning:')}</span> <span className="font-medium">{facility?.name ?? '–'}</span></div>
             <div><span className="text-muted-foreground">Startdatum:</span> <span className="font-medium">{application.start_date}</span></div>
-            <div><span className="text-muted-foreground">Slutdatum:</span> <span className="font-medium">{application.end_date ?? 'Tillsvidare'}</span></div>
+            <div><span className="text-muted-foreground">Slutdatum:</span> <span className="font-medium">{application.end_date ?? t('Tillsvidare')}</span></div>
           </div>
           {areas.length > 0 && (
-            <div><p className="text-sm text-muted-foreground mb-1">Begärda områden:</p><div className="flex flex-wrap gap-1">{areas.map(a => <Badge key={a.id} variant="outline" className="text-xs">{a.name}</Badge>)}</div></div>
+            <div><p className="text-sm text-muted-foreground mb-1">{t('Begärda områden:')}</p><div className="flex flex-wrap gap-1">{areas.map(a => <Badge key={a.id} variant="outline" className="text-xs">{a.name}</Badge>)}</div></div>
           )}
           {application.attachments && application.attachments.length > 0 && (
             <div>
@@ -204,45 +205,45 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
             </div>
           )}
           {application.has_exception && application.exception_justification && (
-            <div className="rounded-lg border border-warning/30 bg-warning/5 p-3"><p className="text-sm font-medium text-warning mb-1">Undantagsmotivering</p><p className="text-sm text-foreground">{application.exception_justification}</p></div>
+            <div className="rounded-lg border border-warning/30 bg-warning/5 p-3"><p className="text-sm font-medium text-warning mb-1">{t('Undantagsmotivering')}</p><p className="text-sm text-foreground">{application.exception_justification}</p></div>
           )}
           {revokeOpen && canRevoke && (
             <div className="rounded-lg border border-destructive/30 p-3 space-y-2">
-              <p className="text-sm font-medium text-destructive">Återkalla tillträde</p>
-              <Textarea placeholder="Anledning (visas för den sökande)..." value={revokeReason} onChange={e => setRevokeReason(e.target.value)} />
+              <p className="text-sm font-medium text-destructive">{t('Återkalla tillträde')}</p>
+              <Textarea placeholder={t('Anledning (visas för den sökande)...')} value={revokeReason} onChange={e => setRevokeReason(e.target.value)} />
               <div className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => { setRevokeOpen(false); setRevokeReason(''); }}>Avbryt</Button>
-                <Button variant="destructive" size="sm" onClick={handleRevoke}>Bekräfta återkallelse</Button>
+                <Button variant="outline" size="sm" onClick={() => { setRevokeOpen(false); setRevokeReason(''); }}>{t('Avbryt')}</Button>
+                <Button variant="destructive" size="sm" onClick={handleRevoke}>{t('Bekräfta återkallelse')}</Button>
               </div>
             </div>
           )}
           {application.revoked_at && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-              <p className="text-sm font-medium text-destructive mb-1">Återkallad {new Date(application.revoked_at).toLocaleString('sv-SE')}{store.getUser(application.revoked_by || '')?.full_name ? ` av ${store.getUser(application.revoked_by || '')?.full_name}` : ''}</p>
+              <p className="text-sm font-medium text-destructive mb-1">{t('Återkallad')} {new Date(application.revoked_at).toLocaleString(locale())}{store.getUser(application.revoked_by || '')?.full_name ? ` av ${store.getUser(application.revoked_by || '')?.full_name}` : ''}</p>
               {application.revoke_reason && <p className="text-sm text-foreground">{application.revoke_reason}</p>}
             </div>
           )}
           {application.denied_reason && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3"><p className="text-sm font-medium text-destructive mb-1">Avslag</p><p className="text-sm text-foreground">{application.denied_reason}</p></div>
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3"><p className="text-sm font-medium text-destructive mb-1">{t('Avslag')}</p><p className="text-sm text-foreground">{application.denied_reason}</p></div>
           )}
           <Separator />
           {store.isApiMode() ? (
             <ApplicationHistory applicationId={application.id} />
           ) : (
             <div className="space-y-1 text-xs text-muted-foreground">
-              <p>Skapad: {new Date(application.created_at).toLocaleString('sv-SE')}</p>
-              {application.manager_approved_at && <p className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-success" />Chef godkänd: {new Date(application.manager_approved_at).toLocaleString('sv-SE')}</p>}
-              {application.facility_approved_at && <p className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-success" />Anläggning godkänd: {new Date(application.facility_approved_at).toLocaleString('sv-SE')}</p>}
+              <p>Skapad: {new Date(application.created_at).toLocaleString(locale())}</p>
+              {application.manager_approved_at && <p className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-success" />{t('Chef godkänd:')} {new Date(application.manager_approved_at).toLocaleString(locale())}</p>}
+              {application.facility_approved_at && <p className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-success" />{t('Anläggning godkänd:')} {new Date(application.facility_approved_at).toLocaleString(locale())}</p>}
             </div>
           )}
           {canApprove && (
             <>
               <Separator />
               <div className="space-y-3">
-                <Textarea placeholder="Anledning vid avslag (valfritt)..." value={denyReason} onChange={e => setDenyReason(e.target.value)} />
+                <Textarea placeholder={t('Anledning vid avslag (valfritt)...')} value={denyReason} onChange={e => setDenyReason(e.target.value)} />
                 <div className="flex gap-2 justify-end">
-                  <Button variant="destructive" size="sm" onClick={handleDeny}><XCircle className="mr-1 h-4 w-4" />Neka</Button>
-                  <Button size="sm" onClick={handleApprove}><CheckCircle className="mr-1 h-4 w-4" />Godkänn</Button>
+                  <Button variant="destructive" size="sm" onClick={handleDeny}><XCircle className="mr-1 h-4 w-4" />{t('Neka')}</Button>
+                  <Button size="sm" onClick={handleApprove}><CheckCircle className="mr-1 h-4 w-4" />{t('Godkänn')}</Button>
                 </div>
               </div>
             </>

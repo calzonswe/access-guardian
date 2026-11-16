@@ -10,12 +10,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { useBranding } from '@/context/BrandingContext';
 import { errorMessage } from '@/lib/utils';
+import { t } from '@/i18n';
 
 interface PublicFacility { id: string; name: string; description?: string; address?: string }
 interface PublicArea { id: string; facility_id: string; name: string; security_level: string }
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
-const SECURITY_LABELS: Record<string, string> = { low: 'Låg', medium: 'Medel', high: 'Hög', critical: 'Kritisk' };
+const SECURITY_LABELS: Record<string, string> = { low: t('Låg'), medium: t('Medel'), high: t('Hög'), critical: t('Kritisk') };
 
 export default function ContractorApplyPage() {
   const { appName, logoUrl } = useBranding();
@@ -52,7 +53,7 @@ export default function ContractorApplyPage() {
 
   useEffect(() => {
     fetch(`${API_BASE}/contractor/facilities`)
-      .then(r => r.ok ? r.json() : Promise.reject(new Error('Kunde inte hämta anläggningar')))
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(t('Kunde inte hämta anläggningar'))))
       .then(d => { setFacilities(d.facilities || []); setAreas(d.areas || []); })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
@@ -69,7 +70,7 @@ export default function ContractorApplyPage() {
     if (!fl) return;
     const out: typeof files = [];
     for (const f of Array.from(fl)) {
-      if (f.size > 10 * 1024 * 1024) { setError(`${f.name} är för stor (max 10 MB)`); continue; }
+      if (f.size > 10 * 1024 * 1024) { setError(t('{name} är för stor (max 10 MB)', { name: f.name })); continue; }
       const data = await new Promise<string>(res => {
         const r = new FileReader();
         r.onload = () => res(r.result as string);
@@ -109,11 +110,11 @@ export default function ContractorApplyPage() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         loadCaptcha(); // captcha is one-time use, refresh on any failure
-        throw new Error(body.error || 'Något gick fel');
+        throw new Error(body.error || t('Något gick fel'));
       }
-      setSuccess({ tempPassword: body.temp_password || null, message: body.message || 'Ansökan mottagen.' });
+      setSuccess({ tempPassword: body.temp_password || null, message: body.message || t('Ansökan mottagen.') });
     } catch (err) {
-      setError(errorMessage(err, 'Något gick fel'));
+      setError(errorMessage(err, t('Något gick fel')));
     } finally {
       setSubmitting(false);
     }
@@ -129,20 +130,20 @@ export default function ContractorApplyPage() {
                 <CheckCircle2 className="h-7 w-7" />
               </div>
             </div>
-            <CardTitle>Ansökan inskickad</CardTitle>
+            <CardTitle>{t('Ansökan inskickad')}</CardTitle>
             <CardDescription>{success.message}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {success.tempPassword && (
               <div className="rounded-lg border border-warning/40 bg-warning/5 p-4 space-y-2">
-                <p className="text-sm font-medium">Tillfälligt lösenord (visas endast en gång)</p>
+                <p className="text-sm font-medium">{t('Tillfälligt lösenord (visas endast en gång)')}</p>
                 <code className="block rounded bg-background p-2 text-sm font-mono break-all">{success.tempPassword}</code>
                 <p className="text-xs text-muted-foreground">
-                  Logga in med din e-post och detta lösenord. Du tvingas byta lösenord vid första inloggningen.
+                  {t('Logga in med din e-post och detta lösenord. Du tvingas byta lösenord vid första inloggningen.')}
                 </p>
               </div>
             )}
-            <Button className="w-full" onClick={() => { window.location.href = '/'; }}>Till inloggning</Button>
+            <Button className="w-full" onClick={() => { window.location.href = '/'; }}>{t('Till inloggning')}</Button>
           </CardContent>
         </Card>
       </div>
@@ -162,9 +163,9 @@ export default function ContractorApplyPage() {
               </div>
             )}
           </div>
-          <h1 className="text-2xl font-semibold">Entreprenörsansökan</h1>
+          <h1 className="text-2xl font-semibold">{t('Entreprenörsansökan')}</h1>
           <p className="text-sm text-muted-foreground">
-            Ansök om tillträde som extern entreprenör. Din kontaktperson hos {appName} måste godkänna ansökan.
+            {t('Ansök om tillträde som extern entreprenör. Din kontaktperson hos')} {appName} {t('måste godkänna ansökan.')}
           </p>
         </div>
 
@@ -175,32 +176,32 @@ export default function ContractorApplyPage() {
             <CardContent className="pt-6">
               <form onSubmit={submit} className="space-y-5">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2"><Label>Förnamn *</Label><Input required value={firstName} onChange={e => setFirstName(e.target.value)} maxLength={128} /></div>
-                  <div className="space-y-2"><Label>Efternamn *</Label><Input required value={lastName} onChange={e => setLastName(e.target.value)} maxLength={128} /></div>
+                  <div className="space-y-2"><Label>{t('Förnamn *')}</Label><Input required value={firstName} onChange={e => setFirstName(e.target.value)} maxLength={128} /></div>
+                  <div className="space-y-2"><Label>{t('Efternamn *')}</Label><Input required value={lastName} onChange={e => setLastName(e.target.value)} maxLength={128} /></div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2"><Label>E-post *</Label><Input required type="email" value={email} onChange={e => setEmail(e.target.value)} maxLength={255} /></div>
-                  <div className="space-y-2"><Label>Telefon</Label><Input value={phone} onChange={e => setPhone(e.target.value)} maxLength={50} /></div>
+                  <div className="space-y-2"><Label>{t('Telefon')}</Label><Input value={phone} onChange={e => setPhone(e.target.value)} maxLength={50} /></div>
                 </div>
-                <div className="space-y-2"><Label>Företag *</Label><Input required value={company} onChange={e => setCompany(e.target.value)} maxLength={255} /></div>
+                <div className="space-y-2"><Label>{t('Företag *')}</Label><Input required value={company} onChange={e => setCompany(e.target.value)} maxLength={255} /></div>
 
                 <div className="space-y-2">
-                  <Label>Kontaktperson hos {appName} (e-post) *</Label>
+                  <Label>{t('Kontaktperson hos')} {appName} (e-post) *</Label>
                   <Input required type="email" value={sponsorEmail} onChange={e => setSponsorEmail(e.target.value)} maxLength={255} />
-                  <p className="text-xs text-muted-foreground">Personen som har bjudit in dig och som ansvarar för ditt uppdrag.</p>
+                  <p className="text-xs text-muted-foreground">{t('Personen som har bjudit in dig och som ansvarar för ditt uppdrag.')}</p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Anläggning *</Label>
+                  <Label>{t('Anläggning *')}</Label>
                   <Select value={facilityId} onValueChange={v => { setFacilityId(v); setSelectedAreas([]); }}>
-                    <SelectTrigger><SelectValue placeholder="Välj anläggning" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={t('Välj anläggning')} /></SelectTrigger>
                     <SelectContent>{facilities.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
 
                 {facilityId && facilityAreas.length > 0 && (
                   <div className="space-y-2">
-                    <Label>Områden (valfritt)</Label>
+                    <Label>{t('Områden (valfritt)')}</Label>
                     <div className="space-y-2 rounded-lg border border-border p-3 max-h-48 overflow-y-auto">
                       {facilityAreas.map(a => (
                         <div key={a.id} className="flex items-center gap-2">
@@ -214,14 +215,14 @@ export default function ContractorApplyPage() {
                 )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2"><Label>Startdatum *</Label><Input required type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
-                  <div className="space-y-2"><Label>Slutdatum</Label><Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
+                  <div className="space-y-2"><Label>{t('Startdatum *')}</Label><Input required type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
+                  <div className="space-y-2"><Label>{t('Slutdatum')}</Label><Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Motivering / kommentar</Label>
+                  <Label>{t('Motivering / kommentar')}</Label>
                   <Textarea
-                    placeholder="Beskriv kort uppdraget. Om du saknar krav (t.ex. utbildning) – motivera varför undantag bör beviljas."
+                    placeholder={t('Beskriv kort uppdraget. Om du saknar krav (t.ex. utbildning) – motivera varför undantag bör beviljas.')}
                     value={justification}
                     onChange={e => setJustification(e.target.value)}
                     maxLength={2000}
@@ -229,7 +230,7 @@ export default function ContractorApplyPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Bilagor (max 8 filer, 10 MB / fil)</Label>
+                  <Label>{t('Bilagor (max 8 filer, 10 MB / fil)')}</Label>
                   {files.length > 0 && (
                     <div className="space-y-1 rounded-lg border border-border p-2">
                       {files.map((f, i) => (
@@ -245,12 +246,12 @@ export default function ContractorApplyPage() {
                   )}
                   <input ref={fileRef} type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.xls,.xlsx,.txt,.csv" onChange={onFiles} className="hidden" />
                   <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-                    <Paperclip className="mr-2 h-4 w-4" />Lägg till bilagor
+                    <Paperclip className="mr-2 h-4 w-4" />{t('Lägg till bilagor')}
                   </Button>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Säkerhetskontroll *</Label>
+                  <Label>{t('Säkerhetskontroll *')}</Label>
                   <div className="flex items-center gap-3">
                     <div className="rounded-md border border-border bg-muted px-3 py-2 font-mono text-sm select-none">
                       {captcha ? `${captcha.question} = ?` : '...'}
@@ -258,22 +259,22 @@ export default function ContractorApplyPage() {
                     <Input
                       required
                       inputMode="numeric"
-                      placeholder="Svar"
+                      placeholder={t('Svar')}
                       value={captchaAnswer}
                       onChange={e => setCaptchaAnswer(e.target.value)}
                       className="max-w-[120px]"
                     />
-                    <Button type="button" variant="ghost" size="sm" onClick={loadCaptcha}>Nytt</Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={loadCaptcha}>{t('Nytt')}</Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">Lös uppgiften för att bevisa att du inte är en bot.</p>
+                  <p className="text-xs text-muted-foreground">{t('Lös uppgiften för att bevisa att du inte är en bot.')}</p>
                 </div>
 
                 {error && <p className="text-sm text-destructive">{error}</p>}
 
                 <div className="flex items-center justify-between pt-2">
-                  <a href="/" className="text-sm text-muted-foreground hover:text-foreground">← Tillbaka till inloggning</a>
+                  <a href="/" className="text-sm text-muted-foreground hover:text-foreground">{t('← Tillbaka till inloggning')}</a>
                   <Button type="submit" disabled={submitting}>
-                    {submitting ? 'Skickar...' : 'Skicka ansökan'}
+                    {submitting ? 'Skickar...' : t('Skicka ansökan')}
                   </Button>
                 </div>
               </form>

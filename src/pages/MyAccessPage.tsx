@@ -9,6 +9,7 @@ import * as store from '@/services/dataStore';
 import { useAuth } from '@/context/AuthContext';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
 import { RequirementLookup } from '@/components/applications/RequirementLookup';
+import { t } from '@/i18n';
 
 export default function MyAccessPage() {
   const { currentUser } = useAuth();
@@ -32,24 +33,24 @@ export default function MyAccessPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Min åtkomst</h1>
-        <p className="text-sm text-muted-foreground mt-1">Visa dina aktiva tillträden och kravuppfyllnad</p>
+        <h1 className="text-2xl font-semibold text-foreground">{t('Min åtkomst')}</h1>
+        <p className="text-sm text-muted-foreground mt-1">{t('Visa dina aktiva tillträden och kravuppfyllnad')}</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard title="Aktiva tillträden" value={activeAccess.length} icon={CheckCircle} variant="success" />
-        <StatCard title="Väntande ansökningar" value={pendingApps.length} icon={Clock} variant="warning" />
-        <StatCard title="Uppfyllda krav" value={`${fulfilledReqs.length} / ${totalReqs}`} icon={Shield} variant="primary" />
+        <StatCard title={t('Aktiva tillträden')} value={activeAccess.length} icon={CheckCircle} variant="success" />
+        <StatCard title={t('Väntande ansökningar')} value={pendingApps.length} icon={Clock} variant="warning" />
+        <StatCard title={t('Uppfyllda krav')} value={`${fulfilledReqs.length} / ${totalReqs}`} icon={Shield} variant="primary" />
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-lg">Kravuppfyllnad</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg">{t('Kravuppfyllnad')}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
             <Progress value={progressPct} className="flex-1" />
             <span className="text-sm font-medium text-foreground">{progressPct}%</span>
           </div>
           {requirements.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Inga krav definierade i systemet</p>
+            <p className="text-sm text-muted-foreground text-center py-4">{t('Inga krav definierade i systemet')}</p>
           ) : (
             <div className="grid gap-2">
               {requirements.map(req => {
@@ -63,7 +64,7 @@ export default function MyAccessPage() {
                       <div><p className="text-sm font-medium text-foreground">{req.name}</p><p className="text-xs text-muted-foreground">{req.description}</p></div>
                     </div>
                     <Badge variant="outline" className={isFulfilled ? (isExpiring ? 'status-badge-pending' : 'status-badge-approved') : 'status-badge-denied'}>
-                      {isFulfilled ? (isExpiring ? 'Utgår snart' : 'Uppfyllt') : 'Saknas'}
+                      {isFulfilled ? (isExpiring ? t('Utgår snart') : t('Uppfyllt')) : t('Saknas')}
                     </Badge>
                   </div>
                 );
@@ -74,20 +75,20 @@ export default function MyAccessPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-lg">Aktiva tillträden</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg">{t('Aktiva tillträden')}</CardTitle></CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Anläggning</TableHead>
-                <TableHead>Områden</TableHead>
-                <TableHead>Startdatum</TableHead>
-                <TableHead>Slutdatum</TableHead>
+                <TableHead>{t('Anläggning')}</TableHead>
+                <TableHead>{t('Områden')}</TableHead>
+                <TableHead>{t('Startdatum')}</TableHead>
+                <TableHead>{t('Slutdatum')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {activeAccess.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Inga aktiva tillträden</TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">{t('Inga aktiva tillträden')}</TableCell></TableRow>
               ) : (
                 activeAccess.map(app => {
                   const facility = facilities.find(f => f.id === app.facility_id);
@@ -97,7 +98,7 @@ export default function MyAccessPage() {
                       <TableCell className="font-medium">{facility?.name ?? '–'}</TableCell>
                       <TableCell><div className="flex flex-wrap gap-1">{appAreas.map(a => <Badge key={a.id} variant="outline" className="text-xs">{a.name}</Badge>)}</div></TableCell>
                       <TableCell className="text-muted-foreground">{app.start_date}</TableCell>
-                      <TableCell className="text-muted-foreground">{app.end_date ?? 'Tillsvidare'}</TableCell>
+                      <TableCell className="text-muted-foreground">{app.end_date ?? t('Tillsvidare')}</TableCell>
                     </TableRow>
                   );
                 })

@@ -16,6 +16,7 @@ import { ORG_UNIT_LABELS, ORG_ALLOWED_PARENTS, type OrgUnit, type OrgUnitType } 
 import { useDataRefresh } from '@/hooks/useDataRefresh';
 import { useAuth } from '@/context/AuthContext';
 import { errorMessage } from '@/lib/utils';
+import { t as tr } from '@/i18n';
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
@@ -54,7 +55,7 @@ function OrgUnitCard({ node, depth, memberCount, canEdit, onEdit, onAddChild, on
     <div className={depth > 0 ? 'ml-6 border-l border-border pl-4' : ''}>
       <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 mb-2 hover:shadow-sm transition-shadow">
         {hasChildren ? (
-          <Button variant="ghost" size="icon" aria-label="Visa eller dölj underenheter" title="Visa eller dölj underenheter" className="h-6 w-6 shrink-0" onClick={() => setExpanded(!expanded)}>
+          <Button variant="ghost" size="icon" aria-label={tr('Visa eller dölj underenheter')} title={tr('Visa eller dölj underenheter')} className="h-6 w-6 shrink-0" onClick={() => setExpanded(!expanded)}>
             {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
           </Button>
         ) : <div className="w-6" />}
@@ -67,19 +68,19 @@ function OrgUnitCard({ node, depth, memberCount, canEdit, onEdit, onAddChild, on
           <p className="text-sm font-medium text-foreground">{node.name}</p>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className={`text-xs ${TYPE_STYLES[node.type]}`}>{ORG_UNIT_LABELS[node.type]}</Badge>
-            <span className="text-xs text-muted-foreground">Chef: {manager ? manager.full_name : 'Ej utsedd'}</span>
+            <span className="text-xs text-muted-foreground">Chef: {manager ? manager.full_name : tr('Ej utsedd')}</span>
             <span className="text-xs text-muted-foreground">· {memberCount(node.id)} medarbetare</span>
           </div>
         </div>
         {canEdit && (
           <div className="flex gap-1 shrink-0">
             {allowedChildren.length > 0 && (
-              <Button variant="ghost" size="icon" aria-label="Lägg till underenhet" className="h-7 w-7" title="Lägg till underenhet" onClick={() => onAddChild(node)}>
+              <Button variant="ghost" size="icon" aria-label={tr('Lägg till underenhet')} className="h-7 w-7" title={tr('Lägg till underenhet')} onClick={() => onAddChild(node)}>
                 <Plus className="h-3 w-3" />
               </Button>
             )}
-            <Button variant="ghost" size="icon" aria-label="Redigera" title="Redigera" className="h-7 w-7" onClick={() => onEdit(node)}><Pencil className="h-3 w-3" /></Button>
-            <Button variant="ghost" size="icon" aria-label="Ta bort" title="Ta bort" className="h-7 w-7" onClick={() => onDelete(node)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+            <Button variant="ghost" size="icon" aria-label={tr('Redigera')} title={tr('Redigera')} className="h-7 w-7" onClick={() => onEdit(node)}><Pencil className="h-3 w-3" /></Button>
+            <Button variant="ghost" size="icon" aria-label={tr('Ta bort')} title={tr('Ta bort')} className="h-7 w-7" onClick={() => onDelete(node)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
           </div>
         )}
       </div>
@@ -141,30 +142,30 @@ export default function OrganizationPage() {
   };
 
   const handleSave = async () => {
-    if (!name.trim()) { toast.error('Ange ett namn'); return; }
+    if (!name.trim()) { toast.error(tr('Ange ett namn')); return; }
     try {
       if (dialog.mode === 'add') {
         await store.createOrgUnit({ name: name.trim(), type, description: description || undefined, parentId: dialog.parent?.id, managerId: managerId || undefined });
-        toast.success('Organisationsenhet skapad');
+        toast.success(tr('Organisationsenhet skapad'));
       } else if (dialog.node) {
         await store.updateOrgUnit(dialog.node.id, { name: name.trim(), type, description: description || undefined, managerId: managerId || undefined });
-        toast.success('Organisationsenhet uppdaterad');
+        toast.success(tr('Organisationsenhet uppdaterad'));
       }
       setDialog({ open: false, mode: 'add' });
       reload();
     } catch (err) {
-      toast.error(errorMessage(err, 'Kunde inte spara'));
+      toast.error(errorMessage(err, tr('Kunde inte spara')));
     }
   };
 
   const handleDelete = async (node: OrgUnit) => {
-    if (!confirm(`Ta bort "${node.name}" och alla underliggande enheter?`)) return;
+    if (!confirm(tr('Ta bort "{name}" och alla underliggande enheter?', { name: node.name }))) return;
     try {
       await store.deleteOrgUnit(node.id);
-      toast.success('Organisationsenhet borttagen');
+      toast.success(tr('Organisationsenhet borttagen'));
       reload();
     } catch (err) {
-      toast.error(errorMessage(err, 'Kunde inte ta bort'));
+      toast.error(errorMessage(err, tr('Kunde inte ta bort')));
     }
   };
 
@@ -172,22 +173,22 @@ export default function OrganizationPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Organisation</h1>
-          <p className="text-sm text-muted-foreground mt-1">Bygg strukturen: Företag/VD → Avdelning → Enhet → Grupp</p>
+          <h1 className="text-2xl font-semibold text-foreground">{tr('Organisation')}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{tr('Bygg strukturen: Företag/VD → Avdelning → Enhet → Grupp')}</p>
         </div>
-        {canEdit && <Button onClick={() => openAdd(undefined)}><Plus className="mr-2 h-4 w-4" />Ny toppnivå</Button>}
+        {canEdit && <Button onClick={() => openAdd(undefined)}><Plus className="mr-2 h-4 w-4" />{tr('Ny toppnivå')}</Button>}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-4">
-        <StatCard title="Totalt enheter" value={countUnits(tree)} icon={Building2} variant="primary" />
-        <StatCard title="Avdelningar" value={countByType(tree, 'department')} icon={Building2} variant="default" />
-        <StatCard title="Enheter" value={countByType(tree, 'unit')} icon={Building2} variant="default" />
-        <StatCard title="Grupper" value={countByType(tree, 'group')} icon={Users} variant="default" />
+        <StatCard title={tr('Totalt enheter')} value={countUnits(tree)} icon={Building2} variant="primary" />
+        <StatCard title={tr('Avdelningar')} value={countByType(tree, 'department')} icon={Building2} variant="default" />
+        <StatCard title={tr('Enheter')} value={countByType(tree, 'unit')} icon={Building2} variant="default" />
+        <StatCard title={tr('Grupper')} value={countByType(tree, 'group')} icon={Users} variant="default" />
       </div>
 
       {tree.length === 0 ? (
         <Card><CardContent className="py-16 text-center text-muted-foreground">
-          Ingen organisationsstruktur ännu. Skapa först ett företag eller en avdelning på toppnivå – därefter kan användare placeras i strukturen.
+          {tr('Ingen organisationsstruktur ännu. Skapa först ett företag eller en avdelning på toppnivå – därefter kan användare placeras i strukturen.')}
         </CardContent></Card>
       ) : tree.map(node => (
         <OrgUnitCard key={node.id} node={node} depth={0} memberCount={memberCount} canEdit={canEdit}
@@ -197,17 +198,17 @@ export default function OrganizationPage() {
       <Dialog open={dialog.open} onOpenChange={open => setDialog(d => ({ ...d, open }))}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{dialog.mode === 'add' ? 'Ny organisationsenhet' : 'Redigera organisationsenhet'}</DialogTitle>
+            <DialogTitle>{dialog.mode === 'add' ? tr('Ny organisationsenhet') : tr('Redigera organisationsenhet')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {dialog.mode === 'add' && (
               <p className="text-sm text-muted-foreground">
-                {dialog.parent ? `Placeras under: ${dialog.parent.name}` : 'Placeras på toppnivå'}
+                {dialog.parent ? tr('Placeras under: {name}', { name: dialog.parent.name }) : tr('Placeras på toppnivå')}
               </p>
             )}
-            <div className="space-y-2"><Label>Namn</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="t.ex. Produktion" /></div>
+            <div className="space-y-2"><Label>{tr('Namn')}</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="t.ex. Produktion" /></div>
             <div className="space-y-2">
-              <Label>Nivå</Label>
+              <Label>{tr('Nivå')}</Label>
               <Select value={type} onValueChange={v => setType(v as OrgUnitType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -217,21 +218,21 @@ export default function OrganizationPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2"><Label>Beskrivning</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} /></div>
+            <div className="space-y-2"><Label>{tr('Beskrivning')}</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} /></div>
             <div className="space-y-2">
-              <Label>Chef (valfritt)</Label>
+              <Label>{tr('Chef (valfritt)')}</Label>
               <Select value={managerId || '__none__'} onValueChange={v => setManagerId(v === '__none__' ? '' : v)}>
-                <SelectTrigger><SelectValue placeholder="Ingen" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={tr('Ingen')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">Ingen</SelectItem>
+                  <SelectItem value="__none__">{tr('Ingen')}</SelectItem>
                   {users.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialog(d => ({ ...d, open: false }))}>Avbryt</Button>
-            <Button onClick={handleSave}>{dialog.mode === 'add' ? 'Skapa' : 'Spara'}</Button>
+            <Button variant="outline" onClick={() => setDialog(d => ({ ...d, open: false }))}>{tr('Avbryt')}</Button>
+            <Button onClick={handleSave}>{dialog.mode === 'add' ? tr('Skapa') : tr('Spara')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

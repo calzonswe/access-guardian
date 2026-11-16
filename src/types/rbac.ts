@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 // ============= RBAC Types =============
 
 export type AppRole = 
@@ -9,12 +10,12 @@ export type AppRole =
   | 'contractor';        // Entreprenör
 
 export const ROLE_LABELS: Record<AppRole, string> = {
-  administrator: 'Administratör',
-  facility_owner: 'Anläggningsägare',
-  facility_admin: 'Anläggningsadministratör',
-  line_manager: 'Linjechef',
-  employee: 'Anställd',
-  contractor: 'Entreprenör',
+  administrator: t('Administratör'),
+  facility_owner: t('Anläggningsägare'),
+  facility_admin: t('Anläggningsadministratör'),
+  line_manager: t('Linjechef'),
+  employee: t('Anställd'),
+  contractor: t('Entreprenör'),
 };
 
 export interface User {

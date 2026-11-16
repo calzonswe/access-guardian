@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import type { User, UserRequirement } from '@/types/rbac';
 import { errorMessage } from '@/lib/utils';
+import { t, locale } from '@/i18n';
 
 interface Props {
   open: boolean;
@@ -19,7 +20,7 @@ interface Props {
   onUpdated?: () => void;
 }
 
-const TYPE_LABELS: Record<string, string> = { certification: 'Certifiering', clearance: 'Säkerhetsprövning', training: 'Utbildning' };
+const TYPE_LABELS: Record<string, string> = { certification: t('Certifiering'), clearance: t('Säkerhetsprövning'), training: t('Utbildning') };
 
 export default function UserRequirementDialog({ open, onOpenChange, targetUser, onUpdated }: Props) {
   const { currentUser } = useAuth();
@@ -39,7 +40,7 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { toast.error('Filen får inte vara större än 10 MB'); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error(t('Filen får inte vara större än 10 MB')); return; }
     setAttachmentFile(file);
   };
 
@@ -69,7 +70,7 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
         try {
           await api.uploadUserRequirementAttachment(created.id, attachmentFile);
         } catch (err) {
-          toast.error(`Bilagan kunde inte laddas upp: ${errorMessage(err, '')}`);
+          toast.error(t('Bilagan kunde inte laddas upp: {v0}', { v0: errorMessage(err, '') }));
         }
       }
 
@@ -78,12 +79,12 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
         actor_id: currentUser.id,
         target_id: targetUser.id,
         target_type: 'user',
-        details: `Krav uppfyllt: ${req.name} för ${targetUser.full_name}${attachmentFile ? ` (bilaga: ${attachmentFile.name})` : ''}`,
+        details: t('Krav uppfyllt: {name} för {full_name}{v2}', { name: req.name, full_name: targetUser.full_name, v2: attachmentFile ? ` (bilaga: ${attachmentFile.name})` : '' }),
       });
 
       store.createNotification({
         user_id: targetUser.id,
-        title: 'Krav registrerat',
+        title: t('Krav registrerat'),
         message: `${req.name} har markerats som uppfyllt av ${currentUser.full_name}`,
         type: 'info',
         read: false,
@@ -102,9 +103,9 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
 
   const handleRemove = (ur: UserRequirement) => {
     const req = allRequirements.find(r => r.id === ur.requirement_id);
-    if (confirm(`Ta bort uppfyllnad av "${req?.name}"?`)) {
+    if (confirm(t('Ta bort uppfyllnad av "{name}"?', { name: req?.name }))) {
       store.deleteUserRequirement(ur.id);
-      toast.success('Kravuppfyllnad borttagen');
+      toast.success(t('Kravuppfyllnad borttagen'));
       reload();
       onUpdated?.();
     }
@@ -121,7 +122,7 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
     try {
       await api.downloadUserRequirementAttachment(ur.id, ur.attachment_name);
     } catch (err) {
-      toast.error(errorMessage(err, 'Kunde inte hämta bilaga'));
+      toast.error(errorMessage(err, t('Kunde inte hämta bilaga')));
     }
   };
 
@@ -129,13 +130,13 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Kravuppfyllnad – {targetUser.full_name}</DialogTitle>
+          <DialogTitle>{t('Kravuppfyllnad –')} {targetUser.full_name}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Uppfyllda krav</Label>
+            <Label className="text-sm font-medium">{t('Uppfyllda krav')}</Label>
             {userReqs.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Inga krav registrerade</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">{t('Inga krav registrerade')}</p>
             ) : (
               <div className="space-y-2">
                 {userReqs.map(ur => {
@@ -156,7 +157,7 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
                           {ur.expires_at && (
                             <span className={`text-xs flex items-center gap-1 ${isExpired ? 'text-destructive' : 'text-muted-foreground'}`}>
                               <Clock className="h-3 w-3" />
-                              {isExpired ? 'Utgånget' : `Utgår ${new Date(ur.expires_at).toLocaleDateString('sv-SE')}`}
+                              {isExpired ? t('Utgånget') : t('Utgår {v0}', { v0: new Date(ur.expires_at).toLocaleDateString(locale()) })}
                             </span>
                           )}
                           {hasAttachment && (
@@ -170,7 +171,7 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
                           )}
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" aria-label="Ta bort" title="Ta bort" className="h-7 w-7 shrink-0" onClick={() => handleRemove(ur)}>
+                      <Button variant="ghost" size="icon" aria-label={t('Ta bort')} title={t('Ta bort')} className="h-7 w-7 shrink-0" onClick={() => handleRemove(ur)}>
                         <Trash2 className="h-3 w-3 text-destructive" />
                       </Button>
                     </div>
@@ -182,22 +183,22 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
 
           {availableReqs.length > 0 && (
             <div className="space-y-3 border-t border-border pt-4">
-              <Label className="text-sm font-medium">Registrera nytt krav</Label>
+              <Label className="text-sm font-medium">{t('Registrera nytt krav')}</Label>
               <div className="flex gap-2">
                 <Select value={addReqId} onValueChange={setAddReqId}>
-                  <SelectTrigger className="flex-1"><SelectValue placeholder="Välj krav" /></SelectTrigger>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder={t('Välj krav')} /></SelectTrigger>
                   <SelectContent>
                     {availableReqs.map(r => (
                       <SelectItem key={r.id} value={r.id}>{r.name} ({TYPE_LABELS[r.type]})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <Button onClick={handleAdd} disabled={!addReqId || busy} size="icon" aria-label="Registrera krav" title="Registrera krav">
+                <Button onClick={handleAdd} disabled={!addReqId || busy} size="icon" aria-label={t('Registrera krav')} title={t('Registrera krav')}>
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Bifoga intyg/certifikat (valfritt, max 10 MB)</Label>
+                <Label className="text-xs text-muted-foreground">{t('Bifoga intyg/certifikat (valfritt, max 10 MB)')}</Label>
                 <div className="flex items-center gap-2">
                   <input
                     ref={fileInputRef}
@@ -218,7 +219,7 @@ export default function UserRequirementDialog({ open, onOpenChange, targetUser, 
           )}
         </div>
         <DialogFooter>
-          <Button onClick={() => onOpenChange(false)}>Stäng</Button>
+          <Button onClick={() => onOpenChange(false)}>{t('Stäng')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

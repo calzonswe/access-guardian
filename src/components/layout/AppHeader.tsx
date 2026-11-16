@@ -13,25 +13,26 @@ import {
 } from '@/components/ui/dropdown-menu';
 import * as store from '@/services/dataStore';
 import * as api from '@/services/api';
+import { t } from '@/i18n';
 
 const PAGE_TITLES: [prefix: string, title: string][] = [
-  ['/applications', 'Ansökningar'],
-  ['/facilities', 'Anläggningar'],
-  ['/requirements', 'Krav'],
-  ['/users', 'Användare'],
-  ['/organization', 'Organisation'],
-  ['/team', 'Mitt team'],
-  ['/my-access', 'Min åtkomst'],
-  ['/notifications', 'Aviseringar'],
-  ['/logs', 'Systemlogg'],
-  ['/settings', 'Inställningar'],
-  ['/profile', 'Min profil'],
+  ['/applications', t('Ansökningar')],
+  ['/facilities', t('Anläggningar')],
+  ['/requirements', t('Krav')],
+  ['/users', t('Användare')],
+  ['/organization', t('Organisation')],
+  ['/team', t('Mitt team')],
+  ['/my-access', t('Min åtkomst')],
+  ['/notifications', t('Aviseringar')],
+  ['/logs', t('Systemlogg')],
+  ['/settings', t('Inställningar')],
+  ['/profile', t('Min profil')],
 ];
 
 const THEME_OPTIONS: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
-  { value: 'light', label: 'Ljust', icon: Sun },
-  { value: 'dark', label: 'Mörkt', icon: Moon },
-  { value: 'system', label: 'Följ systemet', icon: Monitor },
+  { value: 'light', label: t('Ljust'), icon: Sun },
+  { value: 'dark', label: t('Mörkt'), icon: Moon },
+  { value: 'system', label: t('Följ systemet'), icon: Monitor },
 ];
 
 export function AppHeader() {
@@ -77,21 +78,21 @@ export function AppHeader() {
     setRefresh(x => x + 1);
   };
 
-  const pageTitle = pathname === '/' ? 'Översikt' : PAGE_TITLES.find(([prefix]) => pathname.startsWith(prefix))?.[1] ?? '';
+  const pageTitle = pathname === '/' ? t('Översikt') : PAGE_TITLES.find(([prefix]) => pathname.startsWith(prefix))?.[1] ?? '';
   const initials = currentUser.full_name.split(' ').filter(Boolean).map(n => n[0]).slice(0, 2).join('').toUpperCase();
   const roleLabels = currentUser.roles.map(r => ROLE_LABELS[r]).join(', ');
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-card/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-card/80 sm:gap-3 sm:px-4">
-      <SidebarTrigger className="text-muted-foreground hover:text-foreground" aria-label="Visa eller dölj menyn" title="Visa eller dölj menyn" />
+      <SidebarTrigger className="text-muted-foreground hover:text-foreground" aria-label={t('Visa eller dölj menyn')} title={t('Visa eller dölj menyn')} />
       <span className="truncate text-sm font-medium text-foreground">{pageTitle}</span>
       <div className="flex-1" />
 
-      <Button variant="outline" onClick={() => setSearchOpen(true)} aria-label="Sök" title="Sök"
+      <Button variant="outline" onClick={() => setSearchOpen(true)} aria-label={t('Sök')} title={t('Sök')}
         className="h-9 gap-2 px-2 text-muted-foreground sm:w-56 sm:justify-start sm:px-3">
         <Search className="h-4 w-4" />
-        <span className="hidden text-sm sm:inline">Sök…</span>
-        <kbd className="ml-auto hidden rounded border border-border bg-muted px-1.5 font-sans text-[10px] sm:inline">{isMac ? '⌘K' : 'Ctrl K'}</kbd>
+        <span className="hidden text-sm sm:inline">{t('Sök…')}</span>
+        <kbd className="ml-auto hidden rounded border border-border bg-muted px-1.5 font-sans text-[10px] sm:inline">{isMac ? '⌘K' : t('Ctrl K')}</kbd>
       </Button>
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
 
@@ -99,8 +100,8 @@ export function AppHeader() {
       {/* Notifications dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="relative" title="Aviseringar"
-            aria-label={unread.length > 0 ? `Aviseringar, ${unread.length} olästa` : 'Aviseringar'}>
+          <Button variant="ghost" size="icon" className="relative" title={t('Aviseringar')}
+            aria-label={unread.length > 0 ? t('Aviseringar, {count} olästa', { count: unread.length }) : t('Aviseringar')}>
             <Bell className="h-4 w-4" />
             {unread.length > 0 && (
               <Badge className="absolute -right-1 -top-1 h-4 min-w-4 rounded-full px-1 py-0 text-[10px] flex items-center justify-center bg-destructive text-destructive-foreground hover:bg-destructive">
@@ -111,11 +112,11 @@ export function AppHeader() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-80">
           <div className="px-3 py-2 text-sm font-medium text-foreground">
-            Aviseringar {unread.length > 0 && `(${unread.length} olästa)`}
+            {t('Aviseringar')} {unread.length > 0 && t('({count} olästa)', { count: unread.length })}
           </div>
           <DropdownMenuSeparator />
           {recent.length === 0 ? (
-            <div className="px-3 py-4 text-center text-sm text-muted-foreground">Inga aviseringar</div>
+            <div className="px-3 py-4 text-center text-sm text-muted-foreground">{t('Inga aviseringar')}</div>
           ) : (
             recent.map(n => (
               <DropdownMenuItem
@@ -133,7 +134,7 @@ export function AppHeader() {
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem className="justify-center text-sm text-primary cursor-pointer" onClick={() => navigate('/notifications')}>
-            Visa alla aviseringar
+            {t('Visa alla aviseringar')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -141,12 +142,12 @@ export function AppHeader() {
       {/* Theme: light / dark / follow the device */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" title="Tema" aria-label="Välj tema">
+          <Button variant="ghost" size="icon" title={t('Tema')} aria-label={t('Välj tema')}>
             {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-44">
-          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Tema</DropdownMenuLabel>
+          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{t('Tema')}</DropdownMenuLabel>
           {THEME_OPTIONS.map(opt => (
             <DropdownMenuItem key={opt.value} className="cursor-pointer gap-2" onClick={() => setPreference(opt.value)}>
               <opt.icon className="h-4 w-4" />
@@ -160,7 +161,7 @@ export function AppHeader() {
       {/* User menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-9 gap-2 px-1.5 sm:px-2" aria-label={`Användarmeny för ${currentUser.full_name}`}>
+          <Button variant="ghost" className="h-9 gap-2 px-1.5 sm:px-2" aria-label={t('Användarmeny för {full_name}', { full_name: currentUser.full_name })}>
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{initials}</span>
             <span className="hidden max-w-[10rem] truncate text-sm font-medium md:inline">{currentUser.full_name}</span>
           </Button>
@@ -173,11 +174,11 @@ export function AppHeader() {
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => navigate('/profile')}>
-            <UserIcon className="h-4 w-4" />Min profil
+            <UserIcon className="h-4 w-4" />{t('Min profil')}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem className="cursor-pointer gap-2 text-destructive focus:text-destructive" onClick={logout}>
-            <LogOut className="h-4 w-4" />Logga ut
+            <LogOut className="h-4 w-4" />{t('Logga ut')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

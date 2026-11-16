@@ -18,18 +18,19 @@ import { useActionableApplications } from '@/hooks/useActionableApplications';
 import { canRenew } from '@/lib/applicationRules';
 import { BulkActionBar } from '@/components/applications/BulkActionBar';
 import { errorMessage } from '@/lib/utils';
+import { t as tr } from '@/i18n';
 
 const PAGE_SIZE = 10;
 
 const STATUS_OPTIONS: { value: ApplicationStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'Alla statusar' },
-  { value: 'draft', label: 'Utkast' },
-  { value: 'pending_manager', label: 'Väntar på chef' },
-  { value: 'pending_facility', label: 'Väntar på anläggning' },
-  { value: 'pending_exception', label: 'Avsteg – väntar' },
-  { value: 'approved', label: 'Godkänd' },
-  { value: 'denied', label: 'Nekad' },
-  { value: 'expired', label: 'Utgången' },
+  { value: 'all', label: tr('Alla statusar') },
+  { value: 'draft', label: tr('Utkast') },
+  { value: 'pending_manager', label: tr('Väntar på chef') },
+  { value: 'pending_facility', label: tr('Väntar på anläggning') },
+  { value: 'pending_exception', label: tr('Avsteg – väntar') },
+  { value: 'approved', label: tr('Godkänd') },
+  { value: 'denied', label: tr('Nekad') },
+  { value: 'expired', label: tr('Utgången') },
 ];
 
 function getSubordinateIds(managerId: string, users: ReturnType<typeof store.getUsers>): string[] {
@@ -88,11 +89,11 @@ export default function ApplicationsPage() {
     };
     const cached = store.getApplication(applicationId);
     if (cached) { openIt(cached); return; }
-    if (!store.isApiMode()) { toast.error('Ansökan hittades inte'); return; }
+    if (!store.isApiMode()) { toast.error(tr('Ansökan hittades inte')); return; }
     let cancelled = false;
     store.fetchApplication(applicationId)
       .then(app => { if (!cancelled) openIt(app); })
-      .catch(err => { if (!cancelled) toast.error(err instanceof Error ? err.message : 'Ansökan hittades inte'); });
+      .catch(err => { if (!cancelled) toast.error(err instanceof Error ? err.message : tr('Ansökan hittades inte')); });
     return () => { cancelled = true; };
   }, [applicationId, loading]);
 
@@ -148,7 +149,7 @@ export default function ApplicationsPage() {
     let cancelled = false;
     store.fetchApplicationsPage({ page, limit: PAGE_SIZE, search, status: statusFilter })
       .then(r => { if (!cancelled) { setPagedApps(r.data); setServerTotal(r.total); } })
-      .catch(() => { if (!cancelled) toast.error('Kunde inte hämta ansökningar'); });
+      .catch(() => { if (!cancelled) toast.error(tr('Kunde inte hämta ansökningar')); });
     return () => { cancelled = true; };
   }, [apiMode, loading, currentUser, page, search, statusFilter, refreshTick, showActionable]);
 
@@ -172,14 +173,14 @@ export default function ApplicationsPage() {
   const canCreateApplication = roles.includes('employee') || roles.includes('contractor');
 
   const handleDelete = async (app: Application) => {
-    if (!confirm('Är du säker på att du vill ta bort denna ansökan?')) return;
+    if (!confirm(tr('Är du säker på att du vill ta bort denna ansökan?'))) return;
     try {
       await store.deleteApplication(app.id);
-      toast.success('Ansökan borttagen');
+      toast.success(tr('Ansökan borttagen'));
       closeDetail();
       reloadPaged();
     } catch (err) {
-      toast.error(errorMessage(err, 'Kunde inte ta bort ansökan'));
+      toast.error(errorMessage(err, tr('Kunde inte ta bort ansökan')));
     }
   };
 
@@ -188,16 +189,16 @@ export default function ApplicationsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Ansökningar</h1>
-          <p className="text-sm text-muted-foreground mt-1">Hantera tillträdesansökningar ({displayTotal} st)</p>
+          <h1 className="text-2xl font-semibold text-foreground">{tr('Ansökningar')}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{tr('Hantera tillträdesansökningar (')}{displayTotal} st)</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={() => { exportApplications(); toast.success('Ansökningar exporterade'); }}>
-            <Download className="mr-2 h-4 w-4" />Exportera
+          <Button variant="outline" onClick={() => { exportApplications(); toast.success(tr('Ansökningar exporterade')); }}>
+            <Download className="mr-2 h-4 w-4" />{tr('Exportera')}
           </Button>
           {canCreateApplication && (
             <Button onClick={() => { setEditApp(null); setTemplateApp(null); setFormOpen(true); }}>
-              <Plus className="mr-2 h-4 w-4" />Ny ansökan
+              <Plus className="mr-2 h-4 w-4" />{tr('Ny ansökan')}
             </Button>
           )}
         </div>
@@ -208,7 +209,7 @@ export default function ApplicationsPage() {
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Sök sökande, anläggning..."
+            placeholder={tr('Sök sökande, anläggning...')}
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
             className="pl-9"
@@ -218,7 +219,7 @@ export default function ApplicationsPage() {
           <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             {actionable.length > 0 || showActionable
-              ? <SelectItem value="actionable">Att hantera ({actionable.length})</SelectItem>
+              ? <SelectItem value="actionable">{tr('Att hantera (')}{actionable.length})</SelectItem>
               : null}
             {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
@@ -241,7 +242,7 @@ export default function ApplicationsPage() {
               visible.forEach(a => (allOn ? next.delete(a.id) : next.add(a.id)));
               return next;
             })}>
-              {allOn ? 'Avmarkera alla' : `Markera alla att hantera (${visible.length})`}
+              {allOn ? tr('Avmarkera alla') : tr('Markera alla att hantera ({count})', { count: visible.length })}
             </Button>
           );
         })()}
@@ -256,14 +257,14 @@ export default function ApplicationsPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Visar {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, displayTotal)} av {displayTotal}
+            {tr('Visar')} {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, displayTotal)} av {displayTotal}
           </p>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" aria-label="Föregående sida" title="Föregående sida" className="h-8 w-8" disabled={safePage <= 1} onClick={() => setPage(p => p - 1)}>
+            <Button variant="outline" size="icon" aria-label={tr('Föregående sida')} title={tr('Föregående sida')} className="h-8 w-8" disabled={safePage <= 1} onClick={() => setPage(p => p - 1)}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm text-muted-foreground">Sida {safePage} av {totalPages}</span>
-            <Button variant="outline" size="icon" aria-label="Nästa sida" title="Nästa sida" className="h-8 w-8" disabled={safePage >= totalPages} onClick={() => setPage(p => p + 1)}>
+            <span className="text-sm text-muted-foreground">{tr('Sida')} {safePage} av {totalPages}</span>
+            <Button variant="outline" size="icon" aria-label={tr('Nästa sida')} title={tr('Nästa sida')} className="h-8 w-8" disabled={safePage >= totalPages} onClick={() => setPage(p => p + 1)}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

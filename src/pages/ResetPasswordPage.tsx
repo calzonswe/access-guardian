@@ -9,6 +9,7 @@ import { useBranding } from '@/context/BrandingContext';
 import * as api from '@/services/api';
 import { toast } from 'sonner';
 import { errorMessage } from '@/lib/utils';
+import { t } from '@/i18n';
 
 export default function ResetPasswordPage() {
   const { appName, logoUrl } = useBranding();
@@ -21,11 +22,11 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
 
   const validate = () => {
-    if (password.length < 8) return 'Lösenordet måste vara minst 8 tecken';
+    if (password.length < 8) return t('Lösenordet måste vara minst 8 tecken');
     if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
-      return 'Lösenordet måste innehålla stora och små bokstäver, siffror och specialtecken';
+      return t('Lösenordet måste innehålla stora och små bokstäver, siffror och specialtecken');
     }
-    if (password !== confirm) return 'Lösenorden matchar inte';
+    if (password !== confirm) return t('Lösenorden matchar inte');
     return '';
   };
 
@@ -37,10 +38,10 @@ export default function ResetPasswordPage() {
     setLoading(true);
     try {
       await api.resetPassword(token, password);
-      toast.success('Lösenordet har återställts. Logga in med det nya lösenordet.');
+      toast.success(t('Lösenordet har återställts. Logga in med det nya lösenordet.'));
       navigate('/');
     } catch (err) {
-      setError(errorMessage(err, 'Kunde inte återställa lösenordet'));
+      setError(errorMessage(err, t('Kunde inte återställa lösenordet')));
     } finally {
       setLoading(false);
     }
@@ -51,12 +52,12 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Ogiltig länk</CardTitle>
-            <CardDescription>Återställningslänken saknar token.</CardDescription>
+            <CardTitle>{t('Ogiltig länk')}</CardTitle>
+            <CardDescription>{t('Återställningslänken saknar token.')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Link to="/forgot-password" className="text-primary hover:underline">
-              Begär ny återställningslänk
+              {t('Begär ny återställningslänk')}
             </Link>
           </CardContent>
         </Card>
@@ -78,28 +79,28 @@ export default function ResetPasswordPage() {
             )}
           </div>
           <div>
-            <CardTitle className="text-2xl">Välj nytt lösenord</CardTitle>
+            <CardTitle className="text-2xl">{t('Välj nytt lösenord')}</CardTitle>
             <CardDescription className="mt-1">
-              Minst 8 tecken, med stor/liten bokstav, siffra och specialtecken.
+              {t('Minst 8 tecken, med stor/liten bokstav, siffra och specialtecken.')}
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="pw">Nytt lösenord</Label>
+              <Label htmlFor="pw">{t('Nytt lösenord')}</Label>
               <Input id="pw" type="password" value={password} onChange={e => setPassword(e.target.value)} required autoFocus />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="pw2">Bekräfta lösenord</Label>
+              <Label htmlFor="pw2">{t('Bekräfta lösenord')}</Label>
               <Input id="pw2" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Återställer...' : 'Återställ lösenord'}
+              {loading ? t('Återställer...') : t('Återställ lösenord')}
             </Button>
             <div className="text-center text-sm">
-              <Link to="/" className="text-primary hover:underline">Tillbaka till inloggning</Link>
+              <Link to="/" className="text-primary hover:underline">{t('Tillbaka till inloggning')}</Link>
             </div>
           </form>
         </CardContent>

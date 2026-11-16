@@ -8,6 +8,7 @@ import type {
   Notification, UserRequirement, FacilityRequirement, AppRole,
 } from '@/types/rbac';
 import type { OrgUnit } from '@/types/organization';
+import { t as tr, getLanguage } from '@/i18n';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -62,7 +63,7 @@ export function setUnauthorizedHandler(fn: UnauthorizedHandler | null) {
 }
 
 export class UnauthorizedError extends Error {
-  constructor(message = 'Sessionen har gått ut. Logga in igen.') { super(message); this.name = 'UnauthorizedError'; }
+  constructor(message = tr('Sessionen har gått ut. Logga in igen.')) { super(message); this.name = 'UnauthorizedError'; }
 }
 export function isUnauthorizedError(err: unknown): boolean {
   return err instanceof UnauthorizedError;
@@ -74,6 +75,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     ...(options.headers as Record<string, string> || {}),
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  headers['X-Language'] = getLanguage(); // server messages in the same language
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
@@ -90,7 +92,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || (res.status >= 500 ? 'Servern svarar inte just nu. Försök igen om en stund.' : `HTTP ${res.status}`));
+    throw new Error(body.error || (res.status >= 500 ? tr('Servern svarar inte just nu. Försök igen om en stund.') : `HTTP ${res.status}`));
   }
 
   return res.json();
@@ -358,6 +360,7 @@ export async function uploadUserRequirementAttachment(urId: string, file: File):
   fd.append('file', file, file.name);
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  headers['X-Language'] = getLanguage(); // server messages in the same language
   const res = await fetch(`${API_BASE}/user-requirements/${urId}/attachment`, {
     method: 'POST', headers, body: fd,
   });
@@ -377,8 +380,9 @@ export async function uploadUserRequirementAttachment(urId: string, file: File):
 export async function downloadUserRequirementAttachment(urId: string, fileName: string): Promise<void> {
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  headers['X-Language'] = getLanguage(); // server messages in the same language
   const res = await fetch(`${API_BASE}/user-requirements/${urId}/attachment`, { headers });
-  if (!res.ok) throw new Error(`Kunde inte hämta bilaga (HTTP ${res.status})`);
+  if (!res.ok) throw new Error(tr('Kunde inte hämta bilaga (HTTP {status})', { status: res.status }));
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -399,14 +403,14 @@ export function getPasswordPolicy(): Promise<PasswordPolicy> {
 }
 
 export function validatePasswordAgainstPolicy(pw: string, policy: PasswordPolicy): string | null {
-  if (!pw) return 'Lösenord krävs';
-  if (pw.length < policy.minLength) return `Lösenordet måste vara minst ${policy.minLength} tecken`;
+  if (!pw) return tr('Lösenord krävs');
+  if (pw.length < policy.minLength) return tr('Lösenordet måste vara minst {minLength} tecken', { minLength: policy.minLength });
   const missing: string[] = [];
-  if (policy.requireUpper && !/[A-Z]/.test(pw)) missing.push('stora bokstäver');
-  if (policy.requireLower && !/[a-z]/.test(pw)) missing.push('små bokstäver');
+  if (policy.requireUpper && !/[A-Z]/.test(pw)) missing.push(tr('stora bokstäver'));
+  if (policy.requireLower && !/[a-z]/.test(pw)) missing.push(tr('små bokstäver'));
   if (policy.requireDigit && !/[0-9]/.test(pw)) missing.push('siffror');
   if (policy.requireSymbol && !/[^A-Za-z0-9]/.test(pw)) missing.push('specialtecken');
-  if (missing.length) return `Lösenordet måste innehålla ${missing.join(', ')}`;
+  if (missing.length) return tr('Lösenordet måste innehålla {v0}', { v0: missing.join(', ') });
   return null;
 }
 
@@ -571,6 +575,7 @@ export async function uploadAttachmentMultipart(applicationId: string, file: Fil
   fd.append('file', file, file.name);
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  headers['X-Language'] = getLanguage(); // server messages in the same language
   const res = await fetch(`${API_BASE}/attachments/multipart`, { method: 'POST', headers, body: fd });
   if (res.status === 401) {
     setToken(null);
@@ -605,8 +610,9 @@ export async function downloadAttachment(idOrUrl: string, fileName: string): Pro
     : idOrUrl.startsWith('/') ? idOrUrl : `/attachments/${idOrUrl}/download`;
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  headers['X-Language'] = getLanguage(); // server messages in the same language
   const res = await fetch(`${API_BASE}${path}`, { headers });
-  if (!res.ok) throw new Error(`Kunde inte hämta bilaga (HTTP ${res.status})`);
+  if (!res.ok) throw new Error(tr('Kunde inte hämta bilaga (HTTP {status})', { status: res.status }));
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

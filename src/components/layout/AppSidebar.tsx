@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/collapsible';
 
 import { useActionableApplications } from '@/hooks/useActionableApplications';
+import { t } from '@/i18n';
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -65,7 +66,7 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-foreground/50 text-xs uppercase tracking-wider">
-            {!collapsed && 'Navigation'}
+            {!collapsed && t('Navigation')}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -110,7 +111,7 @@ export function AppSidebar() {
                               ? 'absolute right-1 top-1 h-2 w-2 rounded-full bg-primary'
                               : 'ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground'}
                             title={`${actionable.length} att hantera`}
-                            aria-label={`${actionable.length} ansökningar att hantera`}
+                            aria-label={t('{count} ansökningar att hantera', { count: actionable.length })}
                           >
                             {!collapsed && actionable.length}
                           </span>

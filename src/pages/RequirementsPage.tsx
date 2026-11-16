@@ -16,8 +16,9 @@ import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import type { Requirement } from '@/types/rbac';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
+import { t } from '@/i18n';
 
-const TYPE_LABELS: Record<string, string> = { certification: 'Certifiering', clearance: 'Säkerhetsprövning', training: 'Utbildning' };
+const TYPE_LABELS: Record<string, string> = { certification: t('Certifiering'), clearance: t('Säkerhetsprövning'), training: t('Utbildning') };
 const TYPE_ICONS: Record<string, typeof Award> = { certification: Award, clearance: Lock, training: Shield };
 
 export default function RequirementsPage() {
@@ -56,27 +57,27 @@ export default function RequirementsPage() {
   };
 
   const handleSave = async () => {
-    if (!name.trim()) { toast.error('Ange namn'); return; }
-    if (hasExpiry && !(Number(validityDays) > 0)) { toast.error('Ange giltighetstid i dagar (minst 1)'); return; }
+    if (!name.trim()) { toast.error(t('Ange namn')); return; }
+    if (hasExpiry && !(Number(validityDays) > 0)) { toast.error(t('Ange giltighetstid i dagar (minst 1)')); return; }
     try {
       if (editReq) {
         await store.updateRequirement(editReq.id, { name, description, type, has_expiry: hasExpiry, validity_days: hasExpiry ? validityDays : undefined });
-        toast.success('Krav uppdaterat');
+        toast.success(t('Krav uppdaterat'));
       } else {
         await store.createRequirement({ name, description, type, has_expiry: hasExpiry, validity_days: hasExpiry ? validityDays : undefined });
-        await store.addLog({ action: 'requirement_created', actor_id: currentUser.id, details: `Nytt krav skapat: ${name}` });
-        toast.success('Krav skapat');
+        await store.addLog({ action: 'requirement_created', actor_id: currentUser.id, details: t('Nytt krav skapat: {name}', { name }) });
+        toast.success(t('Krav skapat'));
       }
       setDialogOpen(false); reload();
     } catch (err) {
-      toast.error(errorMessage(err, 'Kunde inte spara krav'));
+      toast.error(errorMessage(err, t('Kunde inte spara krav')));
     }
   };
 
   const handleDelete = async (r: Requirement) => {
-    if (confirm(`Ta bort "${r.name}"?`)) {
+    if (confirm(t('Ta bort "{name}"?', { name: r.name }))) {
       await store.deleteRequirement(r.id);
-      toast.success('Krav borttaget'); reload();
+      toast.success(t('Krav borttaget')); reload();
     }
   };
 
@@ -87,25 +88,25 @@ export default function RequirementsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Krav</h1>
-          <p className="text-sm text-muted-foreground mt-1">Hantera certifieringar, utbildningar och säkerhetsprövningar</p>
+          <h1 className="text-2xl font-semibold text-foreground">{t('Krav')}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t('Hantera certifieringar, utbildningar och säkerhetsprövningar')}</p>
         </div>
-        {canEdit && <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Nytt krav</Button>}
+        {canEdit && <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />{t('Nytt krav')}</Button>}
       </div>
 
       {allRequirements.length > 0 && (
         <div className="flex flex-wrap gap-3">
           <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Sök krav..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+            <Input placeholder={t('Sök krav...')} value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Alla typer</SelectItem>
-              <SelectItem value="training">Utbildning</SelectItem>
-              <SelectItem value="certification">Certifiering</SelectItem>
-              <SelectItem value="clearance">Säkerhetsprövning</SelectItem>
+              <SelectItem value="all">{t('Alla typer')}</SelectItem>
+              <SelectItem value="training">{t('Utbildning')}</SelectItem>
+              <SelectItem value="certification">{t('Certifiering')}</SelectItem>
+              <SelectItem value="clearance">{t('Säkerhetsprövning')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -117,19 +118,19 @@ export default function RequirementsPage() {
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Shield className="h-12 w-12 text-muted-foreground/40 mb-4" />
               <p className="text-lg font-medium text-muted-foreground">
-                {allRequirements.length > 0 ? 'Inga krav matchar filtret' : 'Inga krav definierade'}
+                {allRequirements.length > 0 ? t('Inga krav matchar filtret') : t('Inga krav definierade')}
               </p>
-              {allRequirements.length === 0 && <p className="text-sm text-muted-foreground/70 mt-1">Skapa krav som utbildningar och certifieringar</p>}
+              {allRequirements.length === 0 && <p className="text-sm text-muted-foreground/70 mt-1">{t('Skapa krav som utbildningar och certifieringar')}</p>}
             </div>
 
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Krav</TableHead>
-                  <TableHead>Typ</TableHead>
-                  <TableHead>Beskrivning</TableHead>
-                  <TableHead>Giltighetstid</TableHead>
+                  <TableHead>{t('Krav')}</TableHead>
+                  <TableHead>{t('Typ')}</TableHead>
+                  <TableHead>{t('Beskrivning')}</TableHead>
+                  <TableHead>{t('Giltighetstid')}</TableHead>
                   {canEdit && <TableHead className="w-20"></TableHead>}
                 </TableRow>
               </TableHeader>
@@ -148,16 +149,16 @@ export default function RequirementsPage() {
                       <TableCell className="text-muted-foreground">{req.description}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {req.has_expiry ? (
-                          <div className="flex items-center gap-1"><Clock className="h-3 w-3" />{req.validity_days ? `${req.validity_days} dagar` : "Giltighetstid saknas"}</div>
+                          <div className="flex items-center gap-1"><Clock className="h-3 w-3" />{req.validity_days ? `${req.validity_days} dagar` : t('Giltighetstid saknas')}</div>
                         ) : (
-                          <span className="text-success">Permanent</span>
+                          <span className="text-success">{t('Permanent')}</span>
                         )}
                       </TableCell>
                       {canEdit && (
                         <TableCell>
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" aria-label="Redigera" title="Redigera" className="h-7 w-7" onClick={() => openEdit(req)}><Pencil className="h-3 w-3" /></Button>
-                            <Button variant="ghost" size="icon" aria-label="Ta bort" title="Ta bort" className="h-7 w-7" onClick={() => handleDelete(req)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                            <Button variant="ghost" size="icon" aria-label={t('Redigera')} title={t('Redigera')} className="h-7 w-7" onClick={() => openEdit(req)}><Pencil className="h-3 w-3" /></Button>
+                            <Button variant="ghost" size="icon" aria-label={t('Ta bort')} title={t('Ta bort')} className="h-7 w-7" onClick={() => handleDelete(req)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                           </div>
                         </TableCell>
                       )}
@@ -172,35 +173,35 @@ export default function RequirementsPage() {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{editReq ? 'Redigera krav' : 'Nytt krav'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editReq ? t('Redigera krav') : t('Nytt krav')}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label>Namn</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
-            <div className="space-y-2"><Label>Beskrivning</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} /></div>
+            <div className="space-y-2"><Label>{t('Namn')}</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
+            <div className="space-y-2"><Label>{t('Beskrivning')}</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} /></div>
             <div className="space-y-2">
-              <Label>Typ</Label>
+              <Label>{t('Typ')}</Label>
               <Select value={type} onValueChange={v => setType(v as Requirement['type'])}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="training">Utbildning</SelectItem>
-                  <SelectItem value="certification">Certifiering</SelectItem>
-                  <SelectItem value="clearance">Säkerhetsprövning</SelectItem>
+                  <SelectItem value="training">{t('Utbildning')}</SelectItem>
+                  <SelectItem value="certification">{t('Certifiering')}</SelectItem>
+                  <SelectItem value="clearance">{t('Säkerhetsprövning')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-center justify-between">
-              <Label>Har giltighetstid</Label>
+              <Label>{t('Har giltighetstid')}</Label>
               <Switch checked={hasExpiry} onCheckedChange={setHasExpiry} />
             </div>
             {hasExpiry && (
               <div className="space-y-2">
-                <Label>Giltighetstid (dagar)</Label>
+                <Label>{t('Giltighetstid (dagar)')}</Label>
                 <Input type="number" value={validityDays} onChange={e => setValidityDays(parseInt(e.target.value) || 0)} min={1} />
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Avbryt</Button>
-            <Button onClick={handleSave}>{editReq ? 'Spara' : 'Skapa'}</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('Avbryt')}</Button>
+            <Button onClick={handleSave}>{editReq ? t('Spara') : t('Skapa')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

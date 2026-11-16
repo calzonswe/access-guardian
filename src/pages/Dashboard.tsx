@@ -5,6 +5,7 @@ import * as store from '@/services/dataStore';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ApplicationTable } from '@/components/dashboard/ApplicationTable';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
+import { t, locale } from '@/i18n';
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
@@ -29,13 +30,13 @@ export default function Dashboard() {
   if (roles.includes('administrator')) {
     sections.push(
       <div key="admin-stats" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Totalt användare" value={users.length} icon={Users} variant="primary" />
-        <StatCard title="Anläggningar" value={facilities.length} icon={Building2} variant="default" />
-        <StatCard title="Väntande ansökningar" value={pendingApps.length} icon={Clock} variant="warning" />
-        <StatCard title="Godkända tillträden" value={approvedApps.length} icon={CheckCircle} variant="success" />
+        <StatCard title={t('Totalt användare')} value={users.length} icon={Users} variant="primary" />
+        <StatCard title={t('Anläggningar')} value={facilities.length} icon={Building2} variant="default" />
+        <StatCard title={t('Väntande ansökningar')} value={pendingApps.length} icon={Clock} variant="warning" />
+        <StatCard title={t('Godkända tillträden')} value={approvedApps.length} icon={CheckCircle} variant="success" />
       </div>
     );
-    sections.push(<ApplicationTable key="admin-apps" applications={applications} title="Alla ansökningar" />);
+    sections.push(<ApplicationTable key="admin-apps" applications={applications} title={t('Alla ansökningar')} />);
   }
 
   // Facility owner/admin stats
@@ -52,18 +53,18 @@ export default function Dashboard() {
     if (!roles.includes('administrator')) {
       sections.push(
         <div key="facility-stats" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard title="Mina anläggningar" value={myFacilities.length} icon={Building2} variant="primary" />
-          <StatCard title="Väntande granskning" value={myPending.length} icon={Clock} variant="warning" />
-          <StatCard title={ownedIds.length > 0 ? 'Avsteg att besluta' : 'Avsteg hos ägaren'} value={ownedIds.length > 0 ? exceptions.length : myApps.filter(a => a.status === 'pending_exception').length} icon={AlertTriangle} variant="destructive" />
-          <StatCard title="Aktiva tillträden" value={myApps.filter(a => a.status === 'approved').length} icon={CheckCircle} variant="success" />
+          <StatCard title={t('Mina anläggningar')} value={myFacilities.length} icon={Building2} variant="primary" />
+          <StatCard title={t('Väntande granskning')} value={myPending.length} icon={Clock} variant="warning" />
+          <StatCard title={ownedIds.length > 0 ? t('Avsteg att besluta') : t('Avsteg hos ägaren')} value={ownedIds.length > 0 ? exceptions.length : myApps.filter(a => a.status === 'pending_exception').length} icon={AlertTriangle} variant="destructive" />
+          <StatCard title={t('Aktiva tillträden')} value={myApps.filter(a => a.status === 'approved').length} icon={CheckCircle} variant="success" />
         </div>
       );
     }
     if (exceptions.length > 0) {
-      sections.push(<ApplicationTable key="facility-exceptions" applications={exceptions} title="Avsteg som kräver godkännande" />);
+      sections.push(<ApplicationTable key="facility-exceptions" applications={exceptions} title={t('Avsteg som kräver godkännande')} />);
     }
     if (myPending.length > 0 && !roles.includes('administrator')) {
-      sections.push(<ApplicationTable key="facility-pending" applications={myPending} title="Ansökningar att granska" />);
+      sections.push(<ApplicationTable key="facility-pending" applications={myPending} title={t('Ansökningar att granska')} />);
     }
   }
 
@@ -78,14 +79,14 @@ export default function Dashboard() {
     if (!roles.includes('administrator')) {
       sections.push(
         <div key="manager-stats" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard title="Teammedlemmar" value={teamMembers.length} icon={Users} variant="primary" />
-          <StatCard title="Väntar på mitt godkännande" value={pendingMyApproval.length} icon={Clock} variant="warning" />
-          <StatCard title="Godkända" value={teamApps.filter(a => a.status === 'approved').length} icon={CheckCircle} variant="success" />
+          <StatCard title={t('Teammedlemmar')} value={teamMembers.length} icon={Users} variant="primary" />
+          <StatCard title={t('Väntar på mitt godkännande')} value={pendingMyApproval.length} icon={Clock} variant="warning" />
+          <StatCard title={t('Godkända')} value={teamApps.filter(a => a.status === 'approved').length} icon={CheckCircle} variant="success" />
         </div>
       );
     }
     if (pendingMyApproval.length > 0) {
-      sections.push(<ApplicationTable key="manager-pending" applications={pendingMyApproval} title="Ansökningar att godkänna" />);
+      sections.push(<ApplicationTable key="manager-pending" applications={pendingMyApproval} title={t('Ansökningar att godkänna')} />);
     }
   }
 
@@ -98,14 +99,14 @@ export default function Dashboard() {
     if (!roles.includes('administrator') && !roles.includes('line_manager')) {
       sections.push(
         <div key="employee-stats" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard title="Mina ansökningar" value={myApps.length} icon={FileText} variant="primary" />
-          <StatCard title="Godkänt tillträde" value={myApps.filter(a => a.status === 'approved').length} icon={CheckCircle} variant="success" />
-          <StatCard title="Uppfyllda krav" value={myReqs.length} subtitle={`av ${requirements.length} totalt`} icon={Shield} variant="default" />
+          <StatCard title={t('Mina ansökningar')} value={myApps.length} icon={FileText} variant="primary" />
+          <StatCard title={t('Godkänt tillträde')} value={myApps.filter(a => a.status === 'approved').length} icon={CheckCircle} variant="success" />
+          <StatCard title={t('Uppfyllda krav')} value={myReqs.length} subtitle={`av ${requirements.length} totalt`} icon={Shield} variant="default" />
         </div>
       );
     }
     if (myApps.length > 0 && !roles.includes('administrator')) {
-      sections.push(<ApplicationTable key="employee-apps" applications={myApps} title="Mina ansökningar" />);
+      sections.push(<ApplicationTable key="employee-apps" applications={myApps} title={t('Mina ansökningar')} />);
     }
   }
 
@@ -115,10 +116,10 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-foreground">
-          Välkommen, {currentUser.full_name}
+          {t('Välkommen,')} {currentUser.full_name}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {roleLabels} · {new Date().toLocaleDateString('sv-SE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          {roleLabels} · {new Date().toLocaleDateString(locale(), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
       </div>
       {sections}

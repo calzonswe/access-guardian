@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
 import { errorMessage } from '@/lib/utils';
+import { t } from '@/i18n';
 
 export default function ChangePasswordPage() {
   const { changePassword, logout } = useAuth();
@@ -18,18 +19,18 @@ export default function ChangePasswordPage() {
     setError('');
 
     if (newPassword !== confirmPassword) {
-      setError('Lösenorden matchar inte');
+      setError(t('Lösenorden matchar inte'));
       return;
     }
     if (newPassword.length < 8) {
-      setError('Lösenordet måste vara minst 8 tecken');
+      setError(t('Lösenordet måste vara minst 8 tecken'));
       return;
     }
 
     try {
       await changePassword(newPassword);
     } catch (err) {
-      setError(errorMessage(err, 'Kunde inte ändra lösenord'));
+      setError(errorMessage(err, t('Kunde inte ändra lösenord')));
     }
   };
 
@@ -43,14 +44,14 @@ export default function ChangePasswordPage() {
             </div>
           </div>
           <div>
-            <CardTitle className="text-2xl">Byt lösenord</CardTitle>
-            <CardDescription>Du måste byta ditt lösenord innan du kan fortsätta</CardDescription>
+            <CardTitle className="text-2xl">{t('Byt lösenord')}</CardTitle>
+            <CardDescription>{t('Du måste byta ditt lösenord innan du kan fortsätta')}</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="new-password">Nytt lösenord</Label>
+              <Label htmlFor="new-password">{t('Nytt lösenord')}</Label>
               <Input
                 id="new-password"
                 type="password"
@@ -62,7 +63,7 @@ export default function ChangePasswordPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">Bekräfta lösenord</Label>
+              <Label htmlFor="confirm-password">{t('Bekräfta lösenord')}</Label>
               <Input
                 id="confirm-password"
                 type="password"
@@ -73,9 +74,9 @@ export default function ChangePasswordPage() {
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full">Byt lösenord</Button>
+            <Button type="submit" className="w-full">{t('Byt lösenord')}</Button>
             <Button type="button" variant="ghost" className="w-full" onClick={logout}>
-              Logga ut
+              {t('Logga ut')}
             </Button>
           </form>
         </CardContent>

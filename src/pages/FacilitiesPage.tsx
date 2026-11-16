@@ -18,6 +18,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { Facility } from '@/types/rbac';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
+import { t } from '@/i18n';
 
 export default function FacilitiesPage() {
   const { currentUser } = useAuth();
@@ -66,25 +67,25 @@ export default function FacilitiesPage() {
   };
 
   const handleSave = async () => {
-    if (!name.trim()) { toast.error('Ange namn'); return; }
+    if (!name.trim()) { toast.error(t('Ange namn')); return; }
     if (editFacility) {
       await store.updateFacility(editFacility.id, { name, description, address, owner_id: ownerId });
-      await store.addLog({ action: 'settings_changed', actor_id: currentUser.id, target_id: editFacility.id, target_type: 'facility', details: `Anläggning uppdaterad: ${name}` });
-      toast.success('Anläggning uppdaterad');
+      await store.addLog({ action: 'settings_changed', actor_id: currentUser.id, target_id: editFacility.id, target_type: 'facility', details: t('Anläggning uppdaterad: {name}', { name }) });
+      toast.success(t('Anläggning uppdaterad'));
     } else {
       const f = await store.createFacility({ name, description, address, owner_id: ownerId, admin_ids: [] });
-      await store.addLog({ action: 'facility_created', actor_id: currentUser.id, target_id: f.id, target_type: 'facility', details: `Ny anläggning skapad: ${name}` });
-      toast.success('Anläggning skapad');
+      await store.addLog({ action: 'facility_created', actor_id: currentUser.id, target_id: f.id, target_type: 'facility', details: t('Ny anläggning skapad: {name}', { name }) });
+      toast.success(t('Anläggning skapad'));
     }
     setDialogOpen(false);
     reload();
   };
 
   const handleDelete = async (f: Facility) => {
-    if (confirm(`Är du säker på att du vill ta bort "${f.name}" och alla dess områden?`)) {
+    if (confirm(t('Är du säker på att du vill ta bort "{name}" och alla dess områden?', { name: f.name }))) {
       await store.deleteFacility(f.id);
-      await store.addLog({ action: 'settings_changed', actor_id: currentUser.id, target_id: f.id, target_type: 'facility', details: `Anläggning borttagen: ${f.name}` });
-      toast.success('Anläggning borttagen');
+      await store.addLog({ action: 'settings_changed', actor_id: currentUser.id, target_id: f.id, target_type: 'facility', details: t('Anläggning borttagen: {name}', { name: f.name }) });
+      toast.success(t('Anläggning borttagen'));
       reload();
     }
   };
@@ -118,7 +119,7 @@ export default function FacilitiesPage() {
     if (store.isApiMode() && !currentUser.roles.includes('administrator')) {
       api.getFacilityAdminCandidates()
         .then(setAdminCandidates)
-        .catch(err => toast.error(errorMessage(err, 'Kunde inte hämta administratörer')));
+        .catch(err => toast.error(errorMessage(err, t('Kunde inte hämta administratörer'))));
     }
   };
 
@@ -130,7 +131,7 @@ export default function FacilitiesPage() {
       ? [...currentAdmins, userId]
       : currentAdmins.filter(id => id !== userId);
     await store.updateFacility(facilityId, { admin_ids: newAdmins });
-    await store.addLog({ action: 'settings_changed', actor_id: currentUser.id, target_id: facilityId, target_type: 'facility', details: `Administratörer uppdaterade för ${facility.name}` });
+    await store.addLog({ action: 'settings_changed', actor_id: currentUser.id, target_id: facilityId, target_type: 'facility', details: t('Administratörer uppdaterade för {name}', { name: facility.name }) });
     reload();
   };
 
@@ -144,11 +145,11 @@ export default function FacilitiesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Anläggningar</h1>
-          <p className="text-sm text-muted-foreground mt-1">Hantera anläggningar, områden och krav</p>
+          <h1 className="text-2xl font-semibold text-foreground">{t('Anläggningar')}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t('Hantera anläggningar, områden och krav')}</p>
         </div>
         {currentUser.roles.includes('administrator') && (
-          <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Ny anläggning</Button>
+          <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />{t('Ny anläggning')}</Button>
         )}
       </div>
 
@@ -156,7 +157,7 @@ export default function FacilitiesPage() {
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Sök anläggning, adress..."
+            placeholder={t('Sök anläggning, adress...')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-9"
@@ -169,9 +170,9 @@ export default function FacilitiesPage() {
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Building2 className="h-12 w-12 text-muted-foreground/40 mb-4" />
             <p className="text-lg font-medium text-muted-foreground">
-              {q ? 'Inga anläggningar matchar sökningen' : 'Inga anläggningar'}
+              {q ? t('Inga anläggningar matchar sökningen') : t('Inga anläggningar')}
             </p>
-            {!q && <p className="text-sm text-muted-foreground/70 mt-1">Skapa din första anläggning för att komma igång</p>}
+            {!q && <p className="text-sm text-muted-foreground/70 mt-1">{t('Skapa din första anläggning för att komma igång')}</p>}
           </CardContent>
         </Card>
       ) : (
@@ -202,16 +203,16 @@ export default function FacilitiesPage() {
                     </div>
                     {(currentUser.roles.includes('administrator') || facility.owner_id === currentUser.id || (facility.admin_ids || []).includes(currentUser.id)) && (
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" aria-label="Hantera områden" className="h-8 w-8" title="Hantera områden" asChild>
+                        <Button variant="ghost" size="icon" aria-label={t('Hantera områden')} className="h-8 w-8" title={t('Hantera områden')} asChild>
                           <Link to={`/facilities/${facility.id}/areas`}><MapPin className="h-3.5 w-3.5 text-primary" /></Link>
                         </Button>
                         {(currentUser.roles.includes('administrator') || facility.owner_id === currentUser.id) && (
-                          <Button variant="ghost" size="icon" aria-label="Redigera" title="Redigera" className="h-8 w-8" onClick={() => openEdit(facility)}>
+                          <Button variant="ghost" size="icon" aria-label={t('Redigera')} title={t('Redigera')} className="h-8 w-8" onClick={() => openEdit(facility)}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
                         )}
                         {currentUser.roles.includes('administrator') && (
-                          <Button variant="ghost" size="icon" aria-label="Ta bort" title="Ta bort" className="h-8 w-8" onClick={() => handleDelete(facility)}>
+                          <Button variant="ghost" size="icon" aria-label={t('Ta bort')} title={t('Ta bort')} className="h-8 w-8" onClick={() => handleDelete(facility)}>
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
                           </Button>
                         )}
@@ -224,19 +225,19 @@ export default function FacilitiesPage() {
                     <MapPin className="h-3 w-3" />{facility.address}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Ägare: <span className="font-medium text-foreground">{owner?.full_name ?? '–'}</span>
+                    {t('Ägare:')} <span className="font-medium text-foreground">{owner?.full_name ?? '–'}</span>
                   </div>
 
                   <div className="text-xs text-muted-foreground">
-                    <span>Administratörer: </span>
+                    <span>{t('Administratörer:')} </span>
                     {admins.length > 0 ? (
                       <span className="font-medium text-foreground">{admins.map(a => a!.full_name).join(', ')}</span>
                     ) : (
-                      <span>Inga</span>
+                      <span>{t('Inga')}</span>
                     )}
                     {(currentUser.roles.includes('administrator') || facility.owner_id === currentUser.id) && (
                       <Button variant="ghost" size="sm" className="text-xs h-5 ml-1 px-1" onClick={() => openAdminDialog(facility.id)}>
-                        <Users className="h-3 w-3 mr-0.5" />Hantera
+                        <Users className="h-3 w-3 mr-0.5" />{t('Hantera')}
                       </Button>
                     )}
                   </div>
@@ -245,13 +246,13 @@ export default function FacilitiesPage() {
                     {facilityAreas.map(area => (
                       <Badge key={area.id} variant="outline" className="text-xs">{area.name}</Badge>
                     ))}
-                    {facilityAreas.length === 0 && <span className="text-xs text-muted-foreground">Inga områden</span>}
+                    {facilityAreas.length === 0 && <span className="text-xs text-muted-foreground">{t('Inga områden')}</span>}
                   </div>
 
                   {(currentUser.roles.includes('administrator') || facility.owner_id === currentUser.id || (facility.admin_ids || []).includes(currentUser.id)) && (
                     <Link to={`/facilities/${facility.id}/access`} className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
                       <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-                      Aktiva tillträden ({activeAccessFor(store.getApplications(), facility.id).length})
+                      {t('Aktiva tillträden (')}{activeAccessFor(store.getApplications(), facility.id).length})
                     </Link>
                   )}
 
@@ -261,13 +262,13 @@ export default function FacilitiesPage() {
                       className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
                     >
                       <Shield className="h-3 w-3" />
-                      <span>Krav ({reqNames.length})</span>
+                      <span>{t('Krav (')}{reqNames.length})</span>
                       {showReqs ? <ChevronUp className="h-3 w-3 ml-auto" /> : <ChevronDown className="h-3 w-3 ml-auto" />}
                     </button>
                     {showReqs && (
                       <div className="mt-2 space-y-1">
                         {reqNames.length === 0 ? (
-                          <p className="text-xs text-muted-foreground/70">Inga krav kopplade</p>
+                          <p className="text-xs text-muted-foreground/70">{t('Inga krav kopplade')}</p>
                         ) : (
                           reqNames.map(r => r && (
                             <Badge key={r.id} variant="secondary" className="text-xs mr-1">
@@ -277,7 +278,7 @@ export default function FacilitiesPage() {
                         )}
                         {currentUser.roles.includes('administrator') && (
                           <Button variant="ghost" size="sm" className="text-xs h-7 mt-1" onClick={() => openReqDialog(facility.id)}>
-                            <Pencil className="h-3 w-3 mr-1" />Hantera krav
+                            <Pencil className="h-3 w-3 mr-1" />{t('Hantera krav')}
                           </Button>
                         )}
                       </div>
@@ -293,25 +294,25 @@ export default function FacilitiesPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editFacility ? 'Redigera anläggning' : 'Ny anläggning'}</DialogTitle>
+            <DialogTitle>{editFacility ? t('Redigera anläggning') : t('Ny anläggning')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Namn</Label>
-              <Input value={name} onChange={e => setName(e.target.value)} placeholder="Anläggningsnamn" />
+              <Label>{t('Namn')}</Label>
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder={t('Anläggningsnamn')} />
             </div>
             <div className="space-y-2">
-              <Label>Beskrivning</Label>
-              <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Beskrivning" />
+              <Label>{t('Beskrivning')}</Label>
+              <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('Beskrivning')} />
             </div>
             <div className="space-y-2">
-              <Label>Adress</Label>
+              <Label>{t('Adress')}</Label>
               <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Gatuadress, Stad" />
             </div>
             <div className="space-y-2">
-              <Label>Ägare</Label>
+              <Label>{t('Ägare')}</Label>
               <Select value={ownerId} onValueChange={setOwnerId}>
-                <SelectTrigger><SelectValue placeholder="Välj ägare" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('Välj ägare')} /></SelectTrigger>
                 <SelectContent>
                   {users.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}
                 </SelectContent>
@@ -319,8 +320,8 @@ export default function FacilitiesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Avbryt</Button>
-            <Button onClick={handleSave}>{editFacility ? 'Spara' : 'Skapa'}</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('Avbryt')}</Button>
+            <Button onClick={handleSave}>{editFacility ? t('Spara') : t('Skapa')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -328,12 +329,12 @@ export default function FacilitiesPage() {
       <Dialog open={reqDialogOpen} onOpenChange={setReqDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Hantera krav för anläggning</DialogTitle>
+            <DialogTitle>{t('Hantera krav för anläggning')}</DialogTitle>
           </DialogHeader>
           {reqFacilityId && (
             <div className="space-y-3">
               {allRequirements.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Inga krav har skapats ännu. Gå till Krav-sidan för att skapa krav.</p>
+                <p className="text-sm text-muted-foreground">{t('Inga krav har skapats ännu. Gå till Krav-sidan för att skapa krav.')}</p>
               ) : (
                 allRequirements.map(req => {
                   const isLinked = store.getFacilityRequirements(reqFacilityId).some(fr => fr.requirement_id === req.id);
@@ -348,7 +349,7 @@ export default function FacilitiesPage() {
                         <p className="text-xs text-muted-foreground truncate">{req.description}</p>
                       </div>
                       <Badge variant="secondary" className="text-xs shrink-0">
-                        {req.type === 'training' ? 'Utbildning' : req.type === 'certification' ? 'Certifiering' : 'Säkerhetsprövning'}
+                        {req.type === 'training' ? t('Utbildning') : req.type === 'certification' ? t('Certifiering') : t('Säkerhetsprövning')}
                       </Badge>
                     </div>
                   );
@@ -357,7 +358,7 @@ export default function FacilitiesPage() {
             </div>
           )}
           <DialogFooter>
-            <Button onClick={() => setReqDialogOpen(false)}>Stäng</Button>
+            <Button onClick={() => setReqDialogOpen(false)}>{t('Stäng')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -365,15 +366,15 @@ export default function FacilitiesPage() {
       <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Tilldela administratörer</DialogTitle>
+            <DialogTitle>{t('Tilldela administratörer')}</DialogTitle>
           </DialogHeader>
           {adminFacilityId && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Välj vilka användare med rollen Anläggningsadministratör som ska administrera denna anläggning.
+                {t('Välj vilka användare med rollen Anläggningsadministratör som ska administrera denna anläggning.')}
               </p>
               {facilityAdminCandidates.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Inga användare med rollen Anläggningsadministratör finns. Tilldela rollen först under Användare.</p>
+                <p className="text-sm text-muted-foreground">{t('Inga användare med rollen Anläggningsadministratör finns. Tilldela rollen först under Användare.')}</p>
               ) : (
                 facilityAdminCandidates.map(user => {
                   const facility = store.getFacility(adminFacilityId);
@@ -391,7 +392,7 @@ export default function FacilitiesPage() {
                       <div className="flex gap-1">
                         {user.roles.map(r => (
                           <Badge key={r} variant="secondary" className="text-[10px]">
-                            {r === 'facility_admin' ? 'Admin' : r === 'administrator' ? 'Superadmin' : r}
+                            {r === 'facility_admin' ? t('Admin') : r === 'administrator' ? t('Superadmin') : r}
                           </Badge>
                         ))}
                       </div>
@@ -402,7 +403,7 @@ export default function FacilitiesPage() {
             </div>
           )}
           <DialogFooter>
-            <Button onClick={() => setAdminDialogOpen(false)}>Stäng</Button>
+            <Button onClick={() => setAdminDialogOpen(false)}>{t('Stäng')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

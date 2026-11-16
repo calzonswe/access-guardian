@@ -6,6 +6,7 @@ import * as store from '@/services/dataStore';
 import * as api from '@/services/api';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { errorMessage } from '@/lib/utils';
+import { t } from '@/i18n';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -53,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             } catch (err) {
               if (api.isUnauthorizedError(err)) { api.setToken(null); break; }
               if (attempt === 2) {
-                toast.error('Kunde inte nå servern. Ladda om sidan om en stund.');
+                toast.error(t('Kunde inte nå servern. Ladda om sidan om en stund.'));
               } else {
                 await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
               }
@@ -89,12 +90,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!res.mustChangePassword) await store.refreshAll();
         return { success: true };
       } catch (err) {
-        return { success: false, error: errorMessage(err, 'Inloggningen misslyckades') };
+        return { success: false, error: errorMessage(err, t('Inloggningen misslyckades')) };
       }
     } else {
       const user = await store.authenticate(email, password);
-      if (!user) return { success: false, error: 'Felaktig e-post eller lösenord' };
-      if (!user.is_active) return { success: false, error: 'Kontot är inaktiverat' };
+      if (!user) return { success: false, error: t('Felaktig e-post eller lösenord') };
+      if (!user.is_active) return { success: false, error: t('Kontot är inaktiverat') };
       store.setSession(user);
       const { password: _, must_change_password, ...pub } = user;
       setCurrentUser(pub);
@@ -137,12 +138,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Auto-logout on idle when a server-driven session timeout is known.
   useIdleTimeout(!!currentUser && sessionTimeoutMinutes > 0, sessionTimeoutMinutes, () => {
-    toast.info('Du har loggats ut på grund av inaktivitet');
+    toast.info(t('Du har loggats ut på grund av inaktivitet'));
     logout();
   });
 
   const changePassword = useCallback(async (newPassword: string, currentPassword?: string) => {
-    if (!currentUser) throw new Error('Ej inloggad');
+    if (!currentUser) throw new Error(t('Ej inloggad'));
 
     if (store.isApiMode()) {
       // The server validates against the configurable password policy.
@@ -151,9 +152,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setMustChangePassword(false);
       await store.refreshAll();
     } else {
-      if (newPassword.length < 8) throw new Error('Lösenordet måste vara minst 8 tecken');
+      if (newPassword.length < 8) throw new Error(t('Lösenordet måste vara minst 8 tecken'));
       if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
-        throw new Error('Lösenordet måste innehålla stora och små bokstäver, siffror och specialtecken');
+        throw new Error(t('Lösenordet måste innehålla stora och små bokstäver, siffror och specialtecken'));
       }
       await store.changePassword(currentUser.id, newPassword);
       const updated = store.getStoredUser(currentUser.id);
@@ -191,7 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background text-muted-foreground" role="status" aria-live="polite">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
-        <p className="text-sm">Laddar…</p>
+        <p className="text-sm">{t('Laddar…')}</p>
       </div>
     );
   }

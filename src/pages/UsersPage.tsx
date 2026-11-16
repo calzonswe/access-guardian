@@ -19,6 +19,7 @@ import UserRequirementDialog from '@/components/users/UserRequirementDialog';
 import { exportUsers, exportRequirementsFulfillment } from '@/services/exportService';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
 import { usePersistentState } from '@/hooks/usePersistentState';
+import { t as tr } from '@/i18n';
 
 const PAGE_SIZE = 10;
 const ALL_ROLES_FILTER: AppRole[] = ['administrator', 'facility_owner', 'facility_admin', 'line_manager', 'employee', 'contractor'];
@@ -48,7 +49,7 @@ export default function UsersPage() {
     let cancelled = false;
     store.fetchUsersPage({ page, limit: PAGE_SIZE, search, role: roleFilter, status: statusFilter })
       .then(r => { if (!cancelled) { setPaged(r.data); setTotal(r.total); } })
-      .catch(() => { if (!cancelled) toast.error('Kunde inte hämta användare'); });
+      .catch(() => { if (!cancelled) toast.error(tr('Kunde inte hämta användare')); });
     return () => { cancelled = true; };
   }, [loading, currentUser, page, search, roleFilter, statusFilter, refreshTick]);
 
@@ -67,10 +68,10 @@ export default function UsersPage() {
   const openReqDialog = (u: User) => { setReqTargetUser(u); setReqDialogOpen(true); };
 
   const handleDelete = async (u: User) => {
-    if (u.id === currentUser.id) { toast.error('Du kan inte ta bort dig själv'); return; }
-    if (confirm(`Ta bort "${u.full_name}"?`)) {
+    if (u.id === currentUser.id) { toast.error(tr('Du kan inte ta bort dig själv')); return; }
+    if (confirm(tr('Ta bort "{full_name}"?', { full_name: u.full_name }))) {
       await store.deleteUser(u.id);
-      toast.success('Användare borttagen'); reloadPaged();
+      toast.success(tr('Användare borttagen')); reloadPaged();
     }
   };
 
@@ -80,16 +81,16 @@ export default function UsersPage() {
         // Deactivation revokes approved access and withdraws pending applications.
         const preview = await api.getDeactivationPreview(u.id);
         const effects = [
-          preview.approved > 0 ? `${preview.approved} godkända tillträden återkallas` : '',
-          preview.pending > 0 ? `${preview.pending} väntande ansökningar dras tillbaka` : '',
+          preview.approved > 0 ? tr('{approved} godkända tillträden återkallas', { approved: preview.approved }) : '',
+          preview.pending > 0 ? tr('{pending} väntande ansökningar dras tillbaka', { pending: preview.pending }) : '',
         ].filter(Boolean).join(' och ');
-        if (!confirm(`Inaktivera ${u.full_name}?${effects ? `\n\n${effects}.` : ''}\n\nKontot kan aktiveras igen, men tillträden återställs inte.`)) return;
+        if (!confirm(tr('Inaktivera {full_name}?{v1}\n\nKontot kan aktiveras igen, men tillträden återställs inte.', { full_name: u.full_name, v1: effects ? `\n\n${effects}.` : '' }))) return;
       }
       await store.updateUser(u.id, { is_active: !u.is_active });
-      toast.success(u.is_active ? 'Användare inaktiverad' : 'Användare aktiverad');
+      toast.success(u.is_active ? tr('Användare inaktiverad') : tr('Användare aktiverad'));
       reloadPaged();
     } catch (err) {
-      toast.error(errorMessage(err, 'Kunde inte ändra användarens status'));
+      toast.error(errorMessage(err, tr('Kunde inte ändra användarens status')));
     }
   };
 
@@ -101,20 +102,20 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Användare</h1>
-          <p className="text-sm text-muted-foreground mt-1">Hantera användare och roller ({total} st)</p>
+          <h1 className="text-2xl font-semibold text-foreground">{tr('Användare')}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{tr('Hantera användare och roller (')}{total} st)</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={() => { exportUsers(); toast.success('Användare exporterade'); }}>
-            <Download className="mr-2 h-4 w-4" />Exportera
+          <Button variant="outline" onClick={() => { exportUsers(); toast.success(tr('Användare exporterade')); }}>
+            <Download className="mr-2 h-4 w-4" />{tr('Exportera')}
           </Button>
-          <Button variant="outline" onClick={() => { exportRequirementsFulfillment(); toast.success('Kravuppfyllnad exporterad'); }}>
-            <Download className="mr-2 h-4 w-4" />Kravrapport
+          <Button variant="outline" onClick={() => { exportRequirementsFulfillment(); toast.success(tr('Kravuppfyllnad exporterad')); }}>
+            <Download className="mr-2 h-4 w-4" />{tr('Kravrapport')}
           </Button>
           {store.isApiMode() && (
-            <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="mr-2 h-4 w-4" />Importera</Button>
+            <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="mr-2 h-4 w-4" />{tr('Importera')}</Button>
           )}
-          <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Ny användare</Button>
+          <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />{tr('Ny användare')}</Button>
         </div>
       </div>
 
@@ -123,25 +124,25 @@ export default function UsersPage() {
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Sök namn, e-post, företag..."
+            placeholder={tr('Sök namn, e-post, företag...')}
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
             className="pl-9"
           />
         </div>
         <Select value={roleFilter} onValueChange={v => { setRoleFilter(v); setPage(1); }}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Alla roller" /></SelectTrigger>
+          <SelectTrigger className="w-[180px]"><SelectValue placeholder={tr('Alla roller')} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Alla roller</SelectItem>
+            <SelectItem value="all">{tr('Alla roller')}</SelectItem>
             {ALL_ROLES_FILTER.map(r => <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setPage(1); }}>
-          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Alla" /></SelectTrigger>
+          <SelectTrigger className="w-[140px]"><SelectValue placeholder={tr('Alla')} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Alla</SelectItem>
-            <SelectItem value="active">Aktiva</SelectItem>
-            <SelectItem value="inactive">Inaktiva</SelectItem>
+            <SelectItem value="all">{tr('Alla')}</SelectItem>
+            <SelectItem value="active">{tr('Aktiva')}</SelectItem>
+            <SelectItem value="inactive">{tr('Inaktiva')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -149,17 +150,17 @@ export default function UsersPage() {
       <Card>
         <CardContent className="p-0">
           {paged.length === 0 ? (
-            <div className="py-16 text-center text-muted-foreground">Inga användare matchar filtret</div>
+            <div className="py-16 text-center text-muted-foreground">{tr('Inga användare matchar filtret')}</div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Namn</TableHead>
+                  <TableHead>{tr('Namn')}</TableHead>
                   <TableHead>E-post</TableHead>
-                  <TableHead>Befattning</TableHead>
-                  <TableHead>Företag / Enhet</TableHead>
-                  <TableHead>Roller</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{tr('Befattning')}</TableHead>
+                  <TableHead>{tr('Företag / Enhet')}</TableHead>
+                  <TableHead>{tr('Roller')}</TableHead>
+                  <TableHead>{tr('Status')}</TableHead>
                   <TableHead className="w-32"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -177,18 +178,18 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`cursor-pointer ${user.is_active ? 'status-badge-approved' : 'status-badge-denied'}`} onClick={() => handleToggleActive(user)}>
-                        {user.is_active ? 'Aktiv' : 'Inaktiv'}
+                        {user.is_active ? tr('Aktiv') : tr('Inaktiv')}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         {canManageRequirements && (
-                          <Button variant="ghost" size="icon" aria-label="Kravuppfyllnad" className="h-7 w-7" title="Kravuppfyllnad" onClick={() => openReqDialog(user)}>
+                          <Button variant="ghost" size="icon" aria-label={tr('Kravuppfyllnad')} className="h-7 w-7" title={tr('Kravuppfyllnad')} onClick={() => openReqDialog(user)}>
                             <Shield className="h-3 w-3 text-primary" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="icon" aria-label="Redigera" title="Redigera" className="h-7 w-7" onClick={() => openEdit(user)}><Pencil className="h-3 w-3" /></Button>
-                        <Button variant="ghost" size="icon" aria-label="Ta bort" title="Ta bort" className="h-7 w-7" onClick={() => handleDelete(user)} disabled={user.id === currentUser.id}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                        <Button variant="ghost" size="icon" aria-label={tr('Redigera')} title={tr('Redigera')} className="h-7 w-7" onClick={() => openEdit(user)}><Pencil className="h-3 w-3" /></Button>
+                        <Button variant="ghost" size="icon" aria-label={tr('Ta bort')} title={tr('Ta bort')} className="h-7 w-7" onClick={() => handleDelete(user)} disabled={user.id === currentUser.id}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -203,14 +204,14 @@ export default function UsersPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Visar {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, total)} av {total}
+            {tr('Visar')} {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, total)} av {total}
           </p>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" aria-label="Föregående sida" title="Föregående sida" className="h-8 w-8" disabled={safePage <= 1} onClick={() => setPage(p => p - 1)}>
+            <Button variant="outline" size="icon" aria-label={tr('Föregående sida')} title={tr('Föregående sida')} className="h-8 w-8" disabled={safePage <= 1} onClick={() => setPage(p => p - 1)}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm text-muted-foreground">Sida {safePage} av {totalPages}</span>
-            <Button variant="outline" size="icon" aria-label="Nästa sida" title="Nästa sida" className="h-8 w-8" disabled={safePage >= totalPages} onClick={() => setPage(p => p + 1)}>
+            <span className="text-sm text-muted-foreground">{tr('Sida')} {safePage} av {totalPages}</span>
+            <Button variant="outline" size="icon" aria-label={tr('Nästa sida')} title={tr('Nästa sida')} className="h-8 w-8" disabled={safePage >= totalPages} onClick={() => setPage(p => p + 1)}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

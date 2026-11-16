@@ -16,6 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import type { Area } from '@/types/rbac';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
+import { t as tr, locale } from '@/i18n';
 
 const SECURITY_COLORS: Record<string, string> = {
   low: 'bg-success/10 text-success border-success/20',
@@ -23,7 +24,7 @@ const SECURITY_COLORS: Record<string, string> = {
   high: 'bg-destructive/10 text-destructive border-destructive/20',
   critical: 'bg-destructive text-destructive-foreground',
 };
-const SECURITY_LABELS: Record<string, string> = { low: 'Låg', medium: 'Medel', high: 'Hög', critical: 'Kritisk' };
+const SECURITY_LABELS: Record<string, string> = { low: tr('Låg'), medium: tr('Medel'), high: tr('Hög'), critical: tr('Kritisk') };
 
 export default function AreasPage() {
   const { currentUser } = useAuth();
@@ -94,22 +95,22 @@ export default function AreasPage() {
   };
 
   const handleSave = async () => {
-    if (!name.trim() || !facilityId) { toast.error('Fyll i alla fält'); return; }
+    if (!name.trim() || !facilityId) { toast.error(tr('Fyll i alla fält')); return; }
     if (editArea) {
       await store.updateArea(editArea.id, { facility_id: facilityId, name, description, security_level: securityLevel, parent_id: parentId || null });
-      toast.success('Område uppdaterat');
+      toast.success(tr('Område uppdaterat'));
     } else {
       await store.createArea({ facility_id: facilityId, name, description, security_level: securityLevel, parent_id: parentId || null });
-      await store.addLog({ action: 'area_created', actor_id: currentUser.id, details: `Nytt område skapat: ${name}` });
-      toast.success('Område skapat');
+      await store.addLog({ action: 'area_created', actor_id: currentUser.id, details: tr('Nytt område skapat: {name}', { name }) });
+      toast.success(tr('Område skapat'));
     }
     setDialogOpen(false); reload();
   };
 
   const handleDelete = async (a: Area) => {
-    if (confirm(`Ta bort "${a.name}"?`)) {
+    if (confirm(tr('Ta bort "{name}"?', { name: a.name }))) {
       await store.deleteArea(a.id);
-      toast.success('Område borttaget'); reload();
+      toast.success(tr('Område borttaget')); reload();
     }
   };
 
@@ -134,21 +135,21 @@ export default function AreasPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Button variant="ghost" size="sm" asChild className="mb-2 -ml-2 text-muted-foreground">
-            <Link to="/facilities"><ArrowLeft className="mr-1 h-4 w-4" />Tillbaka till anläggningar</Link>
+            <Link to="/facilities"><ArrowLeft className="mr-1 h-4 w-4" />{tr('Tillbaka till anläggningar')}</Link>
           </Button>
-          <h1 className="text-2xl font-semibold text-foreground">Områden{facility ? ` – ${facility.name}` : ''}</h1>
-          <p className="text-sm text-muted-foreground mt-1">Hantera områden inom {facility ? 'denna anläggning' : 'anläggningar'}</p>
+          <h1 className="text-2xl font-semibold text-foreground">{tr('Områden')}{facility ? ` – ${facility.name}` : ''}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{tr('Hantera områden inom')} {facility ? tr('denna anläggning') : tr('anläggningar')}</p>
         </div>
         {canEdit && (
-          <Button onClick={openCreate} disabled={facilities.length === 0}><Plus className="mr-2 h-4 w-4" />Nytt område</Button>
+          <Button onClick={openCreate} disabled={facilities.length === 0}><Plus className="mr-2 h-4 w-4" />{tr('Nytt område')}</Button>
         )}
       </div>
 
       {facilities.length === 0 ? (
         <Card><CardContent className="py-16 text-center text-muted-foreground">
           {loading ? 'Laddar…' : routeFacilityId
-            ? 'Anläggningen finns inte, eller så har du inte behörighet att hantera den.'
-            : 'Skapa en anläggning först'}
+            ? tr('Anläggningen finns inte, eller så har du inte behörighet att hantera den.')
+            : tr('Skapa en anläggning först')}
         </CardContent></Card>
       ) : (
         facilities.map(facility => {
@@ -162,16 +163,16 @@ export default function AreasPage() {
               </CardHeader>
               <CardContent className="p-0">
                 {areas.length === 0 ? (
-                  <p className="text-sm text-muted-foreground p-4 text-center">Inga områden i denna anläggning</p>
+                  <p className="text-sm text-muted-foreground p-4 text-center">{tr('Inga områden i denna anläggning')}</p>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Område</TableHead>
-                        <TableHead>Beskrivning</TableHead>
-                        <TableHead>Säkerhetsnivå</TableHead>
-                        <TableHead>Krav</TableHead>
-                        <TableHead>Skapad</TableHead>
+                        <TableHead>{tr('Område')}</TableHead>
+                        <TableHead>{tr('Beskrivning')}</TableHead>
+                        <TableHead>{tr('Säkerhetsnivå')}</TableHead>
+                        <TableHead>{tr('Krav')}</TableHead>
+                        <TableHead>{tr('Skapad')}</TableHead>
                         <TableHead className="w-28"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -195,18 +196,18 @@ export default function AreasPage() {
                             <TableCell>
                               <Badge variant="secondary" className="text-xs">{areaReqs.length} krav</Badge>
                             </TableCell>
-                            <TableCell className="text-muted-foreground text-sm">{new Date(area.created_at).toLocaleDateString('sv-SE')}</TableCell>
+                            <TableCell className="text-muted-foreground text-sm">{new Date(area.created_at).toLocaleDateString(locale())}</TableCell>
                             <TableCell>
                               <div className="flex gap-1">
                                 {canManageReqs && (
-                                  <Button variant="ghost" size="icon" aria-label="Hantera krav" className="h-7 w-7" title="Hantera krav" onClick={() => openReqDialog(area.id)}>
+                                  <Button variant="ghost" size="icon" aria-label={tr('Hantera krav')} className="h-7 w-7" title={tr('Hantera krav')} onClick={() => openReqDialog(area.id)}>
                                     <Shield className="h-3 w-3 text-primary" />
                                   </Button>
                                 )}
                                 {canEditFacility(facility) && (
                                   <>
-                                    <Button variant="ghost" size="icon" aria-label="Redigera" title="Redigera" className="h-7 w-7" onClick={() => openEdit(area)}><Pencil className="h-3 w-3" /></Button>
-                                    <Button variant="ghost" size="icon" aria-label="Ta bort" title="Ta bort" className="h-7 w-7" onClick={() => handleDelete(area)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                                    <Button variant="ghost" size="icon" aria-label={tr('Redigera')} title={tr('Redigera')} className="h-7 w-7" onClick={() => openEdit(area)}><Pencil className="h-3 w-3" /></Button>
+                                    <Button variant="ghost" size="icon" aria-label={tr('Ta bort')} title={tr('Ta bort')} className="h-7 w-7" onClick={() => handleDelete(area)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                                   </>
                                 )}
                               </div>
@@ -226,46 +227,46 @@ export default function AreasPage() {
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{editArea ? 'Redigera område' : 'Nytt område'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editArea ? tr('Redigera område') : tr('Nytt område')}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Anläggning</Label>
+              <Label>{tr('Anläggning')}</Label>
               <Select value={facilityId} onValueChange={setFacilityId} disabled={!!editArea || !!routeFacilityId}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{facilities.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Överordnat område (valfritt)</Label>
+              <Label>{tr('Överordnat område (valfritt)')}</Label>
               <Select value={parentId || '__none__'} onValueChange={v => setParentId(v === '__none__' ? '' : v)}>
-                <SelectTrigger><SelectValue placeholder="Inget – toppnivå" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={tr('Inget – toppnivå')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">Inget – toppnivå</SelectItem>
+                  <SelectItem value="__none__">{tr('Inget – toppnivå')}</SelectItem>
                   {parentOptions().map(({ area, depth }) => (
                     <SelectItem key={area.id} value={area.id}>{'\u00A0'.repeat(depth * 3)}{area.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">Tillträde till ett underområde kräver alltid tillträde till områdena ovanför.</p>
+              <p className="text-xs text-muted-foreground">{tr('Tillträde till ett underområde kräver alltid tillträde till områdena ovanför.')}</p>
             </div>
-            <div className="space-y-2"><Label>Namn</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
-            <div className="space-y-2"><Label>Beskrivning</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} /></div>
+            <div className="space-y-2"><Label>{tr('Namn')}</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
+            <div className="space-y-2"><Label>{tr('Beskrivning')}</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} /></div>
             <div className="space-y-2">
-              <Label>Säkerhetsnivå</Label>
+              <Label>{tr('Säkerhetsnivå')}</Label>
               <Select value={securityLevel} onValueChange={v => setSecurityLevel(v as Area['security_level'])}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">Låg</SelectItem>
-                  <SelectItem value="medium">Medel</SelectItem>
-                  <SelectItem value="high">Hög</SelectItem>
-                  <SelectItem value="critical">Kritisk</SelectItem>
+                  <SelectItem value="low">{tr('Låg')}</SelectItem>
+                  <SelectItem value="medium">{tr('Medel')}</SelectItem>
+                  <SelectItem value="high">{tr('Hög')}</SelectItem>
+                  <SelectItem value="critical">{tr('Kritisk')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Avbryt</Button>
-            <Button onClick={handleSave}>{editArea ? 'Spara' : 'Skapa'}</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{tr('Avbryt')}</Button>
+            <Button onClick={handleSave}>{editArea ? tr('Spara') : tr('Skapa')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -274,12 +275,12 @@ export default function AreasPage() {
       <Dialog open={reqDialogOpen} onOpenChange={setReqDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Krav för {allAreas.find(a => a.id === reqAreaId)?.name}</DialogTitle>
+            <DialogTitle>{tr('Krav för')} {allAreas.find(a => a.id === reqAreaId)?.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Välj vilka krav som gäller för detta område</Label>
+            <Label className="text-sm font-medium">{tr('Välj vilka krav som gäller för detta område')}</Label>
             {allRequirements.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Inga krav definierade. Skapa krav under Inställningar först.</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">{tr('Inga krav definierade. Skapa krav under Inställningar först.')}</p>
             ) : (
               <div className="space-y-2 rounded-lg border border-border p-3 max-h-[300px] overflow-y-auto">
                 {allRequirements.map(req => {
@@ -299,7 +300,7 @@ export default function AreasPage() {
             )}
           </div>
           <DialogFooter>
-            <Button onClick={() => setReqDialogOpen(false)}>Stäng</Button>
+            <Button onClick={() => setReqDialogOpen(false)}>{tr('Stäng')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

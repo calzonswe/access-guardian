@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
 import { errorMessage } from '@/lib/utils';
+import { t } from '@/i18n';
 
 function getSubordinates(managerId: string, allUsers: User[]): User[] {
   const direct = allUsers.filter(u => u.manager_id === managerId || u.contact_person_id === managerId);
@@ -54,14 +55,14 @@ export default function TeamPage() {
   const openEdit = (u: User) => { setEditUser(u); setDialogOpen(true); };
 
   const handleDelete = async (u: User) => {
-    if (!confirm(`Ta bort "${u.full_name}"?`)) return;
+    if (!confirm(t('Ta bort "{full_name}"?', { full_name: u.full_name }))) return;
     try {
       await store.deleteUser(u.id);
-      await store.addLog({ action: 'user_updated', actor_id: currentUser.id, target_id: u.id, target_type: 'user', details: `Användare borttagen: ${u.full_name}` });
-      toast.success('Användare borttagen');
+      await store.addLog({ action: 'user_updated', actor_id: currentUser.id, target_id: u.id, target_type: 'user', details: t('Användare borttagen: {full_name}', { full_name: u.full_name }) });
+      toast.success(t('Användare borttagen'));
       reload();
     } catch (err) {
-      toast.error(errorMessage(err, 'Kunde inte ta bort användaren'));
+      toast.error(errorMessage(err, t('Kunde inte ta bort användaren')));
     }
   };
 
@@ -70,33 +71,33 @@ export default function TeamPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Mitt team</h1>
-          <p className="text-sm text-muted-foreground mt-1">Översikt av ditt teams tillträdesrättigheter</p>
+          <h1 className="text-2xl font-semibold text-foreground">{t('Mitt team')}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t('Översikt av ditt teams tillträdesrättigheter')}</p>
         </div>
-        {isAdmin && <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Ny anställd</Button>}
+        {isAdmin && <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />{t('Ny anställd')}</Button>}
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard title="Teammedlemmar" value={teamMembers.length} icon={Users} variant="primary" />
-        <StatCard title="Väntar på godkännande" value={pendingApps.length} icon={AlertTriangle} variant="warning" />
-        <StatCard title="Aktiva tillträden" value={teamApps.filter(a => a.status === 'approved').length} icon={CheckCircle} variant="success" />
+        <StatCard title={t('Teammedlemmar')} value={teamMembers.length} icon={Users} variant="primary" />
+        <StatCard title={t('Väntar på godkännande')} value={pendingApps.length} icon={AlertTriangle} variant="warning" />
+        <StatCard title={t('Aktiva tillträden')} value={teamApps.filter(a => a.status === 'approved').length} icon={CheckCircle} variant="success" />
       </div>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4"><CardTitle className="text-lg">Teammedlemmar</CardTitle><div className="relative w-64"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Sök medarbetare..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" /></div></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-4"><CardTitle className="text-lg">{t('Teammedlemmar')}</CardTitle><div className="relative w-64"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder={t('Sök medarbetare...')} value={search} onChange={e => setSearch(e.target.value)} className="pl-9" /></div></CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Namn</TableHead>
-                <TableHead>Roll</TableHead>
-                <TableHead>Uppfyllda krav</TableHead>
-                <TableHead>Aktiva tillträden</TableHead>
-                <TableHead>Väntande ansökningar</TableHead>
+                <TableHead>{t('Namn')}</TableHead>
+                <TableHead>{t('Roll')}</TableHead>
+                <TableHead>{t('Uppfyllda krav')}</TableHead>
+                <TableHead>{t('Aktiva tillträden')}</TableHead>
+                <TableHead>{t('Väntande ansökningar')}</TableHead>
                 <TableHead className="w-28"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {shownMembers.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Inga teammedlemmar</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">{t('Inga teammedlemmar')}</TableCell></TableRow>
               ) : (
                 shownMembers.map(member => {
                   const memberReqs = userRequirements.filter(ur => ur.user_id === member.id && ur.status === 'fulfilled');
@@ -111,8 +112,8 @@ export default function TeamPage() {
                       <TableCell>
                         {isAdmin && (
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" aria-label="Redigera" title="Redigera" className="h-7 w-7" onClick={() => openEdit(member)}><Pencil className="h-3 w-3" /></Button>
-                            <Button variant="ghost" size="icon" aria-label="Ta bort" title="Ta bort" className="h-7 w-7" onClick={() => handleDelete(member)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                            <Button variant="ghost" size="icon" aria-label={t('Redigera')} title={t('Redigera')} className="h-7 w-7" onClick={() => openEdit(member)}><Pencil className="h-3 w-3" /></Button>
+                            <Button variant="ghost" size="icon" aria-label={t('Ta bort')} title={t('Ta bort')} className="h-7 w-7" onClick={() => handleDelete(member)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                           </div>
                         )}
                       </TableCell>

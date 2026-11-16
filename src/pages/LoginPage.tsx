@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useAuth } from '@/context/AuthContext';
 import { useBranding } from '@/context/BrandingContext';
 import { isBackendUnavailable } from '@/services/dataStore';
+import { t } from '@/i18n';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -24,7 +25,7 @@ export default function LoginPage() {
     
     const result = await login(email, password);
     if (!result.success) {
-      setError(result.error || 'Inloggningen misslyckades');
+      setError(result.error || t('Inloggningen misslyckades'));
     }
     setLoading(false);
   };
@@ -44,7 +45,7 @@ export default function LoginPage() {
           </div>
           <div>
             <CardTitle className="text-2xl">{appName}</CardTitle>
-            <CardDescription className="mt-1">Logga in för att fortsätta</CardDescription>
+            <CardDescription className="mt-1">{t('Logga in för att fortsätta')}</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -62,7 +63,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Lösenord</Label>
+              <Label htmlFor="password">{t('Lösenord')}</Label>
               <Input
                 id="password"
                 type="password"
@@ -72,24 +73,24 @@ export default function LoginPage() {
               />
             </div>
             {isBackendUnavailable() && !error && (
-              <p className="text-sm text-warning">Servern svarar inte just nu. Försök igen om en stund.</p>
+              <p className="text-sm text-warning">{t('Servern svarar inte just nu. Försök igen om en stund.')}</p>
             )}
             {error && (
               <p className="text-sm text-destructive">{error}</p>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Loggar in...' : 'Logga in'}
+              {loading ? t('Loggar in...') : t('Logga in')}
             </Button>
             <div className="text-center text-sm">
               <Link to="/forgot-password" className="text-primary hover:underline">
-                Glömt lösenord?
+                {t('Glömt lösenord?')}
               </Link>
             </div>
             {selfRegistration && (
               <div className="text-center text-sm pt-2 border-t border-border">
-                <span className="text-muted-foreground">Är du extern entreprenör? </span>
+                <span className="text-muted-foreground">{t('Är du extern entreprenör?')} </span>
                 <a href="/contractor-apply" className="text-primary hover:underline font-medium">
-                  Ansök om tillträde
+                  {t('Ansök om tillträde')}
                 </a>
               </div>
             )}
