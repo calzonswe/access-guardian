@@ -6,6 +6,7 @@ import { audit } from '../services/audit.js';
 import { expandAreaAncestors } from '../services/areaTree.js';
 import { notifyUser } from '../services/notify.js';
 import { getActiveSubstituteId, getSubstitutedReportIds } from '../services/substitutes.js';
+import { approverIdsFor } from '../services/approvers.js';
 
 const router = Router();
 
@@ -142,41 +143,19 @@ function validateDates(start, end) {
 }
 
 // Notify the people who must act on an application in its new status.
+const APPROVER_MESSAGES = {
+  pending_manager: ['Ny ansökan att attestera', 'En tillträdesansökan väntar på ditt godkännande.'],
+  pending_facility: ['Ansökan väntar på anläggningens godkännande', 'En tillträdesansökan har godkänts av närmaste chef och väntar på din granskning.'],
+  pending_exception: ['Undantagsbegäran att granska', 'En ansökan med avsteg från kraven väntar på ditt beslut som anläggningsägare.'],
+};
 async function notifyApprovers(appId, scope, newStatus, actorId) {
-  let recipients = [];
-  let title = '';
-  let message = '';
-  if (newStatus === 'pending_manager') {
-    recipients = [scope.managerId, scope.contactPersonId, await getActiveSubstituteId(pool, scope.managerId)].filter(Boolean);
-    title = 'Ny ansökan att attestera';
-    message = 'En tillträdesansökan väntar på ditt godkännande.';
-    if (recipients.length === 0) {
-      // Nobody can approve at the manager step: hand it to the administrators
-      // (who may perform every transition) instead of leaving it unnoticed.
-      const { rows } = await pool.query(
-        `SELECT ur.user_id AS uid FROM user_roles ur JOIN users u ON u.id = ur.user_id
-          WHERE ur.role = 'administrator' AND u.is_active = true`
-      );
-      recipients = rows.map(r => r.uid);
-      title = 'Ansökan saknar chef att attestera';
-      message = 'Sökanden har ingen närmaste chef eller kontaktperson registrerad. Granska ansökan eller tilldela en chef.';
-    }
-  } else if (newStatus === 'pending_facility') {
-    const { rows } = await pool.query(
-      `SELECT owner_id AS uid FROM facilities WHERE id = $1 AND owner_id IS NOT NULL
-       UNION SELECT user_id AS uid FROM facility_admins WHERE facility_id = $1`,
-      [scope.facilityId]
-    );
-    recipients = rows.map(r => r.uid);
-    title = 'Ansökan väntar på anläggningens godkännande';
-    message = 'En tillträdesansökan har godkänts av närmaste chef och väntar på din granskning.';
-  } else if (newStatus === 'pending_exception') {
-    const { rows } = await pool.query('SELECT owner_id AS uid FROM facilities WHERE id = $1', [scope.facilityId]);
-    recipients = rows.map(r => r.uid);
-    title = 'Undantagsbegäran att granska';
-    message = 'En ansökan med avsteg från kraven väntar på ditt beslut som anläggningsägare.';
-  }
-  for (const uid of new Set(recipients.filter(Boolean))) {
+  if (!APPROVER_MESSAGES[newStatus]) return;
+  const { ids, fallbackToAdmins } = await approverIdsFor(pool, scope, newStatus);
+  // Nobody can act at this step: the administrators get it instead of it going unnoticed.
+  const [title, message] = fallbackToAdmins
+    ? ['Ansökan saknar beslutsfattare', 'Ingen närmaste chef, kontaktperson eller anläggningsansvarig kan fatta beslut om ansökan. Granska den eller tilldela en ansvarig.']
+    : APPROVER_MESSAGES[newStatus];
+  for (const uid of ids) {
     if (uid === actorId) continue;
     await notifyUser(pool, uid, { title, message, type: 'action_required', link: `/applications/${appId}` });
   }

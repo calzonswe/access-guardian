@@ -71,6 +71,17 @@ export async function isSelfRegistrationEnabled() {
   return s?.general?.selfRegistration !== false;
 }
 
+/** Reminder / escalation thresholds (days) for waiting applications; 0 = off. */
+export async function getReminderSettings() {
+  const s = await getAllSettings();
+  const n = s?.notifications || {};
+  const days = (v, def) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Math.floor(Number(v)) : def);
+  return {
+    remindAfterDays: days(n.remindAfterDays, 3),
+    escalateAfterDays: days(n.escalateAfterDays, 7),
+  };
+}
+
 export async function getPasswordPolicy() {
   const s = await getAllSettings();
   const p = (s && s.passwordPolicy) || {};

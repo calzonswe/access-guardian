@@ -17,7 +17,9 @@
 import { pool } from '../db.js';
 import { sendMailToUser, isEmailEnabled, htmlEscape } from '../services/email.js';
 import { logger } from '../services/logger.js';
-import { notificationEmailsEnabled } from '../services/settings.js';
+import { notificationEmailsEnabled, getReminderSettings } from '../services/settings.js';
+import { reminderAction, approverIdsFor, activeAdministratorIds } from '../services/approvers.js';
+import { getApplicationScope } from '../routes/applications.js';
 
 const DEFAULT_WARNING_DAYS = [30, 7, 1];
 
@@ -147,9 +149,9 @@ async function processUpcomingApplications(client, warningDays) {
       const created = await notifyOnce(client, {
         userId: r.applicant_id,
         title: `Åtkomst går ut om ${days} dag${days === 1 ? '' : 'ar'}`,
-        message: `Din åtkomst löper ut ${new Date(r.end_date).toLocaleDateString('sv-SE')}. Förnya i god tid.`,
+        message: `Din åtkomst löper ut ${new Date(r.end_date).toLocaleDateString('sv-SE')}. Förnya i god tid via knappen Förläng.`,
         type: 'warning',
-        link: `/applications/${r.id}`,
+        link: `/applications/${r.id}?renew=1`,
       });
       if (created) count++;
     }
@@ -183,6 +185,62 @@ async function processUpcomingRequirements(client, warningDays) {
   return count;
 }
 
+const STATUS_LABELS = {
+  pending_manager: 'väntar på chef',
+  pending_facility: 'väntar på anläggningen',
+  pending_exception: 'väntar på beslut om avsteg',
+};
+
+/**
+ * Applications stuck in a pending status: one reminder to the approvers after
+ * remindAfterDays, one escalation to the administrators after escalateAfterDays.
+ */
+async function processStuckApplications(client, settings) {
+  const now = new Date();
+  const { rows } = await client.query(
+    `SELECT id, status, status_changed_at, reminded_at, escalated_at
+       FROM applications
+      WHERE status IN ('pending_manager', 'pending_facility', 'pending_exception')`
+  );
+  let reminded = 0;
+  let escalated = 0;
+  for (const app of rows) {
+    const action = reminderAction(app, now, settings);
+    if (!action) continue;
+    const days = Math.floor((now.getTime() - new Date(app.status_changed_at).getTime()) / 86400000);
+    const link = `/applications/${app.id}`;
+    if (action === 'remind') {
+      const scope = await getApplicationScope(app.id);
+      if (!scope) continue;
+      const { ids } = await approverIdsFor(client, scope, app.status);
+      for (const uid of ids) {
+        await notifyOnce(client, {
+          userId: uid,
+          title: 'Påminnelse: ansökan väntar på ditt beslut',
+          message: `En tillträdesansökan har ${STATUS_LABELS[app.status]} i ${days} dagar.`,
+          type: 'action_required',
+          link,
+        });
+      }
+      await client.query('UPDATE applications SET reminded_at = now() WHERE id = $1', [app.id]);
+      reminded++;
+    } else {
+      for (const uid of await activeAdministratorIds(client)) {
+        await notifyOnce(client, {
+          userId: uid,
+          title: `Ansökan har väntat i ${days} dagar`,
+          message: `En tillträdesansökan har ${STATUS_LABELS[app.status]} i ${days} dagar utan beslut.`,
+          type: 'action_required',
+          link,
+        });
+      }
+      await client.query('UPDATE applications SET escalated_at = now() WHERE id = $1', [app.id]);
+      escalated++;
+    }
+  }
+  return { reminded, escalated };
+}
+
 export async function runExpiryJob() {
   const t0 = Date.now();
   const client = await pool.connect();
@@ -194,7 +252,8 @@ export async function runExpiryJob() {
     const warnApps = await processUpcomingApplications(client, warningDays);
     const warnReqs = await processUpcomingRequirements(client, warningDays);
     await client.query('COMMIT');
-    const result = { expiredApps, expiredReqs, warnApps, warnReqs };
+    const { reminded, escalated } = await processStuckApplications(client, await getReminderSettings());
+    const result = { expiredApps, expiredReqs, warnApps, warnReqs, reminded, escalated };
     stats.lastRunAt = new Date().toISOString();
     stats.lastDurationMs = Date.now() - t0;
     stats.lastResult = result;
