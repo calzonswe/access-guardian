@@ -262,6 +262,98 @@ async function main() {
   const mUsers = await call('GET', '/users', m);
   check('sponsor sees the contractor in user list', mUsers.data.some(u => u.email === 'kim@konsult.se'));
 
+  // ========== User improvements (renew, history, substitutes, deactivation, import, log search) ==========
+  const eNow = (await login('employee@x.se', PW2)).token;
+  const iso = (d) => d.toISOString().slice(0, 10);
+  const dayOffset = (n) => iso(new Date(Date.now() + n * 86400000));
+
+  // #1 renewal links to the renewed application; someone else's id is ignored
+  const renew = await call('POST', '/applications', eNow, { facility_id: fId, area_ids: [a2.data.id], status: 'pending_manager', start_date: dayOffset(30), renewed_from_id: id2, has_exception: true, exception_justification: 'Förlängning' });
+  check('renewal records renewed_from_id', renew.status === 201 && renew.data.renewed_from_id === id2, JSON.stringify(renew.data?.renewed_from_id));
+  const foreign = await call('POST', '/applications', m, { facility_id: fId, start_date: dayOffset(30), renewed_from_id: id2 });
+  check('renewed_from_id of another applicant is ignored', foreign.status === 201 && !foreign.data.renewed_from_id);
+
+  // #5 history
+  const hist = await call('GET', `/applications/${id1}/history`, m);
+  const hActions = (hist.data || []).map(h => h.action);
+  check('history lists the steps in order', hist.status === 200
+    && ['application_created', 'application_pending_facility', 'application_approved', 'access_revoked'].every(a => hActions.includes(a))
+    && hActions.indexOf('application_created') < hActions.indexOf('application_approved'), JSON.stringify(hActions));
+  check('history has actor names', (hist.data || []).some(h => h.actor_name === 'Maja Chef'));
+
+  // #11 substitutes
+  const subId = await mk('sub@x.se', 'Sara Ersättare', ['line_manager']);
+  const sub = await onboard('sub@x.se', TEMP);
+  const cands = await call('GET', '/users/managers', m);
+  check('manager candidates list line managers', cands.status === 200 && cands.data.some(c => c.id === subId));
+  check('substitute must be a line manager', (await call('PUT', '/auth/me', m, { substitute_id: faId })).status === 400);
+  check('employees cannot set a substitute', (await call('PUT', '/auth/me', eNow, { substitute_id: subId })).status === 403);
+  const setSub = await call('PUT', '/auth/me', m, { substitute_id: subId, substitute_from: dayOffset(-1), substitute_to: dayOffset(1) });
+  check('manager sets an active substitute', setSub.status === 200 && setSub.data.user.substitute_id === subId);
+  const meSub = await call('GET', '/auth/me', sub);
+  check('substitute knows whom they stand in for', (meSub.data.user.substituting_for || []).includes(mId));
+  const forSub = await call('POST', '/applications', eNow, { facility_id: fId, status: 'pending_manager', start_date: dayOffset(40) });
+  const subNotifs = await call('GET', '/notifications', sub);
+  check('active substitute is notified', subNotifs.data.some(n => n.link === `/applications/${forSub.data.id}`));
+  check('active substitute sees the application', (await call('GET', '/applications', sub)).data.some(a => a.id === forSub.data.id));
+  const subApprove = await call('PUT', `/applications/${forSub.data.id}`, sub, { status: 'pending_facility' });
+  check('active substitute can approve', subApprove.status === 200, JSON.stringify(subApprove.data));
+  await call('PUT', '/auth/me', m, { substitute_from: dayOffset(-10), substitute_to: dayOffset(-1) });
+  const afterSub = await call('POST', '/applications', eNow, { facility_id: fId, status: 'pending_manager', start_date: dayOffset(50) });
+  check('substitute outside the period cannot approve', (await call('PUT', `/applications/${afterSub.data.id}`, sub, { status: 'pending_facility' })).status === 403);
+  await call('PUT', '/auth/me', m, { substitute_id: null, substitute_from: null, substitute_to: null });
+
+  // #17 deactivation revokes and withdraws
+  const dId = await mk('leaver@x.se', 'Lars Slutar', ['employee'], { manager_id: mId });
+  const d = await onboard('leaver@x.se', TEMP);
+  const dApp = await call('POST', '/applications', d, { facility_id: fId, status: 'pending_manager', start_date: dayOffset(-5) });
+  await call('PUT', `/applications/${dApp.data.id}`, m, { status: 'pending_facility' });
+  await call('PUT', `/applications/${dApp.data.id}`, fo, { status: 'approved' });
+  const dPending = await call('POST', '/applications', d, { facility_id: fId, status: 'pending_manager', start_date: dayOffset(5) });
+  const preview = await call('GET', `/users/${dId}/deactivation-preview`, admin);
+  check('deactivation preview counts', preview.data.approved === 1 && preview.data.pending === 1, JSON.stringify(preview.data));
+  const deact2 = await call('PUT', `/users/${dId}`, admin, { is_active: false });
+  check('deactivation revokes and withdraws', deact2.data.side_effects?.revoked === 1 && deact2.data.side_effects?.withdrawn === 1, JSON.stringify(deact2.data.side_effects));
+  const revokedApp = await call('GET', `/applications/${dApp.data.id}`, admin);
+  check('revoked with reason', revokedApp.data.status === 'expired' && revokedApp.data.revoke_reason === 'Kontot inaktiverat');
+  check('pending withdrawn', (await call('GET', `/applications/${dPending.data.id}`, admin)).data.status === 'denied');
+  check('owner notified about revoked access', (await call('GET', '/notifications', fo)).data.some(n => n.title === 'Tillträde återkallat – kontot inaktiverat'));
+  const deactAgain = await call('PUT', `/users/${dId}`, admin, { is_active: false });
+  check('deactivating again changes nothing', deactAgain.data.side_effects?.revoked === 0 && deactAgain.data.side_effects?.withdrawn === 0);
+
+  // #18 manager change
+  const cId = await mk('nochief@x.se', 'Nina Utanchef', ['employee']);
+  const c = await onboard('nochief@x.se', TEMP);
+  await call('POST', '/applications', c, { facility_id: fId, status: 'pending_manager', start_date: dayOffset(10) });
+  check('no-manager application goes to administrators', (await call('GET', '/notifications', admin)).data.some(n => n.title === 'Ansökan saknar beslutsfattare'));
+  const chg = await call('PUT', `/users/${cId}`, admin, { manager_id: mId });
+  check('manager change notifies the new manager', chg.data.side_effects?.notified_manager === true
+    && (await call('GET', '/notifications', m)).data.some(n => n.title === 'Ansökningar väntar på din attestering'));
+
+  // #19 CSV import
+  const imp = await call('POST', '/users/import', admin, { rows: [
+    { email: 'ny.chef@x.se', fornamn: 'Ny', efternamn: 'Chef', roller: 'Linjechef|Anställd' },
+    { email: 'ny.medarbetare@x.se', fornamn: 'Ny', efternamn: 'Medarbetare', chef_email: 'ny.chef@x.se', roller: 'Anställd' },
+    { email: 'employee@x.se', fornamn: 'Erik', efternamn: 'Dubblett' },
+    { email: 'inte-en-adress', fornamn: 'X', efternamn: 'Y' },
+    { email: 'okand.roll@x.se', fornamn: 'X', efternamn: 'Y', roller: 'Chef' },
+  ] });
+  const st = (imp.data?.results || []).map(r => r.status);
+  check('import reports created/skipped/error per row', JSON.stringify(st) === JSON.stringify(['created', 'created', 'skipped', 'error', 'error']), JSON.stringify(imp.data));
+  check('import returns temp passwords only for created rows', imp.data.results.filter(r => r.temp_password).length === 2);
+  const impLogin = await call('POST', '/auth/login', null, { email: 'ny.medarbetare@x.se', password: imp.data.results[1].temp_password });
+  check('imported user logs in and must change password', impLogin.status === 200 && impLogin.data.mustChangePassword === true);
+  const newChef = (await call('GET', '/users', admin)).data.find(u => u.email === 'ny.chef@x.se');
+  check('import links the manager from the same file', (await call('GET', '/users', admin)).data.find(u => u.email === 'ny.medarbetare@x.se')?.manager_id === newChef?.id);
+  check('import refuses more than 500 rows', (await call('POST', '/users/import', admin, { rows: Array.from({ length: 501 }, (_, i) => ({ email: `x${i}@x.se` })) })).status === 400);
+  check('only admins can import', (await call('POST', '/users/import', m, { rows: [{ email: 'a@b.se', fornamn: 'A', efternamn: 'B' }] })).status === 403);
+
+  // #21 log search
+  const ls = await call('GET', '/logs?page=1&pageSize=50&q=CSV-import', admin);
+  check('log search finds a known entry', ls.status === 200 && ls.data.total >= 1 && ls.data.items[0].actor_name === 'Systemadministratör', JSON.stringify({ total: ls.data?.total }));
+  const lf = await call('GET', `/logs?page=1&pageSize=50&from=${dayOffset(1)}`, admin);
+  check('log date filter excludes everything after today', lf.status === 200 && lf.data.total === 0);
+
   // ---------- Audit log ----------
   const logs = await call('GET', '/logs?page=1&pageSize=200', admin);
   const actions = new Set(logs.data.items.map(l => l.action));

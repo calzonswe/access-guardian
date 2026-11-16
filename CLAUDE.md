@@ -22,7 +22,7 @@ UI text, error messages, docs and commit messages are in **Swedish** — follow 
 | Backend dev (port 3000) | `cd backend && npm run dev` (`node --watch`, no build step) |
 | Full stack | `cp .env.example .env && docker compose up -d --build` |
 
-Full-stack smoke test (82 API checks of the workflow and permissions, needs a fresh DB; instructions at the top of the file): `node scripts/smoke-test.mjs`. Backend tests: `cd backend && npm test` (node:test in `backend/test/`, pure logic, no database). Frontend tests use `vitest.config.ts` (jsdom, `@` alias, setup in `src/test/setup.ts`). There is no Playwright config yet.
+Full-stack smoke test (111 API checks of the workflow and permissions, needs a fresh DB; instructions at the top of the file): `node scripts/smoke-test.mjs`. Backend tests: `cd backend && npm test` (node:test in `backend/test/`, pure logic, no database). Frontend tests use `vitest.config.ts` (jsdom, `@` alias, setup in `src/test/setup.ts`). There is no Playwright config yet.
 
 npm is the only package manager (lockfiles in both packages; bun lockfiles were removed; Lovable may re-add `bun.lock`, delete it).
 
@@ -59,6 +59,8 @@ Auth/session lives in `src/context/AuthContext.tsx`; page access per role is enf
 ### Domain workflow
 
 Application status: `draft` → `pending_manager` (the applicant's manager or sponsor approves; never the applicant) → `pending_facility` (owner/admin of *that* facility approves) → `approved` → `expired` (revoked by facility staff or the expiry job). Applications with missing requirements (`has_exception`) go from the manager to `pending_exception` and are decided by the facility owner. Administrators may perform any listed transition. The rules are the `TRANSITIONS` table in `backend/src/routes/applications.js` (tested in `backend/test/`); the UI in `ApplicationDetailDialog.tsx` mirrors them.
+
+Substitutes: a line manager (or an admin) sets `users.substitute_id` with an inclusive date range; while active the substitute counts as the applicant's manager (`services/substitutes.js`, used by `getApplicationAccess`, `approverIdsFor` and the list scopes). Waiting applications are reminded/escalated by the hourly job using `status_changed_at` / `reminded_at` / `escalated_at` (`services/approvers.js` `reminderAction`, thresholds in settings `notifications.remindAfterDays` / `escalateAfterDays`). Deactivating a user (`PUT /users/:id`, is_active true→false) revokes approved and withdraws pending applications in the same transaction. The frontend mirrors the approval rules in `src/lib/applicationRules.ts` (`canActOn`, `canRenew`, `activeAccessFor`).
 
 In API mode the backend writes the audit log and sends notifications for every mutation; `store.addLog` and `notifyApplicationStatusChange` are no-ops there (they only simulate this in localStorage mode). Roles: `administrator`, `facility_owner`, `facility_admin`, `line_manager`, `employee`, `contractor`.
 

@@ -2,7 +2,7 @@
 
 - [ ] AI-analys av granskningsloggen (systemadmin): incidentbeskrivning/fråga → verifierbar tidslinje via AI Gateway
 - [x] Serversidig paginering för användar- och ansökningslistorna
-- [ ] Sök på loggsidan (backlog)
+- [x] Sök på loggsidan (fritext och datum, export av urval)
 - [ ] Självservice byte av egen e-post (backlog)
 - [ ] Interaktiv API-utforskare (backlog)
 - [ ] init.sql: ta bort gammal oanvänd kolumn (backlog)

@@ -25,8 +25,8 @@ och allt loggas. Krav som utbildningar och säkerhetsprövningar följs upp auto
 [![Aktivitet](https://img.shields.io/github/commit-activity/m/calzonswe/access-guardian?label=commits%2Fm%C3%A5nad)](https://github.com/calzonswe/access-guardian/commits/main)
 [![Storlek](https://img.shields.io/github/repo-size/calzonswe/access-guardian?label=storlek)](https://github.com/calzonswe/access-guardian)
 [![Språk](https://img.shields.io/github/languages/top/calzonswe/access-guardian)](https://github.com/calzonswe/access-guardian)
-[![API-kontroller](https://img.shields.io/badge/API--kontroller-82_godk%C3%A4nda-2EA44F)](scripts/smoke-test.mjs)
-[![Enhetstester](https://img.shields.io/badge/enhetstester-18_godk%C3%A4nda-2EA44F)](#tester-och-kvalitet)
+[![API-kontroller](https://img.shields.io/badge/API--kontroller-111_godk%C3%A4nda-2EA44F)](scripts/smoke-test.mjs)
+[![Enhetstester](https://img.shields.io/badge/enhetstester-45_godk%C3%A4nda-2EA44F)](#tester-och-kvalitet)
 
 <br>
 
@@ -64,16 +64,18 @@ och allt loggas. Krav som utbildningar och säkerhetsprövningar följs upp auto
 
 | Område | Vad systemet gör |
 |---|---|
-| **Ansökningar** | Ansökan om tillträde till en anläggning och valfria områden (med underområden). Utkast, inskickning, redigering medan ansökan väntar på chef, bilagor (PDF, bilder, Word/Excel, text). |
+| **Ansökningar** | Ansökan om tillträde till en anläggning och valfria områden (med underområden). Utkast, inskickning, redigering medan ansökan väntar på chef, bilagor (PDF, bilder, Word/Excel, text). **Förläng** ett tillträde som snart går ut, eller **ansök igen** efter ett avslag, med ett ifyllt formulär. |
 | **Attestering i flera steg** | Närmaste chef eller sponsor attesterar, därefter beslutar anläggningen. Ansökningar som saknar krav (avsteg) beslutas av anläggningsägaren. |
-| **Krav** | Utbildningar, certifieringar och säkerhetsprövningar kopplas till anläggningar och områden. Formuläret visar vilka krav som saknas och kräver då en motivering. |
-| **Uppföljning** | Bakgrundsjobb som markerar utgångna tillträden och krav och skickar påminnelser 30, 7 och 1 dag innan (inställbart). |
+| **Krav** | Utbildningar, certifieringar och säkerhetsprövningar kopplas till anläggningar och områden. Formuläret visar en checklista (uppfyllt, går ut, saknas) och kräver motivering när något saknas. **Vad krävs?** på Min åtkomst visar kraven innan man ansöker. |
+| **Uppföljning** | Bakgrundsjobb som markerar utgångna tillträden och krav och skickar påminnelser 30, 7 och 1 dag innan (inställbart). Ansökningar som väntar för länge ger en påminnelse till beslutsfattaren och sedan en eskalering till administratörerna. |
 | **Återkallelse** | Anläggningens personal kan återkalla ett beviljat tillträde med en anledning som visas för den sökande. |
 | **Entreprenörer** | Publikt ansökningsformulär (med captcha) där externa entreprenörer anger en kontaktperson som attesterar. Kan stängas av i inställningarna. |
 | **Aviseringar** | I appen och via e-post (SMTP) vid varje statusändring och när något väntar på ditt beslut. Länkar öppnar rätt ansökan direkt. |
-| **Granskningslogg** | Alla ändringar loggas med aktör, tid och detaljer. Valfri AI-analys av loggen som svarar på frågor med en verifierbar tidslinje. |
+| **Granskningslogg** | Alla ändringar loggas med aktör, tid och detaljer. Sök på text och datum, exportera urvalet. Varje ansökan visar sin egen **historik**. Valfri AI-analys av loggen. |
+| **Att hantera** | En räknare i menyn och ett filter visar ansökningar som väntar på just ditt beslut. Chefer kan ange en **ersättare** vid frånvaro. |
+| **Aktiva tillträden** | Anläggningens ansvariga ser vem som har tillträde i dag, per område, med export. |
 | **Organisation** | Organisationsträd (företag, avdelning, enhet, grupp) och chefskedjor. Chefer ser hela sitt team. |
-| **Administration** | Användare och roller, anläggningar och områden, krav, branding (namn, logotyp, färg), säkerhetsinställningar och lösenordspolicy, systemstatus. |
+| **Administration** | Användare och roller (även **import från CSV/Excel**), anläggningar och områden, krav, branding (namn, logotyp, färg), säkerhetsinställningar och lösenordspolicy, systemstatus. Inaktiverade konton förlorar automatiskt sina tillträden. |
 | **Utseende** | Ljust och mörkt tema som följer enhetens inställning, fungerar på mobil. |
 
 ---
@@ -86,9 +88,9 @@ och allt loggas. Krav som utbildningar och säkerhetsprövningar följs upp auto
 | **7** ansökningsstatusar | utkast, väntar på chef, väntar på anläggning, avsteg väntar, godkänd, nekad, utgången/återkallad |
 | **19** sidor i gränssnittet | inklusive publika sidor för entreprenörer och lösenordsåterställning |
 | **16** API-moduler | under `/api/*`, se [openapi.yaml](openapi.yaml) |
-| **7** databasmigreringar | körs automatiskt när backend startar |
-| **82** API-kontroller | hela flödet och behörigheterna, mot riktig databas ([scripts/smoke-test.mjs](scripts/smoke-test.mjs)) |
-| **18** enhetstester | 8 för statusreglerna i backend, 10 i frontend |
+| **8** databasmigreringar | körs automatiskt när backend startar |
+| **111** API-kontroller | hela flödet och behörigheterna, mot riktig databas ([scripts/smoke-test.mjs](scripts/smoke-test.mjs)) |
+| **45** enhetstester | 22 i backend (statusregler, ersättare, påminnelser, import), 23 i frontend |
 | **2** teman | ljust och mörkt, plus "följ systemet" |
 
 ---
@@ -225,7 +227,9 @@ Den sökande kan redigera sin ansökan så länge den väntar på chef. Varje ö
 4. Saknar du ett krav visas en varning. Skriv en motivering så hanteras ansökan som ett avsteg.
 5. Bifoga intyg om du har dem och välj **Skicka ansökan**.
 
-Under **Min åtkomst** ser du dina aktiva tillträden och vilka krav du uppfyller. Du får en avisering vid varje beslut.
+Under **Min åtkomst** ser du dina aktiva tillträden och vilka krav du uppfyller, och **Vad krävs?** visar kraven för en anläggning innan du ansöker. Du får en avisering vid varje beslut.
+
+Går ett tillträde snart ut? Öppna det och välj **Förläng** (eller följ länken i påminnelsen). Har en ansökan nekats kan du välja **Ansök igen** och rätta det som saknades.
 </details>
 
 <details>
@@ -236,6 +240,8 @@ Under **Min åtkomst** ser du dina aktiva tillträden och vilka krav du uppfylle
 3. Godkända ansökningar går vidare till anläggningen, eller till anläggningsägaren om de innehåller avsteg.
 
 **Mitt team** visar varje medarbetares krav, aktiva tillträden och väntande ansökningar.
+
+Ska du vara borta? Ange en **ersättare** med datum under **Min profil**. Under perioden kan ersättaren attestera dina medarbetares ansökningar och får aviseringarna.
 </details>
 
 <details>
@@ -245,12 +251,13 @@ Under **Min åtkomst** ser du dina aktiva tillträden och vilka krav du uppfylle
 2. Öppna ansökan och välj **Godkänn** eller **Neka**.
 3. För att dra in ett tillträde: öppna den godkända ansökan, välj **Återkalla** och ange en anledning.
 4. Under **Anläggningar** hanterar du områden (med säkerhetsnivå och underområden). Ägaren utser anläggningsadministratörer via **Hantera**.
+5. **Aktiva tillträden** på anläggningskortet visar vem som har tillträde i dag, filtrerat per område, med export till CSV.
 </details>
 
 <details>
 <summary><strong>Administratör: sätt upp systemet</strong></summary>
 
-1. **Användare**: skapa konton, ge roller och ange närmaste chef. Nya användare får en länk via e-post om SMTP är konfigurerat.
+1. **Användare**: skapa konton, ge roller och ange närmaste chef. Nya användare får en länk via e-post om SMTP är konfigurerat. Många på en gång: **Importera** en CSV-fil (mall finns i dialogen); nya användare får tillfälliga lösenord som visas en gång. Att inaktivera ett konto återkallar dess tillträden och drar tillbaka väntande ansökningar.
 2. **Organisation**: bygg organisationsträdet och ange chefer.
 3. **Anläggningar**: skapa anläggningar, välj ägare och lägg till områden.
 4. **Krav**: skapa krav (med giltighetstid i dagar om de går ut) och koppla dem till anläggningar och områden. Registrera uppfyllda krav per användare via skölden i användarlistan.
@@ -295,7 +302,7 @@ Under **Inställningar** (administratör):
 |---|---|
 | Allmänt | Organisationsnamn, publikt entreprenörsformulär på/av |
 | Branding | Applikationsnamn, undertitel, logotyp (https-adress) och primärfärg |
-| Aviseringar | Påminnelser 30, 7 och 1 dag före utgång, e-post på/av |
+| Aviseringar | Påminnelser 30, 7 och 1 dag före utgång, e-post på/av, påminnelse och eskalering för ansökningar som väntar (standard 3 och 7 dagar, 0 = av) |
 | Autentisering | Sessionstid, max misslyckade inloggningar, spärrtid och lösenordspolicy |
 | System | Status för databas, e-post och bakgrundsjobb; kör utgångsjobbet manuellt |
 
@@ -359,9 +366,9 @@ Frontend avgör själv vilket läge den kör i: svarar `/api/health` med `{"stat
 
 | Nivå | Vad som testas | Kör |
 |---|---|---|
-| **Backend, enhet** (8) | Statusreglerna: vem får flytta en ansökan från vilket läge till vilket | `cd backend && npm test` |
-| **Frontend, enhet** (10) | Hjälpfunktioner, tokenhantering, logotyp-URL och brandfärg per tema | `npm run test` |
-| **API end-to-end** (82) | Hela flödet och behörigheterna mot en riktig databas: inloggning, lösenordsbyte, ansökningar, avsteg, entreprenörer, återkallelse, användare och krav | se nedan |
+| **Backend, enhet** (22) | Statusreglerna, ersättarperioder, påminnelser och CSV-importens validering | `cd backend && npm test` |
+| **Frontend, enhet** (23) | Ansökningsregler (att hantera, förläng, aktiva tillträden), CSV-läsning, tokenhantering, logotyp och brandfärg | `npm run test` |
+| **API end-to-end** (111) | Hela flödet och behörigheterna mot en riktig databas: inloggning, ansökningar, avsteg, entreprenörer, återkallelse, förlängning, historik, ersättare, inaktivering, chefsbyte, import och loggsök | se nedan |
 
 API-testet skapar egna användare och kräver därför en **tom** databas. Kör det i ett separat Compose-projekt så att riktig data inte påverkas:
 
@@ -535,7 +542,6 @@ Vid uppgraderingar med nya migreringar: kommentera bort de två raderna, starta 
 
 - **Inloggning:** endast lokal inloggning med e-post och lösenord. Entra ID/Azure AD, SAML och tvåfaktorsautentisering finns inte ännu.
 - **E-postadress:** kan bara ändras av en administratör.
-- **Sök i systemloggen:** loggsidan saknar fritextsök.
 - **Interaktiv API-dokumentation:** finns inte; se [openapi.yaml](openapi.yaml).
 - **Stora listor:** användar- och ansökningslistan pagineras på servern, men övriga listor hämtas i sin helhet.
 

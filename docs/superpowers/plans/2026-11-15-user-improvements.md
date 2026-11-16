@@ -59,10 +59,10 @@ list, deactivation side effects, manager change, CSV import, log search and reme
   - `POST /api/applications` accepts `renewed_from_id`, which must be an application of the same
     applicant (otherwise ignored).
 
-- [ ] Write the migration with `ADD COLUMN IF NOT EXISTS`, and backfill `status_changed_at = COALESCE(updated_at, created_at)`.
-- [ ] In the PUT handler, when `newStatus` is set, add `status_changed_at = now()`, `reminded_at = NULL` and `escalated_at = NULL` to the update.
-- [ ] Run `node --check` and `cd backend && npm test`; expect 8 passing.
-- [ ] Commit.
+- [x] Write the migration with `ADD COLUMN IF NOT EXISTS`, and backfill `status_changed_at = COALESCE(updated_at, created_at)`.
+- [x] In the PUT handler, when `newStatus` is set, add `status_changed_at = now()`, `reminded_at = NULL` and `escalated_at = NULL` to the update.
+- [x] Run `node --check` and `cd backend && npm test`; expect 8 passing.
+- [x] Commit.
 
 ### Task 2: Substitute rules (backend)
 
@@ -84,25 +84,25 @@ list, deactivation side effects, manager change, CSV import, log search and reme
     role. Callable by any authenticated user.
   - `mapUser` and `USER_SELECT` include `substitute_id`, `substitute_from` and `substitute_to`.
 
-- [ ] Write the tests:
+- [x] Write the tests:
   - `isSubstituteActive` is true on the `from` day and the `to` day.
   - It is false the day before `from` and the day after `to`.
   - It is false when `substitute_id` is a different user.
   - It is true when both dates are null.
-- [ ] Run `cd backend && npm test`; expect FAIL (module missing).
-- [ ] Implement `substitutes.js`, comparing dates as `YYYY-MM-DD` strings in local time.
-- [ ] Wire the rules into `applications.js`:
+- [x] Run `cd backend && npm test`; expect FAIL (module missing).
+- [x] Implement `substitutes.js`, comparing dates as `YYYY-MM-DD` strings in local time.
+- [x] Wire the rules into `applications.js`:
   - In `getApplicationAccess`, `isApprovingManager` is also true when the user is the active
     substitute of `scope.managerId`, and never when the user is the applicant.
   - `notifyApprovers('pending_manager')` adds the manager's active substitute.
   - The list `GET /` adds the direct reports of each manager returned by `getAbsentManagerIdsFor`.
-- [ ] Wire the rules into the user routes:
+- [x] Wire the rules into the user routes:
   - `users.js` `GET /` and `GET /:id` make those direct reports visible.
   - `PUT /api/auth/me` accepts substitute fields only for line managers, rejects
     `substitute_id === self`, and requires that the substitute has the line manager role.
   - The admin `PUT /users/:id` accepts the same fields.
-- [ ] Run tests (12 passing) and `node --check`.
-- [ ] Commit.
+- [x] Run tests (12 passing) and `node --check`.
+- [x] Commit.
 
 ### Task 3: Deactivation and manager change side effects
 
@@ -113,18 +113,18 @@ list, deactivation side effects, manager change, CSV import, log search and reme
 - Produces: the `PUT /api/users/:id` response includes `side_effects: { revoked: number, withdrawn: number, notified_manager: boolean }`.
 - Produces: `GET /api/users/:id/deactivation-preview` (admin) returns `{ approved: number, pending: number }` for the confirmation dialog.
 
-- [ ] **Deactivation:** read the current `is_active` and `manager_id` before the update. If it goes
+- [x] **Deactivation:** read the current `is_active` and `manager_id` before the update. If it goes
   from true to false, inside the same transaction:
   - `UPDATE applications SET status='expired', revoked_at=now(), revoked_by=$admin, revoke_reason='Kontot inaktiverat', status_changed_at=now() WHERE applicant_id=$1 AND status='approved' RETURNING id, facility_id`.
   - `UPDATE applications SET status='denied', denied_reason='Ansökan återkallad – kontot inaktiverat', status_changed_at=now() WHERE applicant_id=$1 AND status IN ('draft','pending_manager','pending_facility','pending_exception') RETURNING id`.
-- [ ] **After commit:**
+- [x] **After commit:**
   - Audit `access_revoked` or `application_denied` per application.
   - Notify the owners of the affected facilities, once per facility: "Tillträde återkallat – kontot inaktiverat".
-- [ ] **Manager change:** if `manager_id` changed to a non-null value, after commit notify the new
+- [x] **Manager change:** if `manager_id` changed to a non-null value, after commit notify the new
   manager once ("Ansökningar väntar på din attestering", link `/applications`) when the user has
   any `pending_manager` application, and write an audit entry.
-- [ ] Add the preview endpoint.
-- [ ] Run `node --check`, then commit.
+- [x] Add the preview endpoint.
+- [x] Run `node --check`, then commit.
 
 ### Task 4: Reminders for stuck applications
 
@@ -145,18 +145,18 @@ list, deactivation side effects, manager change, CSV import, log search and reme
     from `notifications.remindAfterDays` and `notifications.escalateAfterDays`.
   - The job result gains `reminded` and `escalated` counts.
 
-- [ ] Write the tests:
+- [x] Write the tests:
   - At 2 days → null; at 3 days → `remind`.
   - At 3 days with `reminded_at` set → null.
   - At 7 days → `escalate`; at 7 days with `escalated_at` set → null.
   - `remindAfterDays: 0` disables reminders.
-- [ ] Run; expect FAIL.
-- [ ] Implement `reminderAction` (in `approvers.js`) and `approverIdsFor`, and switch `notifyApprovers` to use the latter.
-- [ ] Add `processStuckApplications(client, settings)` to the job:
+- [x] Run; expect FAIL.
+- [x] Implement `reminderAction` (in `approvers.js`) and `approverIdsFor`, and switch `notifyApprovers` to use the latter.
+- [x] Add `processStuckApplications(client, settings)` to the job:
   - Select `pending_*` applications.
   - For each one, call `reminderAction`. A reminder notifies the approvers ("Påminnelse: ansökan väntar på ditt beslut"); an escalation notifies active administrators ("Ansökan har väntat i N dagar").
   - Set `reminded_at` or `escalated_at` accordingly.
-- [ ] Run the tests (17 passing), then commit.
+- [x] Run the tests (17 passing), then commit.
 
 ### Task 5: History and log search endpoints
 
@@ -173,16 +173,16 @@ list, deactivation side effects, manager change, CSV import, log search and reme
     `pageSize` up to 10,000. `q` is an ILIKE over action, details and actor `full_name`; `from`
     and `to` are inclusive dates. Items include `actor_name`.
 
-- [ ] Implement both endpoints, then run `node --check`.
-- [ ] Commit.
+- [x] Implement both endpoints, then run `node --check`.
+- [x] Commit.
 
 ### Task 6: Renewal entry point in the expiry reminder
 
 **Files:**
 - Modify: `backend/src/jobs/expiryJob.js` (`processUpcomingApplications` link `/applications/${id}?renew=1`)
 
-- [ ] Change the link and the message to "…Förnya i god tid via knappen Förläng."
-- [ ] Commit (together with Task 4 if convenient).
+- [x] Change the link and the message to "…Förnya i god tid via knappen Förläng."
+- [x] Commit (together with Task 4 if convenient).
 
 ### Task 7: CSV import (backend and parser)
 
@@ -211,15 +211,15 @@ list, deactivation side effects, manager change, CSV import, log search and reme
     earlier in the same import. Temp passwords come from the generator in `contractor.js` (moved
     to `userImport.js` as `generateTempPassword()`).
 
-- [ ] Write the tests:
+- [x] Write the tests:
   - **`csv.test.ts`:** semicolon with a BOM and CRLF; comma; a quoted field containing `;` and `""`.
   - **`userImport.test.js`:**
     - `parseRoles('Linjechef|anställd')` → `['line_manager','employee']`.
     - `parseRoles('chef')` → null.
     - `validateImportRow` rejects a bad e-mail and missing names.
-- [ ] Run; expect FAIL.
-- [ ] Implement, then run `npm run test` and `cd backend && npm test`; all pass.
-- [ ] Commit.
+- [x] Run; expect FAIL.
+- [x] Implement, then run `npm run test` and `cd backend && npm test`; all pass.
+- [x] Commit.
 
 ### Task 8: Inbox counter and remembered filters (#9, #27)
 
@@ -240,15 +240,15 @@ list, deactivation side effects, manager change, CSV import, log search and reme
     for the owner; administrators on any pending status; never the applicant.
   - `usePersistentState<T>(key: string, initial: T): [T, (v: T) => void]`, backed by `sessionStorage` under `ag:filter:<key>`.
 
-- [ ] Write the tests: the applicant can't act on their own application; a facility admin can't
+- [x] Write the tests: the applicant can't act on their own application; a facility admin can't
   act on `pending_exception` but the owner can; an administrator can act on any pending status.
-- [ ] Run; expect FAIL.
-- [ ] Implement, and wire up:
+- [x] Run; expect FAIL.
+- [x] Implement, and wire up:
   - The dialog's `canApprove` uses `canActOn`.
   - The sidebar shows a count badge on Ansökningar when it is above 0.
   - The ApplicationsPage status filter gains "Att hantera (n)", filtered client-side from the cache.
-- [ ] Persist search and status on Ansökningar, search, role and status on Användare, and the filters on Systemlogg.
-- [ ] Run tests, `tsc` and lint, then commit.
+- [x] Persist search and status on Ansökningar, search, role and status on Användare, and the filters on Systemlogg.
+- [x] Run tests, `tsc` and lint, then commit.
 
 ### Task 9: Renew, apply again, requirement checklist (#1, #2, #4)
 
@@ -275,10 +275,10 @@ list, deactivation side effects, manager change, CSV import, log search and reme
     applicant's own application that is approved and ends within 60 days, or expired without
     `revoked_at`.
 
-- [ ] Add `canRenew` tests to `applicationRules.test.ts`: approved, ending in 30 days → true;
+- [x] Add `canRenew` tests to `applicationRules.test.ts`: approved, ending in 30 days → true;
   ending in 90 days → false; revoked → false; no end date → false.
-- [ ] Implement, add the buttons, handle the query parameter and add the MyAccess card.
-- [ ] Run tests, `tsc` and lint, then commit.
+- [x] Implement, add the buttons, handle the query parameter and add the MyAccess card.
+- [x] Run tests, `tsc` and lint, then commit.
 
 ### Task 10: Timeline, substitutes UI, deactivation confirmation (#5, #11, #17)
 
@@ -298,9 +298,9 @@ list, deactivation side effects, manager change, CSV import, log search and reme
     shows "Historik finns i serverläge" in localStorage mode.
   - The Swedish action labels in `HISTORY_LABELS`.
 
-- [ ] Implement.
-- [ ] Deactivation confirmation text: "Inaktivera {namn}? {n} godkända tillträden återkallas och {m} väntande ansökningar dras tillbaka."
-- [ ] Run `tsc` and lint, then commit.
+- [x] Implement.
+- [x] Deactivation confirmation text: "Inaktivera {namn}? {n} godkända tillträden återkallas och {m} väntande ansökningar dras tillbaka."
+- [x] Run `tsc` and lint, then commit.
 
 ### Task 11: Active-access page, import dialog, log page, reminder settings (#14, #19, #21, #12 UI)
 
@@ -320,13 +320,13 @@ list, deactivation side effects, manager change, CSV import, log search and reme
     which returns approved applications with `start_date ≤ today` and no `end_date` or one on or
     after today.
 
-- [ ] Add an `activeAccessFor` test case: a future start is excluded; no end date is included; an end date of today is included.
-- [ ] Implement:
+- [x] Add an `activeAccessFor` test case: a future start is excluded; no end date is included; an end date of today is included.
+- [x] Implement:
   - **Access page:** area filter including sub-areas, search, and a CSV export with
     `toCsv`; rows expiring within 30 days are highlighted.
   - **Import dialog:** template download, preview of 10 rows, then the result table and the result
     CSV download (warning: "Lösenorden visas bara nu").
-- [ ] Run tests, `tsc`, lint and build, then commit.
+- [x] Run tests, `tsc`, lint and build, then commit.
 
 ### Task 12: End-to-end verification and docs
 
@@ -334,7 +334,7 @@ list, deactivation side effects, manager change, CSV import, log search and reme
 - Modify: `scripts/smoke-test.mjs` (new checks)
 - Modify: `README.md` (features and settings), `CLAUDE.md` (substitutes, reminders), `roadmap.md` (log search done)
 
-- [ ] **New smoke checks:**
+- [x] **New smoke checks:**
   - Renewal with `renewed_from_id`.
   - History returns the created, pending_facility and approved entries.
   - A substitute in range can approve, and one out of range gets 403.
@@ -343,8 +343,8 @@ list, deactivation side effects, manager change, CSV import, log search and reme
   - Import gives created, skipped and error rows, and an imported user can log in with the temp
     password and must change it.
   - Log search with `q` finds a known action.
-- [ ] **Run on a fresh stack:**
+- [x] **Run on a fresh stack:**
   - `docker compose -p ag-smoke … up -d --build`, then `node scripts/smoke-test.mjs`; all pass.
   - Backdate `status_changed_at` via psql, run the expiry job twice, and confirm one reminder and one escalation.
-- [ ] Re-run the role-by-role UI crawl in both themes; expect 0 console errors and 0 failed requests.
-- [ ] Update the docs, then commit.
+- [x] Re-run the role-by-role UI crawl in both themes; expect 0 console errors and 0 failed requests.
+- [x] Update the docs, then commit.
