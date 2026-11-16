@@ -10,6 +10,8 @@ import { useAuth } from '@/context/AuthContext';
 import * as store from '@/services/dataStore';
 import { downloadAttachment } from '@/services/api';
 import { notifyApplicationStatusChange } from '@/services/notifications';
+import { canActOn } from '@/lib/applicationRules';
+import { subordinateIds } from '@/hooks/useActionableApplications';
 import type { Application, ApplicationStatus } from '@/types/rbac';
 import { errorMessage } from '@/lib/utils';
 
@@ -57,16 +59,13 @@ export function ApplicationDetailDialog({ application, open, onOpenChange, onUpd
   const isApplicant = application.applicant_id === currentUser.id;
   const isFacilityOwner = facility?.owner_id === currentUser.id;
   const isFacilityStaff = isFacilityOwner || !!facility?.admin_ids?.includes(currentUser.id);
-  const isApprovingManager = !isApplicant && (
-    roles.includes('line_manager') ||
-    applicant?.manager_id === currentUser.id ||
-    applicant?.contact_person_id === currentUser.id
-  );
   // Mirrors the backend transition rules; the backend makes the final decision.
-  const canApprove =
-    (application.status === 'pending_manager' && (isApprovingManager || isAdmin)) ||
-    (application.status === 'pending_facility' && (isFacilityStaff || isAdmin)) ||
-    (application.status === 'pending_exception' && (isFacilityOwner || isAdmin));
+  const canApprove = canActOn(application, currentUser, {
+    facility,
+    applicant,
+    managedIds: roles.includes('line_manager') ? subordinateIds(currentUser.id, store.getUsers()) : [],
+    substituteFor: currentUser.substituting_for || [],
+  });
 
   const canEdit = isApplicant && (application.status === 'draft' || application.status === 'pending_manager');
   const canDelete = (isApplicant || isAdmin) && (application.status === 'draft' || application.status === 'denied');

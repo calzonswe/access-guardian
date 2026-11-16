@@ -15,6 +15,7 @@ import UserFormDialog from '@/components/users/UserFormDialog';
 import UserRequirementDialog from '@/components/users/UserRequirementDialog';
 import { exportUsers, exportRequirementsFulfillment } from '@/services/exportService';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
+import { usePersistentState } from '@/hooks/usePersistentState';
 
 const PAGE_SIZE = 10;
 const ALL_ROLES_FILTER: AppRole[] = ['administrator', 'facility_owner', 'facility_admin', 'line_manager', 'employee', 'contractor'];
@@ -26,9 +27,9 @@ export default function UsersPage() {
   const [editUser, setEditUser] = useState<User | null>(null);
   const [reqDialogOpen, setReqDialogOpen] = useState(false);
   const [reqTargetUser, setReqTargetUser] = useState<User | null>(null);
-  const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [search, setSearch] = usePersistentState('users:search', '');
+  const [roleFilter, setRoleFilter] = usePersistentState<string>('users:role', 'all');
+  const [statusFilter, setStatusFilter] = usePersistentState<string>('users:status', 'all');
   const [page, setPage] = useState(1);
 
   const users = currentUser ? store.getUsers() : [];

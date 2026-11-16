@@ -41,6 +41,8 @@ const navItems: NavItem[] = [
   { title: 'Inställningar', url: '/settings', icon: Settings, roles: ['administrator'] },
 ];
 
+import { useActionableApplications } from '@/hooks/useActionableApplications';
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
@@ -48,6 +50,8 @@ export function AppSidebar() {
   const { appName, subtitle, logoUrl } = useBranding();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const actionable = useActionableApplications(currentUser);
 
   if (!currentUser) return null;
 
@@ -128,7 +132,18 @@ export function AppSidebar() {
                     <SidebarMenuButton asChild>
                       <NavLink to={item.url} end={item.url === '/'} className="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
                         <item.icon className="mr-2 h-4 w-4 shrink-0" />
-                        {!collapsed && <span>{item.title}</span>}
+                        {!collapsed && <span className="flex-1">{item.title}</span>}
+                        {item.url === '/applications' && actionable.length > 0 && (
+                          <span
+                            className={collapsed
+                              ? 'absolute right-1 top-1 h-2 w-2 rounded-full bg-primary'
+                              : 'ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground'}
+                            title={`${actionable.length} att hantera`}
+                            aria-label={`${actionable.length} ansökningar att hantera`}
+                          >
+                            {!collapsed && actionable.length}
+                          </span>
+                        )}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

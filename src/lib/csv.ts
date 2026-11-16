@@ -45,7 +45,7 @@ function splitRecords(text: string, sep: string): string[][] {
 }
 
 export function parseCsv(text: string): { headers: string[]; rows: Record<string, string>[] } {
-  const clean = text.replace(/^﻿/, '');
+  const clean = text.replace(/^\uFEFF/, '');
   if (!clean.trim()) return { headers: [], rows: [] };
   const records = splitRecords(clean, detectSeparator(clean));
   const headers = (records.shift() || []).map(h => h.trim().toLowerCase());

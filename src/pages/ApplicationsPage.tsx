@@ -13,6 +13,8 @@ import { Plus, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import type { Application, ApplicationStatus } from '@/types/rbac';
 import { exportApplications } from '@/services/exportService';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
+import { usePersistentState } from '@/hooks/usePersistentState';
+import { useActionableApplications } from '@/hooks/useActionableApplications';
 import { errorMessage } from '@/lib/utils';
 
 const PAGE_SIZE = 10;
@@ -44,8 +46,11 @@ export default function ApplicationsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [editApp, setEditApp] = useState<Application | null>(null);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [search, setSearch] = usePersistentState('applications:search', '');
+  const [statusFilter, setStatusFilter] = usePersistentState<string>('applications:status', 'all');
+  const actionable = useActionableApplications(currentUser);
+  // "Att hantera" is computed from the cached applications, not the server page.
+  const showActionable = statusFilter === 'actionable';
   const [page, setPage] = useState(1);
   const { applicationId } = useParams();
   const navigate = useNavigate();
@@ -112,13 +117,13 @@ export default function ApplicationsPage() {
   const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
-    if (!apiMode || loading || !currentUser) return;
+    if (!apiMode || loading || !currentUser || showActionable) return;
     let cancelled = false;
     store.fetchApplicationsPage({ page, limit: PAGE_SIZE, search, status: statusFilter })
       .then(r => { if (!cancelled) { setPagedApps(r.data); setServerTotal(r.total); } })
       .catch(() => { if (!cancelled) toast.error('Kunde inte hämta ansökningar'); });
     return () => { cancelled = true; };
-  }, [apiMode, loading, currentUser, page, search, statusFilter, refreshTick]);
+  }, [apiMode, loading, currentUser, page, search, statusFilter, refreshTick, showActionable]);
 
   const reloadPaged = useCallback(async () => {
     await reload();
@@ -126,10 +131,16 @@ export default function ApplicationsPage() {
   }, [reload]);
 
   if (!currentUser) return null;
-  const displayTotal = apiMode ? serverTotal : filtered.length;
+  const q = search.trim().toLowerCase();
+  const actionableShown = actionable.filter(a => !q
+    || (store.getUser(a.applicant_id)?.full_name || '').toLowerCase().includes(q)
+    || (store.getFacility(a.facility_id)?.name || '').toLowerCase().includes(q));
+  const clientList = showActionable ? actionableShown : filtered;
+  const useServer = apiMode && !showActionable;
+  const displayTotal = useServer ? serverTotal : clientList.length;
   const totalPages = Math.max(1, Math.ceil(displayTotal / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const paged = apiMode ? pagedApps : filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const paged = useServer ? pagedApps : clientList.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const canCreateApplication = roles.includes('employee') || roles.includes('contractor');
 
@@ -179,6 +190,9 @@ export default function ApplicationsPage() {
         <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setPage(1); }}>
           <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
           <SelectContent>
+            {actionable.length > 0 || showActionable
+              ? <SelectItem value="actionable">Att hantera ({actionable.length})</SelectItem>
+              : null}
             {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>

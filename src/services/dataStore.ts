@@ -15,6 +15,22 @@ export interface StoredUser extends User {
   must_change_password: boolean;
 }
 
+// ============= Change signal =============
+// Components outside the page tree (sidebar badge) re-render when data changes.
+let _version = 0;
+const _listeners = new Set<() => void>();
+export function subscribe(fn: () => void): () => void {
+  _listeners.add(fn);
+  return () => { _listeners.delete(fn); };
+}
+export function getVersion(): number {
+  return _version;
+}
+function bump(): void {
+  _version++;
+  _listeners.forEach(fn => fn());
+}
+
 // ============= In-memory cache =============
 
 let _users: User[] = [];
@@ -106,6 +122,7 @@ async function loadFromApi(): Promise<void> {
   _userRequirements = val(8, _userRequirements);
   _facilityRequirements = val(9, _facilityRequirements);
   _areaRequirements = val(10, _areaRequirements);
+  bump();
 }
 
 // localStorage fallback helpers
@@ -609,6 +626,7 @@ export async function createApplication(data: Omit<Application, 'id' | 'created_
   if (_apiMode) {
     const app = await api.createApplication(data);
     _applications = await api.getApplications();
+    bump();
     return app;
   }
   const items = localGet<Application>(KEYS.APPLICATIONS);
@@ -622,6 +640,7 @@ export async function updateApplication(id: string, data: Partial<Omit<Applicati
   if (_apiMode) {
     const updated = await api.updateApplication(id, data);
     _applications = await api.getApplications();
+    bump();
     return updated;
   }
   const items = localGet<Application>(KEYS.APPLICATIONS);
@@ -636,6 +655,7 @@ export async function deleteApplication(id: string): Promise<void> {
   if (_apiMode) {
     await api.deleteApplication(id);
     _applications = await api.getApplications();
+    bump();
     return;
   }
   localSet(KEYS.APPLICATIONS, localGet<Application>(KEYS.APPLICATIONS).filter(a => a.id !== id));

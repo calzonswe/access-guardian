@@ -33,6 +33,10 @@ export interface User {
   company?: string;           // Företag
   is_active: boolean;
   created_at: string;
+  substitute_id?: string | null;   // Ersättare vid frånvaro (line managers)
+  substitute_from?: string | null; // 'YYYY-MM-DD', inclusive
+  substitute_to?: string | null;
+  substituting_for?: string[];     // Only on the logged-in user: managers they stand in for
 }
 
 export interface Facility {
@@ -123,6 +127,8 @@ export interface Application {
   revoked_at?: string;        // set when a person revoked access (status 'expired')
   revoked_by?: string;
   revoke_reason?: string;
+  renewed_from_id?: string | null;  // a renewal points at the application it renews
+  status_changed_at?: string;
   attachments: Attachment[];
   created_at: string;
   updated_at: string;

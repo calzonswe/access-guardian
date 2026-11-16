@@ -8,7 +8,7 @@ import { audit } from '../services/audit.js';
 import { sendMail, isEmailEnabled, htmlEscape } from '../services/email.js';
 import { getSecuritySettings, getPasswordPolicy, validatePassword } from '../services/settings.js';
 import { checkLock, recordFailure, recordSuccess } from '../services/loginAttempts.js';
-import { validateSubstitute } from '../services/substitutes.js';
+import { validateSubstitute, getAbsentManagerIdsFor } from '../services/substitutes.js';
 
 const router = Router();
 
@@ -87,7 +87,7 @@ router.post('/login', async (req, res) => {
     await audit({ action: 'login_success', actorId: user.id, targetId: user.id, targetType: 'user', details: `IP: ${ip}` });
     res.json({
       token,
-      user: mapUser(user),
+      user: await selfView(user),
       mustChangePassword: user.must_change_password,
       sessionTimeoutMinutes,
     });
@@ -135,7 +135,7 @@ router.post('/change-password', authMiddleware, async (req, res) => {
       { id: rows[0].id, email: rows[0].email, roles: rows[0].roles.filter(Boolean) },
       `${sessionTimeoutMinutes}m`
     );
-    res.json({ token, user: mapUser(rows[0]), mustChangePassword: false, sessionTimeoutMinutes });
+    res.json({ token, user: await selfView(rows[0]), mustChangePassword: false, sessionTimeoutMinutes });
   } catch (err) {
     console.error('Change password error:', err);
     res.status(500).json({ error: 'Internt serverfel' });
@@ -252,7 +252,7 @@ router.get('/me', authMiddleware, async (req, res) => {
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Användare hittades ej' });
     const { sessionTimeoutMinutes } = await getSecuritySettings();
-    res.json({ user: mapUser(rows[0]), mustChangePassword: rows[0].must_change_password, sessionTimeoutMinutes });
+    res.json({ user: await selfView(rows[0]), mustChangePassword: rows[0].must_change_password, sessionTimeoutMinutes });
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });
   }
@@ -311,12 +311,17 @@ router.put('/me', authMiddleware, async (req, res) => {
        LEFT JOIN user_roles ur ON ur.user_id = u.id WHERE u.id = $1 GROUP BY u.id`,
       [req.user.id]
     );
-    res.json({ user: mapUser(rows[0]) });
+    res.json({ user: await selfView(rows[0]) });
   } catch (err) {
     console.error('update profile error:', err);
     res.status(500).json({ error: 'Internt serverfel' });
   }
 });
+
+/** The logged-in user's own view: mapUser plus whom they stand in for. */
+async function selfView(row) {
+  return { ...mapUser(row), substituting_for: await getAbsentManagerIdsFor(pool, row.id) };
+}
 
 function mapUser(row) {
   let roles = [];
