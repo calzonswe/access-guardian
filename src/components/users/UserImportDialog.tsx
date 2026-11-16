@@ -110,7 +110,7 @@ export function UserImportDialog({ open, onOpenChange, onImported }: Props) {
                 <p className="text-sm text-foreground"><strong>{fileName}</strong>: {rows.length} {t('rader. Förhandsvisning:')}</p>
                 <div className="overflow-x-auto rounded-md border border-border">
                   <Table>
-                    <TableHeader><TableRow><TableHead>E-post</TableHead><TableHead>{t('Namn')}</TableHead><TableHead>{t('Roller')}</TableHead><TableHead>{t('Chef')}</TableHead></TableRow></TableHeader>
+                    <TableHeader><TableRow><TableHead>{t('E-post')}</TableHead><TableHead>{t('Namn')}</TableHead><TableHead>{t('Roller')}</TableHead><TableHead>{t('Chef')}</TableHead></TableRow></TableHeader>
                     <TableBody>
                       {rows.slice(0, 10).map((r, i) => (
                         <TableRow key={i}>
@@ -152,7 +152,7 @@ export function UserImportDialog({ open, onOpenChange, onImported }: Props) {
             )}
             <div className="max-h-72 overflow-auto rounded-md border border-border">
               <Table>
-                <TableHeader><TableRow><TableHead>{t('Rad')}</TableHead><TableHead>E-post</TableHead><TableHead>{t('Resultat')}</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>{t('Rad')}</TableHead><TableHead>{t('E-post')}</TableHead><TableHead>{t('Resultat')}</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {results.map(r => (
                     <TableRow key={r.row}>

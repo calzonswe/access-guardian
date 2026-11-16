@@ -735,6 +735,23 @@ const EN: Record<string, string> = {
   "Uptime:": "Uptime:",
   "Version:": "Version:",
   "Intervall:": "Interval:",
+  "av {count} totalt": "of {count} in total",
+  "Hantera användare och roller ({count} st)": "Manage users and roles ({count})",
+  "Hantera tillträdesansökningar ({count} st)": "Manage access applications ({count})",
+  "{days} dagar": "{days} days",
+  "Kontaktperson hos {appName} (e-post) *": "Contact person at {appName} (e-mail) *",
+  "AI-analys av granskningsloggen": "AI analysis of the audit log",
+  "Drift, integrationer och bakgrundsjobb": "Operations, integrations and background jobs",
+  "E-post": "E-mail",
+  "E-post (SMTP)": "E-mail (SMTP)",
+  "E-post *": "E-mail *",
+  "E-postnotifieringar": "E-mail notifications",
+  "Gatuadress, Stad": "Street address, City",
+  "Oops! Page not found": "Oops! Page not found",
+  "PDF, bilder, Word/Excel, text/CSV. Max 10 MB per fil.": "PDF, images, Word/Excel, text/CSV. Max 10 MB per file.",
+  "SAML 2.0": "SAML 2.0",
+  "Standard: senaste 30 dagarna": "Default: the last 30 days",
+  "T.ex. Behov saknas": "E.g. No business need",
 };
 
 export default EN;

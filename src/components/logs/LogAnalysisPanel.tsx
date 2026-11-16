@@ -64,7 +64,7 @@ export default function LogAnalysisPanel() {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />AI-analys av granskningsloggen
+          <Sparkles className="h-4 w-4 text-primary" />{t('AI-analys av granskningsloggen')}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -87,7 +87,7 @@ export default function LogAnalysisPanel() {
             {running ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
             {t('Analysera')}
           </Button>
-          <span className="text-xs text-muted-foreground">Standard: senaste 30 dagarna</span>
+          <span className="text-xs text-muted-foreground">{t('Standard: senaste 30 dagarna')}</span>
         </div>
 
         {error && <p className="text-sm text-destructive">{error}</p>}

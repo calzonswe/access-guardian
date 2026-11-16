@@ -149,7 +149,7 @@ export default function RequirementsPage() {
                       <TableCell className="text-muted-foreground">{req.description}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {req.has_expiry ? (
-                          <div className="flex items-center gap-1"><Clock className="h-3 w-3" />{req.validity_days ? `${req.validity_days} dagar` : t('Giltighetstid saknas')}</div>
+                          <div className="flex items-center gap-1"><Clock className="h-3 w-3" />{req.validity_days ? t('{days} dagar', { days: req.validity_days }) : t('Giltighetstid saknas')}</div>
                         ) : (
                           <span className="text-success">{t('Permanent')}</span>
                         )}

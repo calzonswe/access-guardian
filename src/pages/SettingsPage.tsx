@@ -284,7 +284,7 @@ export default function SettingsPage() {
               <Separator />
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-foreground">E-postnotifieringar</p>
+                  <p className="text-sm font-medium text-foreground">{t('E-postnotifieringar')}</p>
                   <p className="text-xs text-muted-foreground">{t('Skicka aviseringar via e-post utöver i appen. Kräver att SMTP är konfigurerat (se fliken System). Lösenordsåterställning skickas alltid.')}</p>
                 </div>
                 <Switch
@@ -343,7 +343,7 @@ export default function SettingsPage() {
               <Separator />
               <div className="flex items-center justify-between opacity-60">
                 <div>
-                  <p className="text-sm font-medium text-foreground">SAML 2.0</p>
+                  <p className="text-sm font-medium text-foreground">{t('SAML 2.0')}</p>
                   <p className="text-xs text-muted-foreground">{t('SAML-baserad federerad inloggning — kommer i en framtida version')}</p>
                 </div>
                 <Switch checked={false} disabled />
@@ -492,7 +492,7 @@ function SystemStatusTab() {
                 <Activity className="h-4 w-4 text-primary" />
                 {t('Systemstatus')}
               </CardTitle>
-              <CardDescription>Drift, integrationer och bakgrundsjobb</CardDescription>
+              <CardDescription>{t('Drift, integrationer och bakgrundsjobb')}</CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={load} disabled={loading}>
               <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -520,7 +520,7 @@ function SystemStatusTab() {
               <div className="rounded-lg border border-border p-4 space-y-2">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <Mail className="h-4 w-4 text-muted-foreground" />
-                  E-post (SMTP)
+                  {t('E-post (SMTP)')}
                   <span className="ml-auto">
                     <StatusDot ok={status.email.enabled && status.email.verified} />
                   </span>

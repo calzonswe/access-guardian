@@ -103,7 +103,7 @@ export default function UsersPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">{tr('Användare')}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{tr('Hantera användare och roller (')}{total} st)</p>
+          <p className="text-sm text-muted-foreground mt-1">{tr('Hantera användare och roller ({count} st)', { count: total })}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={() => { exportUsers(); toast.success(tr('Användare exporterade')); }}>
@@ -156,7 +156,7 @@ export default function UsersPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{tr('Namn')}</TableHead>
-                  <TableHead>E-post</TableHead>
+                  <TableHead>{tr('E-post')}</TableHead>
                   <TableHead>{tr('Befattning')}</TableHead>
                   <TableHead>{tr('Företag / Enhet')}</TableHead>
                   <TableHead>{tr('Roller')}</TableHead>

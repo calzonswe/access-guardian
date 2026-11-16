@@ -137,7 +137,7 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-2 gap-y-3 text-sm">
                   <span className="text-muted-foreground">{t('Namn')}</span>
                   <span className="font-medium text-foreground">{currentUser.full_name}</span>
-                  <span className="text-muted-foreground">E-post</span>
+                  <span className="text-muted-foreground">{t('E-post')}</span>
                   <span className="font-medium text-foreground">{currentUser.email}</span>
                   {currentUser.phone && (<>
                     <span className="text-muted-foreground">{t('Telefon')}</span>

@@ -99,7 +99,7 @@ export function BulkActionBar({ selected, onClear, onDone }: Props) {
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="bulk-deny-reason">{t('Anledning')}</Label>
-            <Textarea id="bulk-deny-reason" value={reason} onChange={e => setReason(e.target.value)} placeholder="T.ex. Behov saknas" />
+            <Textarea id="bulk-deny-reason" value={reason} onChange={e => setReason(e.target.value)} placeholder={t('T.ex. Behov saknas')} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDenyOpen(false)} disabled={busy}>{t('Avbryt')}</Button>

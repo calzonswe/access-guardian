@@ -1,8 +1,15 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
 import { requireRole } from '../middleware/rbac.js';
+import { translate, requestLanguage } from '../services/i18n.js';
 
 const router = Router();
+
+// Notifications are stored in Swedish and shown in the reader's language.
+const inLanguage = (req, rows) => {
+  const lang = requestLanguage(req);
+  return lang === 'sv' ? rows : rows.map(n => ({ ...n, title: translate(n.title, lang), message: translate(n.message, lang) }));
+};
 
 router.get('/', async (req, res) => {
   try {
@@ -16,13 +23,13 @@ router.get('/', async (req, res) => {
       }
       query += ' ORDER BY created_at DESC LIMIT 200';
       const { rows } = await pool.query(query, params);
-      return res.json(rows);
+      return res.json(inLanguage(req, rows));
     }
     const { rows } = await pool.query(
       'SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 200',
       [req.user.id]
     );
-    res.json(rows);
+    res.json(inLanguage(req, rows));
   } catch (err) {
     res.status(500).json({ error: 'Internt serverfel' });
   }

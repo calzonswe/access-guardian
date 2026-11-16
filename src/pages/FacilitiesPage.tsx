@@ -307,7 +307,7 @@ export default function FacilitiesPage() {
             </div>
             <div className="space-y-2">
               <Label>{t('Adress')}</Label>
-              <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Gatuadress, Stad" />
+              <Input value={address} onChange={e => setAddress(e.target.value)} placeholder={t('Gatuadress, Stad')} />
             </div>
             <div className="space-y-2">
               <Label>{t('Ägare')}</Label>

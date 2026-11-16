@@ -94,7 +94,8 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       if (b) {
         const newBranding = {
           appName: b.appName || defaults.appName,
-          subtitle: b.subtitle || defaults.subtitle,
+          // The seeded default is translated; text an admin typed is shown as written.
+          subtitle: !b.subtitle || b.subtitle === 'Tillträdeshantering' ? defaults.subtitle : b.subtitle,
           logoUrl: isValidLogoUrl(b.logoUrl) ? b.logoUrl : defaults.logoUrl,
           primaryColor: b.primaryColor || defaults.primaryColor,
           selfRegistration: b.selfRegistration !== false,

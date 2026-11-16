@@ -57,9 +57,8 @@ async function getWarningDays() {
 }
 
 async function notifyOnce(client, { userId, title, message, type, link, email = true, category }) {
+  // Stored in Swedish (translated on read); the e-mail is in the recipient's language.
   const lang = await userLanguage(client, userId).catch(() => 'sv');
-  title = translate(title, lang);
-  message = translate(message, lang);
   // Skip if we already created an identical notification recently (48h window)
   const { rowCount } = await client.query(
     `SELECT 1 FROM notifications
@@ -79,7 +78,8 @@ async function notifyOnce(client, { userId, title, message, type, link, email = 
     sendMailToUser(userId, {
       subject: title,
       title,
-      body: `<p>${htmlEscape(message)}</p>`,
+      body: `<p>${htmlEscape(translate(message, lang))}</p>`,
+      lang,
       ctaLabel: link ? 'Öppna i Access Guardian' : undefined,
       ctaUrl: link,
     }).catch(() => {});

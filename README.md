@@ -25,8 +25,8 @@ och allt loggas. Krav som utbildningar och säkerhetsprövningar följs upp auto
 [![Aktivitet](https://img.shields.io/github/commit-activity/m/calzonswe/access-guardian?label=commits%2Fm%C3%A5nad)](https://github.com/calzonswe/access-guardian/commits/main)
 [![Storlek](https://img.shields.io/github/repo-size/calzonswe/access-guardian?label=storlek)](https://github.com/calzonswe/access-guardian)
 [![Språk](https://img.shields.io/github/languages/top/calzonswe/access-guardian)](https://github.com/calzonswe/access-guardian)
-[![API-kontroller](https://img.shields.io/badge/API--kontroller-111_godk%C3%A4nda-2EA44F)](scripts/smoke-test.mjs)
-[![Enhetstester](https://img.shields.io/badge/enhetstester-45_godk%C3%A4nda-2EA44F)](#tester-och-kvalitet)
+[![API-kontroller](https://img.shields.io/badge/API--kontroller-119_godk%C3%A4nda-2EA44F)](scripts/smoke-test.mjs)
+[![Enhetstester](https://img.shields.io/badge/enhetstester-62_godk%C3%A4nda-2EA44F)](#tester-och-kvalitet)
 
 <br>
 
@@ -70,9 +70,11 @@ och allt loggas. Krav som utbildningar och säkerhetsprövningar följs upp auto
 | **Uppföljning** | Bakgrundsjobb som markerar utgångna tillträden och krav och skickar påminnelser 30, 7 och 1 dag innan (inställbart). Ansökningar som väntar för länge ger en påminnelse till beslutsfattaren och sedan en eskalering till administratörerna. |
 | **Återkallelse** | Anläggningens personal kan återkalla ett beviljat tillträde med en anledning som visas för den sökande. |
 | **Entreprenörer** | Publikt ansökningsformulär (med captcha) där externa entreprenörer anger en kontaktperson som attesterar. Kan stängas av i inställningarna. |
-| **Aviseringar** | I appen och via e-post (SMTP) vid varje statusändring och när något väntar på ditt beslut. Länkar öppnar rätt ansökan direkt. |
+| **Aviseringar** | I appen och via e-post (SMTP) vid varje statusändring och när något väntar på ditt beslut. Länkar öppnar rätt ansökan direkt. Varje användare väljer vilka e-postaviseringar de vill ha. |
 | **Granskningslogg** | Alla ändringar loggas med aktör, tid och detaljer. Sök på text och datum, exportera urvalet. Varje ansökan visar sin egen **historik**. Valfri AI-analys av loggen. |
-| **Att hantera** | En räknare i menyn och ett filter visar ansökningar som väntar på just ditt beslut. Chefer kan ange en **ersättare** vid frånvaro. |
+| **Att hantera** | En räknare i menyn och ett filter visar ansökningar som väntar på just ditt beslut. **Godkänn eller neka flera på en gång.** Chefer kan ange en **ersättare** vid frånvaro. |
+| **Sök** | **Ctrl+K** (⌘K) söker bland sidor, ansökningar, personer och anläggningar du har tillgång till, oavsett å/ä/ö. |
+| **Språk** | **Svenska och engelska**, valt per användare. Gäller gränssnittet, felmeddelanden, aviseringar och e-post. |
 | **Aktiva tillträden** | Anläggningens ansvariga ser vem som har tillträde i dag, per område, med export. |
 | **Organisation** | Organisationsträd (företag, avdelning, enhet, grupp) och chefskedjor. Chefer ser hela sitt team. |
 | **Administration** | Användare och roller (även **import från CSV/Excel**), anläggningar och områden, krav, branding (namn, logotyp, färg), säkerhetsinställningar och lösenordspolicy, systemstatus. Inaktiverade konton förlorar automatiskt sina tillträden. |
@@ -88,10 +90,11 @@ och allt loggas. Krav som utbildningar och säkerhetsprövningar följs upp auto
 | **7** ansökningsstatusar | utkast, väntar på chef, väntar på anläggning, avsteg väntar, godkänd, nekad, utgången/återkallad |
 | **19** sidor i gränssnittet | inklusive publika sidor för entreprenörer och lösenordsåterställning |
 | **16** API-moduler | under `/api/*`, se [openapi.yaml](openapi.yaml) |
-| **8** databasmigreringar | körs automatiskt när backend startar |
-| **111** API-kontroller | hela flödet och behörigheterna, mot riktig databas ([scripts/smoke-test.mjs](scripts/smoke-test.mjs)) |
-| **45** enhetstester | 22 i backend (statusregler, ersättare, påminnelser, import), 23 i frontend |
+| **9** databasmigreringar | körs automatiskt när backend startar |
+| **119** API-kontroller | hela flödet och behörigheterna, mot riktig databas ([scripts/smoke-test.mjs](scripts/smoke-test.mjs)) |
+| **62** enhetstester | 31 i backend (statusregler, ersättare, påminnelser, import, e-postval, översättning), 31 i frontend |
 | **2** teman | ljust och mörkt, plus "följ systemet" |
+| **2** språk | svenska och engelska (cirka 1 100 översatta texter) |
 
 ---
 
@@ -313,6 +316,7 @@ Under **Inställningar** (administratör):
 - **Ljust och mörkt tema.** Välj under sol/måne-knappen i sidhuvudet: *Ljust*, *Mörkt* eller *Följ systemet* (standard). Valet sparas per webbläsare och tillämpas innan sidan ritas, så det blinkar inte.
 - **Egen primärfärg.** Färgen från Branding används i båda temana. I mörkt tema ljusas den upp automatiskt så att text och knappar förblir läsbara.
 - **Mobil.** Menyn fälls ihop, sidhuvuden radbryts och ansökningslistan visas som kort.
+- **Språk.** Svenska eller engelska väljs i användarmenyn eller under Min profil och sparas på kontot. Före inloggning finns en Svenska | English-växel (förvalt efter webbläsarens språk). Granskningsloggens detaljer och namn som administratörer skrivit in visas som de skrevs.
 - **Tillgänglighet.** Synlig tangentbordsmarkering, etiketter på alla ikonknappar, rader som går att öppna med tangentbordet och färre animationer när enheten ber om det.
 
 ---
@@ -366,9 +370,9 @@ Frontend avgör själv vilket läge den kör i: svarar `/api/health` med `{"stat
 
 | Nivå | Vad som testas | Kör |
 |---|---|---|
-| **Backend, enhet** (22) | Statusreglerna, ersättarperioder, påminnelser och CSV-importens validering | `cd backend && npm test` |
-| **Frontend, enhet** (23) | Ansökningsregler (att hantera, förläng, aktiva tillträden), CSV-läsning, tokenhantering, logotyp och brandfärg | `npm run test` |
-| **API end-to-end** (111) | Hela flödet och behörigheterna mot en riktig databas: inloggning, ansökningar, avsteg, entreprenörer, återkallelse, förlängning, historik, ersättare, inaktivering, chefsbyte, import och loggsök | se nedan |
+| **Backend, enhet** (31) | Statusreglerna, ersättarperioder, påminnelser, CSV-import, e-postval och översättning av servermeddelanden | `cd backend && npm test` |
+| **Frontend, enhet** (31) | Ansökningsregler, massbeslut, sökning, CSV-läsning, tokenhantering, logotyp/brandfärg och att varje text har en engelsk översättning | `npm run test` |
+| **API end-to-end** (119) | Hela flödet och behörigheterna mot en riktig databas: inloggning, ansökningar, avsteg, entreprenörer, återkallelse, förlängning, historik, ersättare, inaktivering, chefsbyte, import och loggsök | se nedan |
 
 API-testet skapar egna användare och kräver därför en **tom** databas. Kör det i ett separat Compose-projekt så att riktig data inte påverkas:
 

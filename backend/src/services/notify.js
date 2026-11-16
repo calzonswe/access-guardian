@@ -28,10 +28,10 @@ export async function wantsEmail(db, userId, category) {
 
 export async function notifyUser(db, userId, { title, message, type = 'info', link, category }) {
   if (!userId) return;
-  // Stored (and mailed) in the recipient's language.
+  // Stored in the Swedish source text and translated when read
+  // (GET /api/notifications), so a language switch also applies to old
+  // notifications. E-mails are rendered in the recipient's language.
   const lang = await userLanguage(db || pool, userId).catch(() => 'sv');
-  title = translate(title, lang);
-  message = translate(message, lang);
   try {
     await db.query(
       `INSERT INTO notifications (user_id, title, message, type, read, link)
@@ -45,7 +45,7 @@ export async function notifyUser(db, userId, { title, message, type = 'info', li
     sendMailToUser(userId, {
       subject: title,
       title,
-      body: `<p>${htmlEscape(message)}</p>`,
+      body: `<p>${htmlEscape(translate(message, lang))}</p>`,
       ctaLabel: link ? 'Öppna i Access Guardian' : undefined,
       ctaUrl: link,
       lang,

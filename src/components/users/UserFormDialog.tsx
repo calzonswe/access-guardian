@@ -170,7 +170,7 @@ export default function UserFormDialog({ open, onOpenChange, editUser, users, cu
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>E-post *</Label>
+              <Label>{t('E-post *')}</Label>
               <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('anna@företag.se')} />
             </div>
             <div className="space-y-2">

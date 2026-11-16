@@ -182,13 +182,13 @@ export default function ContractorApplyPage() {
                   <div className="space-y-2"><Label>{t('Efternamn *')}</Label><Input required value={lastName} onChange={e => setLastName(e.target.value)} maxLength={128} /></div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2"><Label>E-post *</Label><Input required type="email" value={email} onChange={e => setEmail(e.target.value)} maxLength={255} /></div>
+                  <div className="space-y-2"><Label>{t('E-post *')}</Label><Input required type="email" value={email} onChange={e => setEmail(e.target.value)} maxLength={255} /></div>
                   <div className="space-y-2"><Label>{t('Telefon')}</Label><Input value={phone} onChange={e => setPhone(e.target.value)} maxLength={50} /></div>
                 </div>
                 <div className="space-y-2"><Label>{t('Företag *')}</Label><Input required value={company} onChange={e => setCompany(e.target.value)} maxLength={255} /></div>
 
                 <div className="space-y-2">
-                  <Label>{t('Kontaktperson hos')} {appName} (e-post) *</Label>
+                  <Label>{t('Kontaktperson hos {appName} (e-post) *', { appName })}</Label>
                   <Input required type="email" value={sponsorEmail} onChange={e => setSponsorEmail(e.target.value)} maxLength={255} />
                   <p className="text-xs text-muted-foreground">{t('Personen som har bjudit in dig och som ansvarar för ditt uppdrag.')}</p>
                 </div>

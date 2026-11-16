@@ -101,7 +101,7 @@ export default function Dashboard() {
         <div key="employee-stats" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard title={t('Mina ansökningar')} value={myApps.length} icon={FileText} variant="primary" />
           <StatCard title={t('Godkänt tillträde')} value={myApps.filter(a => a.status === 'approved').length} icon={CheckCircle} variant="success" />
-          <StatCard title={t('Uppfyllda krav')} value={myReqs.length} subtitle={`av ${requirements.length} totalt`} icon={Shield} variant="default" />
+          <StatCard title={t('Uppfyllda krav')} value={myReqs.length} subtitle={t('av {count} totalt', { count: requirements.length })} icon={Shield} variant="default" />
         </div>
       );
     }

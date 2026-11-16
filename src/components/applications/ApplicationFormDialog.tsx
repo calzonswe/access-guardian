@@ -285,7 +285,7 @@ export function ApplicationFormDialog({ open, onOpenChange, editApplication, tem
             <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
               <Paperclip className="mr-2 h-4 w-4" />{tr('Ladda upp bilagor')}
             </Button>
-            <p className="text-xs text-muted-foreground">PDF, bilder, Word/Excel, text/CSV. Max 10 MB per fil.</p>
+            <p className="text-xs text-muted-foreground">{tr('PDF, bilder, Word/Excel, text/CSV. Max 10 MB per fil.')}</p>
           </div>
         </div>
         <DialogFooter>

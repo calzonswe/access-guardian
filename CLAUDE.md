@@ -72,6 +72,10 @@ In API mode the backend writes the audit log and sends notifications for every m
 
 Colours are HSL tokens in `src/index.css` (`:root` = light, `.dark` = dark); components only use the token classes (`bg-card`, `text-muted-foreground`, `status-badge-*`), never raw colours. `ThemeContext` holds the choice light / dark / system (default system, saved as `rbac-theme`); the inline script in `index.html` applies it before first paint and must stay in sync with it. The admin's brand colour is injected per theme by `brandColourCss` in `BrandingContext` (lightened for dark), and sidebar/ring follow `--primary`. Status badge classes live in the utilities layer so they override the Badge component's text colour. `ApplicationTable` renders cards below `md` and a table above.
 
+## Languages (i18n)
+
+Swedish is the source language. Every user-facing string in the frontend goes through `t('Svensk text', { values })` from `@/i18n`; English lives in `src/i18n/en.ts` keyed by the Swedish text. `src/i18n/i18n.test.ts` fails when a `t()` key has no English entry, and `node scripts/i18n-wrap.mjs --dry` lists strings that are not wrapped yet. The language is fixed at page load (switching reloads), so `t()` may be used in module-level label tables. The backend writes Swedish and translates on the way out (`services/i18n.js` + `i18n.en.js`): JSON `error`/`message` via a response hook, notifications when read, e-mails per recipient. New backend messages need an entry in `i18n.en.js` (`{name}` placeholders become patterns).
+
 ## Conventions
 
 - Path alias `@/*` → `src/*`.

@@ -190,7 +190,7 @@ export default function ApplicationsPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">{tr('Ansökningar')}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{tr('Hantera tillträdesansökningar (')}{displayTotal} st)</p>
+          <p className="text-sm text-muted-foreground mt-1">{tr('Hantera tillträdesansökningar ({count} st)', { count: displayTotal })}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={() => { exportApplications(); toast.success(tr('Ansökningar exporterade')); }}>
