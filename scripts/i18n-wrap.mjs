@@ -41,6 +41,9 @@ function isUiText(s, strong) {
   const trimmed = s.trim();
   if (!/[A-Za-zÅÄÖåäö]/.test(trimmed)) return false;
   if (NEVER_TRANSLATE.has(trimmed)) return false;
+  // In JSX text and visible attributes a capitalised text ("E-post", "E-post *")
+  // is always something people read, even if it looks like an identifier.
+  if (strong && /^[A-ZÅÄÖ]/.test(trimmed) && !/^[A-Z0-9_]+$/.test(trimmed)) return true;
   if (looksLikeCode(trimmed) && !isWordWithPunctuation(trimmed)) return false;
   if (strong) return true;                      // JSX text / UI attribute
   return SWEDISH.test(trimmed) || /^[A-ZÅÄÖ][a-zåäö]+\b/.test(trimmed) && /\s/.test(trimmed) || /^[A-ZÅÄÖ][a-zåäö]{2,}$/.test(trimmed) || isWordWithPunctuation(trimmed);
